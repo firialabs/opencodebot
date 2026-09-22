@@ -62,18 +62,38 @@ npm run build    # writes dist/
 npm run preview  # serve dist/ locally
 ```
 
-`npm test` runs both test suites: a protocol check that needs no hardware
-(including a round-trip of the file transfer through a real Python
-interpreter), and a headless browser pass that builds every block in every
-toolbox and checks it generates Python.
+`npm test` runs three suites, none of which need hardware:
 
-### Hosting
+- **`tests/protocol.mjs`** — the debugger-output filter, and a round-trip of the
+  file transfer through a real Python interpreter, byte-comparing what the
+  device would have written against the original program.
+- **`tests/smoke.mjs`** — builds every block in every toolbox in a headless
+  browser and checks each one generates Python.
+- **`tests/subpath.mjs`** — serves `dist/` from a sub-path the way GitHub Pages
+  does, then pulls the network and reloads, so the "works offline" promise
+  cannot quietly break.
+
+### Hosting on GitHub Pages
 
 `dist/` is a plain static bundle with a relative base path, so it works from the
-root of a domain or from a sub-path. A GitHub Pages workflow is included in
-`.github/workflows/deploy.yml` — it publishes on pushes to `main` once Pages is
-enabled for the repository (Settings → Pages → Build and deployment → GitHub
-Actions).
+root of a domain or from a sub-path such as
+`https://firialabs.github.io/opencodebot/`.
+
+`.github/workflows/deploy.yml` builds, tests and publishes it. It runs when
+both of these are true, and skips quietly otherwise:
+
+- **the repository is public** — GitHub Pages cannot publish from a private
+  repository unless the organisation is on GitHub Enterprise Cloud;
+- **the push is to the default branch**, whatever that branch is called.
+
+Nothing needs enabling by hand: the workflow switches Pages on itself the first
+time it runs. There is no separate build step to configure, because Pages is
+serving a pre-built artifact rather than running Jekyll.
+
+Hosting it somewhere else is just as easy — copy `dist/` onto any HTTPS host.
+Web Serial needs a secure context, so `https://` (or `http://localhost`) is
+required; a site served over plain `http://` will load but will not connect to
+a device.
 
 ## How it works
 

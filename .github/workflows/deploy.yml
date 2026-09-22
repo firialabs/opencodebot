@@ -1,12 +1,20 @@
-# Publishes the built site to GitHub Pages.
+# Publishes the built site to GitHub Pages at
+# https://firialabs.github.io/opencodebot/
 #
-# This only does anything once Pages is enabled for the repository:
-# Settings → Pages → Build and deployment → Source: GitHub Actions.
+# Two conditions have to hold for this to run, and the job skips quietly
+# (grey, not red) until they do:
+#
+#   1. The repository must be PUBLIC. GitHub Pages cannot publish from a
+#      private repository except on GitHub Enterprise Cloud.
+#   2. The push must be to the repository's default branch.
+#
+# Nothing else needs setting up by hand: `configure-pages` below turns Pages
+# on by itself the first time it runs.
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -20,6 +28,9 @@ concurrency:
 
 jobs:
   deploy:
+    if: >-
+      github.event.repository.private == false &&
+      github.ref_name == github.event.repository.default_branch
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -33,9 +44,21 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Install the browser the tests drive
+        run: npx playwright install --with-deps chromium
+
       - run: npm run build
 
+      # Teachers will be pointed at this URL, so test the exact bundle we are
+      # about to publish — including that it works from a sub-path and offline.
+      - name: Test the build we are about to publish
+        run: npm test
+
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

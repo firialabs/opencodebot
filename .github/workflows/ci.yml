@@ -1,9 +1,14 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Pushes to the default branch are covered by the deploy workflow, which runs
+# this same suite against the bundle it is about to publish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -18,7 +23,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Install the browser used by the UI tests
+      - name: Install the browser the tests drive
         run: npx playwright install --with-deps chromium
 
       - run: npm run build
