@@ -27,8 +27,8 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'any',
         icons: [
-          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' },
-          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'icons/firia-bot-head.svg', sizes: 'any', type: 'image/svg+xml' },
+          { src: 'icons/firia-bot-head.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
     }),

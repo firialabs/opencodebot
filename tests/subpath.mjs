@@ -75,11 +75,17 @@ try {
       scope: new URL(parsed.scope, href).pathname,
       start: new URL(parsed.start_url, href).pathname,
       icon: new URL(parsed.icons[0].src, href).pathname,
+      // Fetch it too: a manifest icon that 404s is worse than a wrong name.
+      iconStatus: (await fetch(new URL(parsed.icons[0].src, href))).status,
     }
   })
   check('manifest scope stays inside the sub-path', manifest.scope === `${PREFIX}/`, manifest.scope)
   check('manifest start_url stays inside the sub-path', manifest.start === `${PREFIX}/`, manifest.start)
-  check('manifest icon resolves', manifest.icon === `${PREFIX}/icons/icon.svg`, manifest.icon)
+  check(
+    'manifest icon resolves inside the sub-path and loads',
+    manifest.icon.startsWith(`${PREFIX}/icons/`) && manifest.iconStatus === 200,
+    `${manifest.icon} -> ${manifest.iconStatus}`,
+  )
 
   await page.evaluate(() => navigator.serviceWorker.ready)
   await page.waitForTimeout(2500)
