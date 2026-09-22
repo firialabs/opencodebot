@@ -55,7 +55,10 @@ kbd {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 20px;
-  color: var(--green-dark);
+  /* Firia Green, the same green as the "FIRIA" in the Firia Labs logo.
+     This is a wordmark, so it is exempt from the contrast rule that applies
+     to body text (it measures 2.5:1 on this background). */
+  color: var(--green);
   letter-spacing: 0.1px;
 }
 .brand-tag { font-size: 11px; color: var(--ink-faint); font-weight: 600; }
