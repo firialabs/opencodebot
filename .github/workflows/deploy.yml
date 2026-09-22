@@ -1,12 +1,17 @@
 # Publishes the built site to GitHub Pages at
 # https://firialabs.github.io/opencodebot/
 #
-# The repository must be PUBLIC: GitHub Pages cannot publish from a private
-# repository except on GitHub Enterprise Cloud. Until it is, the job skips
-# quietly (grey, not red) rather than failing on every push.
+# Two one-time prerequisites:
 #
-# Nothing else needs setting up by hand — `configure-pages` below turns Pages
-# on by itself the first time it runs.
+#   1. The repository must be PUBLIC. GitHub Pages cannot publish from a
+#      private repository except on GitHub Enterprise Cloud. Until it is, the
+#      job skips quietly (grey, not red) rather than failing on every push.
+#   2. Pages must be switched on once, by hand, under
+#      Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+#      The workflow cannot do this for itself: creating a Pages site needs
+#      admin access, and GITHUB_TOKEN only reaches write, so
+#      `configure-pages` with `enablement: true` fails on an org repository
+#      with "Resource not accessible by integration".
 #
 # If the default branch is ever renamed, update the branch filter below.
 name: Deploy to GitHub Pages
@@ -54,9 +59,8 @@ jobs:
       - name: Test the build we are about to publish
         run: npm test
 
+      # Reads the Pages config; it cannot create it (see the note at the top).
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

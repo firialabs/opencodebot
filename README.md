@@ -83,13 +83,17 @@ root of a domain or from a sub-path such as
 `https://firialabs.github.io/opencodebot/`.
 
 `.github/workflows/deploy.yml` builds, tests and publishes it on every push to
-`main`. It needs the repository to be **public** — GitHub Pages cannot publish
-from a private repository unless the organisation is on GitHub Enterprise Cloud
-— and skips quietly rather than failing red until it is.
+`main`. Setting it up on a fresh fork takes two one-time steps:
 
-Nothing needs enabling by hand: the workflow switches Pages on itself the first
-time it runs. There is no separate build step to configure, because Pages is
-serving a pre-built artifact rather than running Jekyll.
+1. Make the repository **public**. GitHub Pages cannot publish from a private
+   repository unless the organisation is on GitHub Enterprise Cloud. Until it
+   is, the deploy job skips quietly rather than failing red.
+2. Turn Pages on under **Settings → Pages → Build and deployment → Source:
+   GitHub Actions**. The workflow cannot do this for itself — creating a Pages
+   site needs admin access and `GITHUB_TOKEN` only reaches write.
+
+After that it is hands-off. There is no build step to configure, because Pages
+serves a pre-built artifact rather than running Jekyll.
 
 Hosting it somewhere else is just as easy — copy `dist/` onto any HTTPS host.
 Web Serial needs a secure context, so `https://` (or `http://localhost`) is
