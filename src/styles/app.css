@@ -472,6 +472,9 @@ kbd {
   border-bottom: 1px solid var(--line-strong) !important;
   margin: 8px 10px 8px 0 !important;
 }
-.blocklyFlyoutBackground { fill: var(--surface) !important; fill-opacity: 0.97 !important; }
+/* Fully opaque. The flyout is a separate SVG layered over the workspace, and
+   this path is the only thing backing it — at 0.97 the program underneath
+   ghosted through the whole palette. */
+.blocklyFlyoutBackground { fill: var(--surface) !important; fill-opacity: 1 !important; }
 .blocklyText { font-family: var(--font-display) !important; font-weight: 500 !important; }
 .blocklyWidgetDiv .blocklyMenu { border-radius: var(--r-sm); font-family: var(--font-body); }

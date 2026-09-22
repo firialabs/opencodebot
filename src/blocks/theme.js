@@ -28,7 +28,7 @@ export const cuteTheme = Blockly.Theme.defineTheme('opencodebot', {
     toolboxForegroundColour: '#4c4d4f',
     flyoutBackgroundColour: '#ffffff',
     flyoutForegroundColour: '#4c4d4f',
-    flyoutOpacity: 0.97,
+    flyoutOpacity: 1, // Anything less and the workspace ghosts through the palette.
     scrollbarColour: '#dcd8cd',
     scrollbarOpacity: 0.7,
     insertionMarkerColour: '#4eb748',

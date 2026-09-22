@@ -96,6 +96,35 @@ for (const device of DEVICES) {
   await page.screenshot({ path: `${SHOT_DIR}/ocb-${device}.png` })
 }
 
+// The flyout is a separate SVG layered over the workspace: if its backing
+// path is even slightly translucent, the student's program ghosts through
+// the whole palette.
+{
+  await page.evaluate(() => {
+    const row = [...document.querySelectorAll('.blocklyToolboxCategory')].find((r) =>
+      r.textContent.includes('Basics'),
+    )
+    row?.click()
+  })
+  await page.waitForTimeout(600)
+  const flyout = await page.evaluate(() => {
+    const bg = document.querySelector('.blocklyFlyoutBackground')
+    if (!bg) return null
+    const style = getComputedStyle(bg)
+    return { fillOpacity: style.fillOpacity, opacity: style.opacity }
+  })
+  if (!flyout) {
+    problems.push('flyout ▸ no background path found — did the flyout open?')
+  } else if (flyout.fillOpacity !== '1' || flyout.opacity !== '1') {
+    problems.push(
+      `flyout ▸ background is translucent (fill-opacity ${flyout.fillOpacity}, ` +
+        `opacity ${flyout.opacity}) — the workspace will show through the palette`,
+    )
+  } else {
+    console.log('flyout: background is fully opaque')
+  }
+}
+
 await browser.close()
 server?.kill()
 
