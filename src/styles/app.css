@@ -429,11 +429,30 @@ kbd {
   border-right: 1px solid var(--line);
   padding: 10px 10px 10px 0 !important;
 }
+/* Blockly hard-codes `height: 22px; line-height: 22px` with border-box on
+   these rows, so adding vertical padding pushes the text out of the box
+   instead of growing it — the label ends up sitting below its own highlight.
+   Let the row size to its content and centre it properly. */
 .blocklyToolboxCategory {
+  display: flex;
+  align-items: center;
+  height: auto !important;
+  min-height: 34px;
+  line-height: 1.25 !important;
   border-radius: 0 var(--r-pill) var(--r-pill) 0 !important;
   margin-bottom: 4px !important;
-  padding: 7px 16px 7px 0 !important;
+  padding: 4px 16px 4px 0 !important;
   transition: background-color 0.15s;
+}
+.blocklyTreeRowContentContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+/* Every category carries its emoji in the label, so the separate icon slot is
+   empty and would only add a stray 16px gap. A real icon still shows. */
+.blocklyToolboxCategoryIcon:empty {
+  display: none !important;
 }
 .blocklyToolboxCategory:not(.blocklyToolboxSelected):hover {
   background-color: rgba(76, 77, 79, 0.06) !important;
