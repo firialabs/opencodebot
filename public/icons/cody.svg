@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cody the robot">
+  <g fill="none" stroke="#3D9239" stroke-width="3" stroke-linecap="round">
+    <path d="M14 16 L9 8" /><path d="M50 16 L55 8" />
+  </g>
+  <circle cx="9" cy="7" r="4" fill="#F4D038"/>
+  <circle cx="55" cy="7" r="4" fill="#F4D038"/>
+  <rect x="8" y="14" width="48" height="38" rx="13" fill="#4EB748"/>
+  <rect x="8" y="14" width="48" height="38" rx="13" fill="none" stroke="#3D9239" stroke-width="2"/>
+  <rect x="14" y="21" width="36" height="24" rx="10" fill="#3C3D3F"/>
+  <g fill="#F4D038">
+    <rect x="21" y="29" width="4" height="10" rx="2"/><rect x="18" y="32" width="10" height="4" rx="2"/>
+    <rect x="39" y="29" width="4" height="10" rx="2"/><rect x="36" y="32" width="10" height="4" rx="2"/>
+  </g>
+  <path d="M27 42 q5 4 10 0" stroke="#FFFDF7" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <rect x="22" y="52" width="20" height="6" rx="3" fill="#3D9239"/>
+</svg>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#4EB748" />
+    <meta name="description" content="Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR." />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <title>OpenCodeBot</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-mascot" src="./icons/cody.svg" alt="" width="38" height="38" />
+          <div class="brand-text">
+            <span class="brand-name">OpenCodeBot</span>
+            <span class="brand-tag">blocks that fly, roll &amp; glow</span>
+          </div>
+        </div>
+
+        <div class="topbar-center">
+          <button id="device-chip" class="device-chip" aria-haspopup="listbox" aria-expanded="false">
+            <span class="device-chip-dot" data-state="off"></span>
+            <img class="device-chip-icon" id="device-chip-icon" src="./icons/dev-any.svg" alt="" width="22" height="22" />
+            <span class="device-chip-label" id="device-chip-label">Pick a device</span>
+            <span class="device-chip-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="device-menu" class="device-menu" role="listbox" hidden></div>
+        </div>
+
+        <div class="topbar-actions">
+          <button id="btn-connect" class="btn btn-connect">
+            <span class="btn-emoji" aria-hidden="true">🔌</span><span class="btn-text">Connect</span>
+          </button>
+          <button id="btn-run" class="btn btn-run" disabled>
+            <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text">Run</span>
+          </button>
+          <button id="btn-stop" class="btn btn-stop" disabled>
+            <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text">Stop</span>
+          </button>
+          <div class="menu-wrap">
+            <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" title="More">⋯</button>
+            <div id="app-menu" class="app-menu" role="menu" hidden>
+              <button role="menuitem" data-action="new">🆕 New project</button>
+              <button role="menuitem" data-action="open">📂 Open project…</button>
+              <button role="menuitem" data-action="save">💾 Save project</button>
+              <hr />
+              <button role="menuitem" data-action="export-py">🐍 Download Python</button>
+              <button role="menuitem" data-action="copy-py">📋 Copy Python</button>
+              <hr />
+              <button role="menuitem" data-action="help">❓ Help &amp; shortcuts</button>
+              <button role="menuitem" data-action="about">💚 About OpenCodeBot</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="workarea">
+        <section class="blocks-pane" id="blocks-pane">
+          <div id="blockly-root" class="blockly-root"></div>
+          <div class="blocks-hint" id="blocks-hint">
+            <img src="./icons/cody.svg" alt="" width="46" height="46" />
+            <p>Drag blocks from the left to build your program!</p>
+          </div>
+        </section>
+
+        <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"
+             aria-label="Resize panels"></div>
+
+        <section class="side-pane" id="side-pane">
+          <div class="tabs" role="tablist">
+            <button class="tab is-active" role="tab" data-tab="terminal" aria-selected="true">
+              <span aria-hidden="true">💬</span> Talk to device
+            </button>
+            <button class="tab" role="tab" data-tab="python" aria-selected="false">
+              <span aria-hidden="true">🐍</span> Python
+            </button>
+            <div class="tabs-spacer"></div>
+            <button id="btn-clear-term" class="icon-btn" title="Clear the terminal">🧹</button>
+          </div>
+
+          <div class="tab-panel is-active" data-panel="terminal">
+            <div id="terminal-host" class="terminal-host"></div>
+            <div class="terminal-foot" id="terminal-foot">
+              <span class="term-hint">Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.</span>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-panel="python">
+            <pre id="python-view" class="python-view"><code>&nbsp;</code></pre>
+          </div>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span class="status-chip" id="status-chip" data-state="idle">Not connected</span>
+        <span class="status-msg" id="status-msg">Plug in your device with a USB cable, then press Connect.</span>
+        <span class="status-spacer"></span>
+        <span class="status-note" id="browser-note"></span>
+      </footer>
+    </div>
+
+    <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+    <dialog id="modal" class="modal"></dialog>
+    <input type="file" id="file-input" accept=".ocb,.json" hidden />
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

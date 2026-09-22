@@ -1,0 +1,58 @@
+/* OpenCodeBot design tokens.
+   Palette starts from the Firia Labs brand (green leads, gold accents) and
+   warms it up: cream paper, soft pastels, chunky rounded shapes. */
+:root {
+  /* Brand */
+  --green: #4eb748;
+  --green-dark: #3d9239;
+  --green-deep: #2f7a2c;
+  --green-soft: #e9f7e8;
+  --green-mist: #f4fbf3;
+  --gold: #f4d038;
+  --gold-dark: #ddbe29;
+  --gold-soft: #fef6da;
+
+  /* Friendly accents */
+  --sky: #63c8f2;
+  --sky-soft: #e6f6fd;
+  --berry: #f2779f;
+  --berry-soft: #fdeef3;
+  --lilac: #b49be0;
+  --lilac-soft: #f2ecfb;
+  --coral: #ff7a66;
+  --coral-dark: #e8604c;
+  --coral-soft: #ffeeeb;
+  --mango: #ffa94d;
+
+  /* Neutrals */
+  --ink: #4c4d4f;
+  --ink-soft: #7c7e82;
+  --ink-faint: #a9abaf;
+  --line: #ece9e1;
+  --line-strong: #dcd8cd;
+  --paper: #fffdf7;
+  --paper-2: #f8f5ec;
+  --surface: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(76, 77, 79, 0.06), 0 2px 6px rgba(76, 77, 79, 0.06);
+  --shadow: 0 2px 4px rgba(76, 77, 79, 0.06), 0 8px 20px rgba(76, 77, 79, 0.1);
+  --shadow-lg: 0 8px 40px rgba(76, 77, 79, 0.18);
+
+  /* Shape */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r: 16px;
+  --r-lg: 24px;
+  --r-pill: 999px;
+
+  /* Type */
+  --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Nunito Variable', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  /* Terminal */
+  --term-bg: #2c2d31;
+  --term-fg: #f3f1ea;
+
+  --topbar-h: 62px;
+  --statusbar-h: 30px;
+}
