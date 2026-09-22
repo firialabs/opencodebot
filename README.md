@@ -6,6 +6,9 @@ OpenCodeBot lets a teacher plug in a **CodeBot**, **CodeX** or **CodeAIR**, snap
 some blocks together, and press Run. No install, no accounts, no setup — just a
 web page and a USB cable.
 
+**▶ [Open OpenCodeBot](https://firialabs.github.io/opencodebot/)** — nothing to
+install. Chrome or Edge on a computer or Chromebook.
+
 It is a gentle on-ramp, not a replacement: everything it makes is real
 CircuitPython, and the Python is always visible in a tab beside the blocks. When
 a class is ready for the real thing, [CodeSpace](https://firialabs.com) is
@@ -79,12 +82,10 @@ npm run preview  # serve dist/ locally
 root of a domain or from a sub-path such as
 `https://firialabs.github.io/opencodebot/`.
 
-`.github/workflows/deploy.yml` builds, tests and publishes it. It runs when
-both of these are true, and skips quietly otherwise:
-
-- **the repository is public** — GitHub Pages cannot publish from a private
-  repository unless the organisation is on GitHub Enterprise Cloud;
-- **the push is to the default branch**, whatever that branch is called.
+`.github/workflows/deploy.yml` builds, tests and publishes it on every push to
+`main`. It needs the repository to be **public** — GitHub Pages cannot publish
+from a private repository unless the organisation is on GitHub Enterprise Cloud
+— and skips quietly rather than failing red until it is.
 
 Nothing needs enabling by hand: the workflow switches Pages on itself the first
 time it runs. There is no separate build step to configure, because Pages is
