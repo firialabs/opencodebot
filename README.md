@@ -30,6 +30,14 @@ waiting for them.
 | ✈️ **Works offline** | Once the page has loaded it keeps working with no internet at all. Nothing is uploaded anywhere. |
 | 💾 **Nothing to lose** | Your blocks are saved in the browser as you go, and can be saved to a file. |
 
+## No device? Simulate one
+
+Press **🎮 Simulate** to run your program on a simulated CodeBot in a
+gymnasium: it drives, sees lines and walls, lights up and beeps, and the
+terminal is a live Python prompt. It runs in any modern browser, no cable
+needed. CodeX and CodeAIR are on the way. How it works:
+[sim/README.md](sim/README.md).
+
 ## Supported devices
 
 | Device | Connects over | Blocks for |

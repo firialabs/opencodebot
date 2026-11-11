@@ -5,7 +5,9 @@ gymnasium first, then CodeX, then CodeAIR. A student's program runs unchanged on
 simulator and on the hardware, and the whole product can be tested in the cloud with no USB
 device.
 
-Status: proposed, 2026-11-11. Awaiting approval before the build starts.
+Status: approved 2026-11-11. CodeBot in the gymnasium is built (steps 1 to 4
+below, short of calibration); see "Where it stands" at the end. How to build,
+test and extend it is in [README.md](README.md).
 
 ## The design in one paragraph
 
@@ -259,7 +261,41 @@ ignored, and published with the assets when that is agreed. Only the gymnasium a
 
 ## Research record
 
-The measurements above came from prototypes built for this design (2026-11-11): the runtime
-prototype is in `sim/runtime/`; the rendering and physics benchmarks compared Three.js r187,
-Babylon.js 9.35, Rapier 0.21, Jolt 1.1.1 and cannon-es 0.20 in headless Chromium 151 and
-Node 24.
+The measurements above came from prototypes built for this design (2026-11-11). The
+runtime prototype became `src/sim/runtime/`; the rendering and physics benchmarks compared
+Three.js r187, Babylon.js 9.35, Rapier 0.21, Jolt 1.1.1 and cannon-es 0.20 in headless
+Chromium 151 and Node 24.
+
+## Calibration
+
+Every number a student could notice is a named parameter, and each is an estimate until it
+is measured on a device:
+
+- **CodeBot** (`CB3` in `src/sim/world/codebot.js`): wheel speed at full power, deadband,
+  motor lag, traction; line sensor readings on white and black and their noise; the
+  proximity beam's spread (its range table is measured); encoder signal levels; the
+  accelerometer's axes and sign at rest. Sensor positions come from the CB3 model.
+- **Device time** (`COST_US` in `src/sim/bridge/codebot.js`, `usPerBranch` in the engine):
+  what a sensor read, a motor write and a bytecode cost on the device. A tight loop's
+  iterations per second on a CB3 sets `usPerBranch`.
+
+A bench session with a CB3, a tape line and a ruler settles all of these.
+
+## Where it stands
+
+Built, on branch `sim` (local commits; pushing waits for David):
+
+- The runtime: MicroPython with JSPI, every clock on simulated time, pause, step, stop
+  (with a grace period for programs that swallow the interrupt), a REPL between programs,
+  one fresh VM per run.
+- CodeBot in the gymnasium: drive, walls and stalls, line sensors over the court lines,
+  proximity, encoders, accelerometer, buttons, LEDs, speaker.
+- In the app: a Simulate button, a Simulator tab (follow, orbit and top cameras, pause,
+  step, speed, the board's buttons, reset), output and errors through the app's usual
+  events, sound.
+- Tests: `tests/sim.mjs` (13 headless) and `tests/sim-ui.mjs` (every CodeBot block, the
+  starter project, the REPL, in the app).
+
+Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
+them; nothing lays them yet); calibration; the device's own Python modules in place of the
+shims (David agreed they may ship; their sources are being located); CodeX; CodeAIR.
