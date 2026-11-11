@@ -365,44 +365,54 @@ here, `LATENCY_US`); how many messages the receive queue holds and which it drop
 enforced here; ESP-NOW carries 250 bytes); RSSI between boards on one desk (about -42 dBm
 here, with a little noise); whether `send` with the radio off raises (silent here).
 
-## HANDOFF (2026-11-11, from the CodeAIR session)
+## HANDOFF (2026-11-11, from the radio session)
 
 **State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
-local commits only; nothing is pushed: pushing to the public repository waits for David's
-own go, typed in the session. CodeBot, CodeX and CodeAIR run in the app and headless; all
-tests pass (`npm run test:sim` with `CHROME_PATH` set on p52-lab, see sim/README.md). The
-manager has approved the design; assets are CC BY-NC 4.0 and may be published; the
-devices' own Python may ship. Commits are authored as David (`git -c user.name=... -c
-user.email=...`: this checkout has no identity configured).
+local commits only (last `e6d7154` before this handoff); nothing is pushed: pushing to the
+public repository waits for David's own go, typed in the session. CodeBot, CodeX and
+CodeAIR run in the app and headless, and the radio works between boards (section 1, "The
+device modules"; the boards page, `boards.html`). All tests pass: `npm run test:sim` with
+`CHROME_PATH` set (see below), and the app's smoke, subpath and protocol tests. The manager
+has approved the design; assets are CC BY-NC 4.0 and may be published; the devices' own
+Python may ship. Commits are authored as David (`git -c user.name=... -c user.email=...`:
+this checkout has no identity configured).
 
 **Working setup on p52-lab.** Emscripten in `~/.cache/emsdk`; MicroPython checkout in
 `sim/build/micropython` (ignored); Firia's CircuitPython fork cloned (blobless) at
 `~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref` (its
-firmware images hold the CodeX font; `models/CodeAIR/TopPcb.jpg` shows the drone's board,
-forward arrow and LED layout). Playwright's own browser does not match the repo's pinned
-version here: use `CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
+firmware images hold the CodeX font; `models/CodeAIR/TopPcb.jpg` shows the drone's board).
+Playwright's own browser does not match the repo's pinned version here: use
+`CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
+`tests/smoke.mjs` and `tests/subpath.mjs` ignore `CHROME_PATH` and smoke uses port 4173
+(not ours): run copies with `executablePath` added, smoke against your own `vite preview`
+port through `OCB_URL`, subpath with `OCB_SUBPATH_PORT`. `tests/sim-ui.mjs` uses 4183.
 Never `pkill -f` a pattern that appears in the same command line (it kills the shell).
 
-**Things learned.** MicroPython (and CircuitPython) compile `for _ in range(x)` to an
-inline loop that accepts a float, so `flightdb`'s `range(int(t) / 10)` works on the device;
-`range(10.0)` anywhere else raises. The CodeAIR figure's model is in metres, front +z, left
-+x. The CodeAIR finding in "Where it stands" (`fly_high` cannot fly at `752129a9f`:
-`high_level_commander.py` lacks `import crtp`, and `takeoff`/`land` pack struct code `?`)
-is with the manager, who is taking it to David; the simulator keeps the device's code
-unchanged, so it reproduces the failure until the firmware is fixed.
+**Things learned.** MicroPython's web port keeps its JS proxy tables on `globalThis`, so
+two VMs in one realm corrupt each other; the browser gives each board a worker, and the
+headless group swaps the globals (section 1). Playwright's `browser.newPage()` makes a new
+context each time, which isolates `BroadcastChannel`: open tabs that should hear each other
+from one `browser.newContext()`. The service worker answers a navigation whose query string
+it does not ignore with `index.html` (the fallback), so a page that takes a parameter needs
+it in `ignoreURLParametersMatching` (vite.config.js). `for _ in range(x)` takes a float on
+the devices' VMs (an inline loop), `range(10.0)` elsewhere raises. The CodeAIR figure's
+model is in metres, front +z, left +x. The CodeAIR finding in "Where it stands" is with the
+manager; the simulator keeps the device's code unchanged.
 
 **Next, in this order (the manager's order, 2026-11-11).**
-1. Radio between simulated devices, on a two-board page: a CodeX and a CodeAIR in one page
-   (CodeAIR's `xfly.py` pairs with a CodeX as a remote), or two of one kind.
-   `python/radio/radio.py` is shared; the bridges' `radio_send`/`radio_receive` are the
-   seam; the world holds devices already.
-2. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
+1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
    `docs/device-targets.md`, `src/device/device-target.js`), rebase `sim` onto origin/main
    and move SimDevice onto that interface (`registerDeviceKind('sim', ...)`, `?device=sim`;
-   template `src/device/loopback-device.js`, test `tests/device.mjs`). Keep this branch's
-   Node 24 CI change alongside theirs (Playwright install with retries). Not merged at
-   0d3fd4d. `tests/sim-ui.mjs` serves on its own port, 4183.
-3. Tape line courses on the floor (the floor reflectance map supports them).
-4. Line-level stepping in the editor.
-5. Calibration on real devices (the lists in "Calibration").
-
+   template `src/device/loopback-device.js`, test `tests/device.mjs`); the seam is
+   `src/sim/device-switch.js`. The repo has Web Serial only, no WebUSB. Keep this branch's
+   Node 24 CI change alongside theirs (Playwright install with retries). Not merged on
+   origin/main at `3c30484` (checked 2026-11-11). The boards page builds on SimDevice
+   directly, so it moves with it.
+2. Tape line courses on the floor (the floor reflectance map supports them).
+3. Line-level stepping in the editor.
+4. Infrared between boards, so CodeAIR's `xfly.py` can pair with a CodeX remote (it pairs
+   by IR, `infrared.py` over `pulseio`, then flies by radio); `xfly`, `infrared` and
+   `selftest` are not yet among the simulator's CodeAIR modules. CodeSpace's CodeX side is
+   in `botsim-ref/public/lesson-content/objective-files/CodeXair_code`.
+5. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
+   stands").
