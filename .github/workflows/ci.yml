@@ -13,6 +13,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # The whole suite, the simulator's included, takes a few minutes; a hung
+    # browser should not hold a runner for hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +32,12 @@ jobs:
       - run: npm run build
 
       - run: npm test
+
+      # What the simulator's UI test saw, to read a failure on the runner.
+      - name: Keep the test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: tests/screenshots/
+          if-no-files-found: ignore

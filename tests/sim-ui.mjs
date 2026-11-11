@@ -362,12 +362,21 @@ xfly.on('pageerror', (e) => problems.push(`xfly page error: ${e.message}`))
 await xfly.goto(new globalThis.URL('boards.html?boards=codex:codeair-remote,codeair:xfly', URL).href, { waitUntil: 'networkidle' })
 for (const b of await xfly.$$('.bd-run')) await b.click()
 await xfly.waitForFunction(() => window.boards.every((b) => b.sim.state === 'running'), null, { timeout: 20000 })
-await xfly.waitForTimeout(2500)                      // CodeAIR's boot, then it seeks a pairing
+// What each board prints, to wait on what happens rather than on the clock
+// (a slow machine runs the boards slower than real time).
+await xfly.evaluate(() => {
+  window.__out = window.boards.map(() => '')
+  window.boards.forEach((b, i) => b.sim.addEventListener('data', (e) => { window.__out[i] += new TextDecoder().decode(e.detail) }))
+})
+await xfly.waitForFunction(() => /No pairing found/.test(window.__out[1]), null, { timeout: 20000 })
+  .catch(() => problems.push('xfly: the CodeAIR never began to seek a pairing'))
 const holdB = xfly.locator('.bd-card:first-child .cx-B')
 await holdB.dispatchEvent('pointerdown')
-await xfly.waitForTimeout(3000)
+await xfly.waitForFunction(() => /Ctrl mode/.test(window.__out[1]), null, { timeout: 20000 })
+  .catch(() => problems.push('xfly: holding B did not pair the CodeAIR'))
+await xfly.waitForTimeout(1000)                       // the remote's ACKs, then its flight screen
 await holdB.dispatchEvent('pointerup')
-await xfly.waitForTimeout(1000)
+await xfly.waitForTimeout(500)
 await xfly.click('.bd-card:first-child .cx-A', { delay: 150 })
 const rose = await xfly.waitForFunction(() => (window.boards[1].sim.lastFrame?.devices[0].z ?? 0) > 0.3, null, { timeout: 15000 })
   .then(() => true, () => false)

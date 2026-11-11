@@ -87,6 +87,12 @@ flies CodeAIR, and has a CodeX remote on the boards page reach a CodeAIR there
 and the app's CodeX in another tab. If Playwright's own browser is
 missing, point `CHROME_PATH` at an installed Chromium.
 
+CI runs both, in `npm test`, on every pull request and before every deploy
+(`.github/workflows/`): about 1.5 minutes here, under 3 with every core
+busy. The UI test waits on what the boards do, not on the clock, so a slow
+runner only makes it slower. When it fails, its screenshots are kept as the
+run's `test-screenshots` artifact.
+
 To run a program yourself, headless:
 
 ```js
