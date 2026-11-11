@@ -54,7 +54,7 @@ await new Promise((resolve) => server.listen(PORT, resolve))
 const url = `http://localhost:${PORT}${PREFIX}/`
 console.log(`Serving dist/ at ${url}`)
 
-const browser = await chromium.launch()
+const browser = await chromium.launch(process.env.OCB_CHROMIUM ? { executablePath: process.env.OCB_CHROMIUM } : {})
 const context = await browser.newContext({ serviceWorkers: 'allow' })
 const page = await context.newPage()
 const problems = []
