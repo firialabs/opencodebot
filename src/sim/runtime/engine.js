@@ -27,7 +27,9 @@ export class Engine {
   //   hookPeriod       branches between charges
   //   onOutput(bytes)  program output (Uint8Array)
   //   onFrame()        called at each suspension, at most every FRAME_MS wall
-  //   onState(state)   'running' | 'paused' | 'idle'
+  //   onState(state, line)  'running' | 'paused' | 'idle', and the program's
+  //                    line when paused (with `trace`)
+  //   trace            report main.py's lines, for stepping by line (stepLine)
   //   lockstep, member  a Lockstep (lockstep.js) and this world's place on it:
   //                    several engines on one timeline (Node). Their VMs share
   //                    one JS realm, so each must come from its own copy of
@@ -41,6 +43,8 @@ export class Engine {
     this.hookPeriod = opts.hookPeriod ?? 1000
     this.paused = false
     this.stepPending = false
+    this.lineStepPending = false
+    this.line = null          // main.py's line now (with `trace`)
     this.stopRequested = false
     this.running = false
     this.mp = null
@@ -95,7 +99,7 @@ export class Engine {
     if (this.stepPending) { this.stepPending = false; this.paused = true }
     if (this.paused) {
       this._frame(true)
-      this.o.onState?.('paused')
+      this.o.onState?.('paused', this.line)
       while (this.paused && !this.stopRequested) await new Promise((r) => (this._resume = r))
       this._resume = null
       if (this._interruptDue()) return this._interrupt()
@@ -226,6 +230,15 @@ export class Engine {
       delay: (us) => (live() ? this._delay(us) : never()),
       ticksUs: () => this.world.timeUs,
       timeMs: () => this.world.epochMs + this.world.timeUs / 1000,
+      // A new line of main.py (with `trace`): 1 pauses there.
+      line: (n) => {
+        if (!live()) return 0
+        this.line = n
+        if (!this.lineStepPending) return 0
+        this.lineStepPending = false
+        this.paused = true
+        return 1
+      },
     }
     M._sim_set_hook_period(this.hookPeriod)
     try { mp.FS.mkdir('/lib') } catch { /* exists */ }
@@ -245,12 +258,15 @@ export class Engine {
   }
 
   // Run a program to its end (or a stop). Resolves { ok, error, stopped }.
-  async run(source, { seed } = {}) {
+  // stepFirst (with `trace`): pause at its first line, to step from there.
+  async run(source, { seed, stepFirst = false } = {}) {
     if (this.running) throw new Error('already running')
     this.running = true
     this.stopRequested = false
     this.paused = false
     this.stepPending = false
+    this.lineStepPending = !!stepFirst
+    this.line = null
     this._interrupts = 0
     this._stopAgain = false
     this.replVM = null
@@ -267,7 +283,7 @@ export class Engine {
     let result
     try {
       const how = await Promise.race([
-        this.mp.runPythonAsync(RUN_MAIN).then(() => 'done'),
+        this.mp.runPythonAsync(this.o.trace ? RUN_MAIN_TRACED : RUN_MAIN).then(() => 'done'),
         abandoned,
       ])
       result = how === 'abandoned' ? { ok: false, stopped: true } : { ok: true }
@@ -361,6 +377,12 @@ export class Engine {
     this.stepPending = true
     this.resume()
   }
+
+  // Run on to the next line of main.py, and pause there (with `trace`).
+  stepLine() {
+    this.lineStepPending = true
+    this.resume()
+  }
 }
 
 // The globals MicroPython's web port keeps its JS proxies in.
@@ -375,6 +397,8 @@ def __run():
     exec(compile(src, 'main.py', 'exec'), {'__name__': '__main__'})
 __run()
 `
+// The same, with main.py's lines reported (the trace is on for its frames only).
+const RUN_MAIN_TRACED = RUN_MAIN.replace("    exec(", "    import _simtrace\n    _simtrace.on()\n    exec(")
 
 // The traceback as the device would print it: without the frames of the
 // runner above.

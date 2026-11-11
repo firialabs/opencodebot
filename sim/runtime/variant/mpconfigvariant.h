@@ -14,3 +14,8 @@ void sim_vm_hook(void);
 // As on the devices (CircuitPython): no docstrings. Firia's modules depend on
 // it (songplayer and soundlib skip their setup when an object has __doc__).
 #define MICROPY_ENABLE_DOC_STRING (0)
+
+// Line-level stepping: the VM reports each line of the program's own file
+// (main.py) to the engine, which can pause there (simhook.c, _simtrace).
+// Only frames of main.py are traced; other code runs as before.
+#define MICROPY_PY_SYS_SETTRACE (1)

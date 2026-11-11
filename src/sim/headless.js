@@ -55,7 +55,8 @@ export function pythonFiles(kind = 'codebot') {
 
 // opts: source, kind ('codebot'), env (id or Environment), course (a line
 // course id from world/courses.js, laid on the floor; the robot starts on it),
-// seconds (simulated deadline), seed, spawn {x, y, heading}, setup(world, device) before the
+// seconds (simulated deadline), seed, spawn {x, y, heading}, trace (report
+// main.py's lines, as for stepping), setup(world, device) before the
 // run, inputs [{ t: seconds, fn(world, device) }], traceEveryMs.
 export async function runHeadless(opts) {
   const run = await prepare(opts, opts.seconds)
@@ -111,6 +112,7 @@ async function prepare(opts, seconds = 10, lockstep = null) {
     stopGraceUs: device.stopGraceUs,
     files: pythonFiles(device.kind),
     speed: Infinity,
+    trace: !!opts.trace,
     lockstep, member,
     onOutput: (b) => chunks.push(Buffer.from(b)),
   })

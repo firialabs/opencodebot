@@ -142,6 +142,51 @@ await test('pause holds simulated time; step and resume continue', async () => {
   assert.ok(performance.now() - stopAt < 50, 'stop was slow')
 })
 
+await test('step by line: each step stops at the next line of main.py, through its functions, not botcore\'s', async () => {
+  const env = Environment.empty()
+  const world = new World(env)
+  const bot = world.add(createDevice('codebot', env, world.rng.fork(), env.spawns[0]))
+  const { loadMicroPython } = await import('../src/sim/runtime/mp/micropython.mjs')
+  const paused = []
+  const engine = new Engine({
+    loadMicroPython, world, bridge: bot.bridge, files: pythonFiles(), speed: 1, trace: true,
+    onState: (s, line) => { if (s === 'paused') paused.push(line) },
+  })
+  const src = [
+    'from botcore import *',       // 1
+    'def blink(n):',               // 2
+    '    leds.user(n)',            // 3
+    '    return n + 1',            // 4
+    'x = 0',                       // 5
+    'while True:',                 // 6
+    '    x = blink(x) % 200',      // 7
+  ].join('\n')
+  const done = engine.run(src, { stepFirst: true })
+  for (let i = 0; i < 9; i++) {
+    const n = paused.length
+    for (let w = 0; paused.length === n && w < 400; w++) await delay(5)
+    engine.stepLine()
+  }
+  await delay(50)
+  engine.resume()
+  const t = world.timeUs
+  await delay(100)
+  engine.pause()
+  await delay(50)
+  assert.ok(world.timeUs > t, 'resume after stepping runs on')
+  engine.stop()
+  await done
+  // (`while True:` has no code of its own; each turn of the loop is line 7 again)
+  assert.deepEqual(paused.slice(0, 9), [1, 2, 5, 7, 3, 4, 7, 3, 4])
+})
+
+await test('tracing main.py costs no simulated time', async () => {
+  const src = 'import time\nt = time.ticks_us()\nn = 0\nfor i in range(2000):\n    n += i\nprint(time.ticks_us() - t)'
+  const a = await runHeadless({ source: src, env: 'empty' })
+  const b = await runHeadless({ source: src, env: 'empty', trace: true })
+  assert.equal(b.output, a.output)
+})
+
 await test('proximity sees a wall ahead, and not one far away', async () => {
   const src = 'from botcore import *\nprint(prox.detect(1, 100), prox.range(8, 4))'
   const near = await runHeadless({ source: src, spawn: { x: 0, y: 1.82, heading: Math.PI / 2 } })

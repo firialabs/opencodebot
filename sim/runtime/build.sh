@@ -2,7 +2,7 @@
 # Builds the simulator's MicroPython (WebAssembly, JSPI) into src/sim/runtime/mp/.
 #
 # The output is committed, so building the app needs no Emscripten. Run this
-# only when the variant (sim/runtime/variant/), the port patch or the pinned
+# only when the variant (sim/runtime/variant/), the port or py patch or the pinned
 # MicroPython commit changes.
 #
 # Needs: git, make, python3, and Emscripten. EMSDK points at an emsdk checkout
@@ -30,8 +30,10 @@ cd "$SRC"
 if [ "$(git rev-parse HEAD)" != "$MP_COMMIT" ]; then
   git fetch origin && git checkout -q "$MP_COMMIT"
 fi
-git checkout -q -- ports/webassembly
+git checkout -q -- ports/webassembly py
 git apply "$HERE/port.patch"
+# A jump back reports its line again (a loop of one line), for stepping by line.
+git apply "$HERE/py.patch"
 rm -rf ports/webassembly/variants/sim
 cp -r "$HERE/variant" ports/webassembly/variants/sim
 
