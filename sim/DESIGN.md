@@ -313,3 +313,58 @@ them; nothing lays them yet); radio between simulated devices; calibration; Code
 
 To check on a real CodeX: how `show()` scales and centres, how `print` wraps and scrolls,
 how long a full-screen update takes, the order of LEDs 0 to 3 and of the NeoPixels.
+
+## HANDOFF (2026-11-11, from the first build session)
+
+**State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
+local commits only, last `d7ee22a`; nothing is pushed: pushing to the public repository
+waits for David's own go, typed in the session. CodeBot (in the gymnasium) and CodeX run in
+the app and headless; all tests pass (`npm run test:sim` with `CHROME_PATH` set on p52-lab,
+see sim/README.md). The manager has approved the design; assets are CC BY-NC 4.0 and may be
+published; the devices' own Python may ship.
+
+**Working setup on p52-lab.** Emscripten in `~/.cache/emsdk`; MicroPython checkout in
+`sim/build/micropython` (ignored); Firia's CircuitPython fork cloned (blobless) at
+`~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref` (its
+firmware images hold the CodeX font). Playwright's own browser does not match the repo's
+pinned version here: use `CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
+Never `pkill -f` a pattern that appears in the same command line (it kills the shell).
+
+**Next: CodeAIR.** Sources: firia-circuitpython branch `codeair` at `752129a9f`,
+`ports/espressif/boards/codeair/frozen/` (`general/` has codeair.py, flight.py, flightdb.py,
+flight_catalog.py, cflib/*, recorder.py, lp5009.py, embedded_data.py; `pure_c_py_docs/` has
+stubs for the C modules crtp, codeair_drivers, radio, img_utils). What is known:
+
+- The whole flight stack meets the hardware at one C module, `crtp`: `send(port, channel,
+  data)`, `receive()` -> `(port, chan, data)` or None, `log_avail()`, `log_read()`, `flush()`,
+  `console_read()`. Behind it is an STM32 running Crazyflie firmware. So the boundary to
+  simulate is a **virtual Crazyflie that speaks CRTP**, in JS, over an arcade flight model:
+  - port 7 (generic commander) channel 0: packed `<B` type then floats: TYPE_STOP 0,
+    VELOCITY_WORLD 1, ZDISTANCE 2, HOVER 5 (vx, vy, yawrate, zdistance), POSITION 7;
+    channel 1: notify setpoint stop. Port 3: legacy roll/pitch/yawrate/thrust.
+  - port 8: high-level commander (takeoff, land, go_to) for `fly_high`.
+  - port 2 (param) and port 5 (log): flightdb uses the TOCs baked into flight_catalog.py
+    (no TOC fetch normally): implement param get/set and log block create, append, start,
+    stop, reset on the control channel (commands in LogManager), then stream log data that
+    `log_read()` returns, with values for the names in flight.py (stateEstimate.x/y/z/yaw,
+    vx/vy/vz, roll/pitch, acc, gyro, range.front/up/zrange, motion.deltaX/Y, baro, mag).
+  - port 13 (platform) channel 1 for `version()`.
+  Read motion_commander.py first: its moves send hover setpoints; find how it waits for a
+  move to finish (several `time.sleep` calls are commented out).
+- Arcade model as the design says: first-order lag to the setpoint velocities and height,
+  seeded Ornstein-Uhlenbeck drift, sphere against the room's boxes with restitution, take-off
+  and landing phases; the rangers and flow sensor computed from the room (down to the floor,
+  up to the ceiling, front to the walls), the state estimate from the true state plus drift.
+- The rest of codeair.py is board work like CodeX's: neopixel (8 pixels), LP5009 LEDs over
+  I2C (cam_i2c), buttons, speaker (beep), power (ADC), sdcard and camera (stub as absent),
+  `embedded_data` pipe (send to the terminal or ignore).
+- Room: the gymnasium, with the CodeAIR model (`CodeAir_revC-2.glb` in botsim-ref
+  `models/CodeAIR/`; add it to sim/assets and its LICENSE).
+- Blocks it must pass (src/blocks/codeair.js): `with recorder:`, `fly.take_off(h)`, `land`,
+  forward/back/left/right/up/down, turn_left/right, circle_left/right, `steady`, pixels,
+  leds, `speaker.beep`, buttons, power. Add CodeAIR to `tests/sim-ui.mjs` as CodeX is.
+
+**Also open.** Radio between simulated devices (CodeX and CodeAIR stubs answer, nothing
+is heard yet); tape line courses on the floor; line-level stepping in the editor;
+calibration on real devices (lists above); the device target interface from the app worker
+(the SimDevice still matches DeviceManager; `src/sim/device-switch.js` is the seam).
