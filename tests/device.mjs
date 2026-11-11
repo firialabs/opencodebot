@@ -70,13 +70,23 @@ const sent = await page.evaluate(() => window.openCodeBot.device.files['main.py'
 check(sent.includes('from botcore import *'), 'Run sends a CodeBot program as main.py')
 check(sent.includes('motors.run('), 'the starter program drives the motors')
 
-const terminalText = await page.evaluate(() => {
-  const buffer = window.openCodeBot.terminal.term.buffer.active
-  let text = ''
-  for (let i = 0; i < buffer.length; i++) text += buffer.getLine(i).translateToString(true) + '\n'
-  return text
-})
-check(terminalText.includes('running main.py'), 'device output reaches the terminal')
+// xterm parses writes on a later frame, so wait for the text rather than
+// reading the buffer straight after Run.
+const reachedTerminal = await page
+  .waitForFunction(
+    () => {
+      const buffer = window.openCodeBot.terminal.term.buffer.active
+      for (let i = 0; i < buffer.length; i++) {
+        if (buffer.getLine(i).translateToString(true).includes('running main.py')) return true
+      }
+      return false
+    },
+    null,
+    { timeout: 5000 },
+  )
+  .then(() => true)
+  .catch(() => false)
+check(reachedTerminal, 'device output reaches the terminal')
 
 await page.click('#btn-stop')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready')
