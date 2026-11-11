@@ -41,6 +41,19 @@
 
 /* CodeX, drawn flat. */
 .cx-wrap { position: absolute; inset: 0; display: grid; place-items: center; outline: none; background: var(--paper-2); }
+
+/* Where the keyboard is, always visible: a ring that reads on paper and on
+   the dark CodeX body alike. */
+.sim-bar :focus-visible, .bd-bar :focus-visible, .cx-btn:focus-visible, .cx-full:focus-visible {
+  outline: 3px solid var(--sky); outline-offset: 2px; box-shadow: 0 0 0 5px #fff;
+}
+.sim-canvas:focus-visible, .cx-wrap:focus-visible { outline: 3px solid var(--sky); outline-offset: -3px; }
+
+/* Read by a screen reader, not drawn (sim/describe.js). */
+.sim-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .cx-body {
   position: relative; width: min(94%, 440px); aspect-ratio: 1 / 1.08;
   background: #1f2a33; border-radius: 28px; box-shadow: var(--shadow);

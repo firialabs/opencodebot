@@ -262,7 +262,7 @@ export class CodeBot {
       id: this.id, kind: this.kind,
       x: this.x, y: this.y, z: this.z, heading: this.heading,
       wheelAngle: [this.wheelAngle[0], this.wheelAngle[1]],
-      leds: { ...this.leds }, tone: this.tone, enabled: this.enabled,
+      leds: { ...this.leds }, tone: this.tone, enabled: this.enabled, blocked: this.blocked,
     }
   }
 }

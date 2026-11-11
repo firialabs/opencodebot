@@ -49,8 +49,32 @@ export class SimView {
     this.controls.maxPolarAngle = Math.PI * 0.49
     this.controls.minDistance = 0.12
     this.controls.maxDistance = 30
-    this.controls.addEventListener('start', () => { if (this.cameraMode === 'chase') this.cameraMode = 'orbit' })
+    this.controls.addEventListener('start', () => { if (this.cameraMode === 'chase') { this.cameraMode = 'orbit'; this.onCameraMode?.('orbit') } })
     this.controls.addEventListener('change', () => this._touch())
+    // The keyboard, with the view focused: left and right go round the
+    // board, up and down look from higher or lower, + and - go nearer and
+    // farther. Any of them takes the camera into orbit, as a drag does.
+    const canvas = r.domElement
+    canvas.tabIndex = 0
+    canvas.setAttribute('role', 'img')
+    canvas.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown + -')
+    canvas.addEventListener('keydown', (e) => {
+      const turn = { ArrowLeft: [-0.2, 0], ArrowRight: [0.2, 0], ArrowUp: [0, -0.12], ArrowDown: [0, 0.12] }[e.key]
+      const zoom = { '+': 0.8, '=': 0.8, '-': 1.25, _: 1.25 }[e.key]
+      if (!turn && !zoom) return
+      e.preventDefault()
+      if (this.cameraMode !== 'orbit') { this.cameraMode = 'orbit'; this.onCameraMode?.('orbit') }
+      const c = this.controls
+      const s = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(c.target))
+      if (turn) {
+        s.theta += turn[0]
+        s.phi = Math.min(c.maxPolarAngle, Math.max(0.05, s.phi + turn[1]))
+      } else {
+        s.radius = Math.min(c.maxDistance, Math.max(c.minDistance, s.radius * zoom))
+      }
+      this.camera.position.setFromSpherical(s).add(c.target)
+      this._touch()
+    })
     this._changedAt = 0           // when the picture last had reason to change
 
     this._resize = new ResizeObserver(() => this.resize())
@@ -58,6 +82,11 @@ export class SimView {
     this.resize()
     this._loop = this._loop.bind(this)
     this._raf = requestAnimationFrame(this._loop)
+  }
+
+  // What a screen reader names and describes (sim/describe.js).
+  get focusEl() {
+    return this.renderer.domElement
   }
 
   async loadRoom(id) {

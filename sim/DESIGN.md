@@ -391,6 +391,14 @@ Built, on branch `sim` (local commits; pushing waits for David):
   can drive off it; a CodeAIR takes off from the stage. Left out of CodeSpace's models: the
   classroom's line arena of sign boards (shown only for CodeSpace's lessons), and an
   invisible rail in the auditorium from the stage over the seats.
+- Without a mouse, and with a screen reader: every simulator control is reached by Tab
+  with a visible focus ring, and named for a screen reader (the icon buttons, the sliders,
+  CodeX's direction pad and buttons, its screen); a board's buttons are held with Space or
+  Enter (`hold-button.js`); arrows and + and - move the 3D camera. The view is named and
+  described in words (`describe.js`): room, place, facing, motion, lights and speaker,
+  refreshed once a second, with changes that matter (moving, stopped, a bump, a fall,
+  take-off, landing) announced politely. The strings stay in the simulator's files until
+  the app's string table arrives. A guide for teachers: sim/TEACHERS.md.
 
 Not yet: calibration.
 
@@ -470,9 +478,11 @@ not the simulation (simulated time keeps up at 4x).
    simulator's strings are in `sim-panel.js`, `sim-device.js` (status messages and
    notices), `view/codex-face.js`, `boards.html`, `boards/boards.js` and
    `boards/examples.js` (the examples' comments are Python, and stay English unless the
-   table says otherwise). Things to check: the CodeX face's buttons have labels for the
-   arrows only by letter; the 3D view has no text alternative; the step and pause buttons
-   are icon-only with titles.
+   table says otherwise), and now `describe.js` (the screen reader's sentences) and
+   `kinds.js` ROOMS. The keyboard, focus, labels and the text alternative are done
+   (manager's go, 2026-11-11, before the rebase); what is left is moving their strings
+   into the table, and the sentences in `describe.js` need the table's plurals and
+   number formats.
 3. (d) Done: the other rooms behind a room picker ("Where it stands", "Rooms"). The
    room picker's strings join step 2's list (`sim-panel.js`, and the room names in
    `kinds.js` ROOMS).

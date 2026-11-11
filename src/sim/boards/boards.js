@@ -9,6 +9,7 @@ import '@fontsource-variable/nunito'
 import '../sim.css'
 import './boards.css'
 import { SimDevice } from '../sim-device.js'
+import { holdButton } from '../hold-button.js'
 import { TerminalPanel } from '../../ui/terminal.js'
 import { EXAMPLES, example, exampleFor } from './examples.js'
 
@@ -42,9 +43,9 @@ class Board {
         <div class="bd-off">Press Run to start this board.</div>
       </div>
       <div class="bd-bar" hidden>
-        <span class="bd-buttons">
-          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the board">BTN 0</button>
-          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the board">BTN 1</button>
+        <span class="bd-buttons" role="group" aria-label="The board's buttons (hold Space or Enter)">
+          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the board" aria-label="Button 0">BTN 0</button>
+          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the board" aria-label="Button 1">BTN 1</button>
         </span>
         <span class="bd-status" role="status"></span>
       </div>
@@ -82,11 +83,7 @@ class Board {
     this.code.addEventListener('keydown', (e) => indent(e, this.code))
     for (const b of this.el.querySelectorAll('.sim-board-btn')) {
       const n = Number(b.dataset.n)
-      const down = (e) => { e.preventDefault(); b.classList.add('is-down'); this.sim.press(n, true) }
-      const up = () => { if (b.classList.contains('is-down')) { b.classList.remove('is-down'); this.sim.press(n, false) } }
-      b.addEventListener('pointerdown', down)
-      b.addEventListener('pointerup', up)
-      b.addEventListener('pointerleave', up)
+      holdButton(b, (down) => this.sim.press(n, down))
     }
   }
 

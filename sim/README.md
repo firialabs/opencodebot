@@ -2,7 +2,8 @@
 
 A simulated Firia Labs device in the browser: the student's program runs on
 MicroPython (WebAssembly) against a model of the device in a room, on
-simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
+simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md); how a
+teacher uses it, in [TEACHERS.md](TEACHERS.md).
 
 ## Where things are
 

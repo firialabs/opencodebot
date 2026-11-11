@@ -165,6 +165,34 @@ for (const room of ['classroom', 'cafeteria', 'auditorium', 'gym']) {
 }
 if (!problems.some((p) => p.startsWith('rooms'))) console.log('sim-ui: the room picker moved the robot through every room')
 
+// Without a mouse: the view is named and described for a screen reader,
+// the keyboard turns the camera, and Space holds the board's button.
+{
+  const before = problems.length
+  await page.focus('.sim-canvas')
+  await page.waitForTimeout(1200)
+  const a11y = await page.evaluate(() => {
+    const c = document.querySelector('.sim-canvas')
+    const desc = document.getElementById(c.getAttribute('aria-describedby'))
+    return { label: c.getAttribute('aria-label'), desc: desc?.textContent ?? '', mode: window.openCodeBot.device.sim.cameraMode }
+  })
+  if (!/CodeBot/.test(a11y.label ?? '')) problems.push(`a11y: the 3D view's label is ${a11y.label}`)
+  if (!/CodeBot in the gymnasium.*facing/.test(a11y.desc)) problems.push(`a11y: the 3D view's description is "${a11y.desc}"`)
+  await page.keyboard.press('ArrowLeft')
+  const turned = await page.evaluate(() => ({ mode: window.openCodeBot.device.sim.cameraMode, pressed: document.querySelector('.sim-chip[data-mode="orbit"]').getAttribute('aria-pressed') }))
+  if (turned.mode !== 'orbit' || turned.pressed !== 'true') problems.push(`a11y: an arrow key left the camera in ${turned.mode} (orbit chip pressed: ${turned.pressed})`)
+  await page.evaluate(() => { window.__sim.out = ''; window.openCodeBot.device.run('from botcore import *\nimport time\nwhile not buttons.was_pressed(0):\n    time.sleep(0.02)\nprint("held")') })
+  await page.waitForTimeout(500)
+  await page.focus('.sim-board-btn[data-n="0"]')
+  await page.keyboard.down(' ')
+  await page.waitForTimeout(150)
+  await page.keyboard.up(' ')
+  await page.waitForFunction(() => /held/.test(window.__sim.out), null, { timeout: 5000 }).catch(() => problems.push('a11y: Space on BTN 0 did not press button 0'))
+  await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 5000 }).catch(() => {})
+  await page.evaluate(() => window.openCodeBot.device.sim.setCamera('chase'))
+  if (problems.length === before) console.log('sim-ui: the view is described, arrows turn the camera, and Space holds a board button')
+}
+
 // Step by line: from a stop the starter project pauses at its first line,
 // marked in the Python tab and on its block; each step moves on a line.
 await page.evaluate(() => window.openCodeBot.device.sim.setSpeed(1))

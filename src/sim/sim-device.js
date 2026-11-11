@@ -6,6 +6,7 @@
 import { State } from '../device/device-manager.js'
 import { getTarget } from '../device/targets.js'
 import { KINDS, ROOMS } from './kinds.js'
+import { Describer } from './describe.js'
 
 const enc = new TextEncoder()
 
@@ -72,8 +73,19 @@ export class SimDevice extends EventTarget {
         const { SimView } = await import('./view/view.js')
         this.view = new SimView(this.viewHost, { assetsBase })
         this.view.cameraMode = this.cameraMode
+        // a drag or a key took the camera into orbit: the bar shows it
+        this.view.onCameraMode = (mode) => {
+          this.cameraMode = mode
+          this.dispatchEvent(new CustomEvent('camera', { detail: mode }))
+        }
         await this.view.loadRoom(room).catch((err) => console.warn('room', err))
       }
+    }
+    if (this.view) {
+      const keys = kind.view === 'codex'
+        ? 'Arrow keys press its direction pad, A and B its buttons, F goes full screen.'
+        : 'Arrow keys turn the camera, plus and minus zoom.'
+      this.describer = new Describer(this.viewHost, this.view.focusEl, `Simulated ${this.target?.name}. ${keys}`)
     }
     const snap = await ready
     for (const d of snap.devices) await this.view?.addDevice(d)
@@ -82,7 +94,7 @@ export class SimDevice extends EventTarget {
 
     this.firmware = { version: 'simulator', date: '' }
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target: this.target } }))
-    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.view === '3d' ? ` in the ${ROOMS[room].toLowerCase()}` : ''}.\x1b[0m\r\n`)
+    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.view === '3d' ? ` in the ${this._roomName()}` : ''}.\x1b[0m\r\n`)
     this._setState(State.READY, 'Simulator ready. Press Run!')
     return true
   }
@@ -92,6 +104,8 @@ export class SimDevice extends EventTarget {
     this.worker = null
     this.view?.dispose()
     this.view = null
+    this.describer?.dispose()
+    this.describer = null
     this.speaker?.close()
     this.speaker = null
     this.targetId = null
@@ -146,6 +160,12 @@ export class SimDevice extends EventTarget {
     this._moved = true              // the camera goes with it, at the next frame
     this.view?.loadRoom(id).catch((err) => console.warn('room', err))
   }
+  // The room a 3D board is in, as a sentence names it; null for CodeX.
+  _roomName() {
+    const kind = KINDS[this.targetId]
+    return kind?.view === '3d' ? ROOMS[this.room ?? kind.env]?.toLowerCase() : null
+  }
+
   setCamera(mode) {
     this.cameraMode = mode
     this.view?.setCamera(mode)
@@ -170,6 +190,7 @@ export class SimDevice extends EventTarget {
       case 'frame': {
         this.view?.push(m.snapshot)
         if (this._moved) { this._moved = false; this.view?.setCamera?.(this.cameraMode) }
+        this.describer?.frame(m.snapshot, this._roomName())
         this.lastFrame = m.snapshot
         const d = m.snapshot.devices[0]
         this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))

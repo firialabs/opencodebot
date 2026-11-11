@@ -9,6 +9,7 @@ import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR, REMOTE_FOR_CODEAIR, XFL
 import { COURSES, courseShape } from '../src/sim/world/courses.js'
 import { CB3 } from '../src/sim/world/codebot.js'
 import { ROOMS } from '../src/sim/kinds.js'
+import { describe, change, compass } from '../src/sim/describe.js'
 import { loadEnvironment } from '../src/sim/headless.js'
 import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
@@ -498,6 +499,25 @@ if (ROOM_IDS.includes('auditorium')) {
     assert.ok(Math.abs(r.device.z - stage) < 0.01 && !r.device.motors, `ended at ${r.device.z} m, motors ${r.device.motors}`)
   })
 }
+
+console.log('in words, for a screen reader')
+
+await test('a board described: where, which way, what it is doing; and what changed', async () => {
+  const bot = { kind: 'codebot', x: 0.32, y: -1.04, z: 0, heading: Math.PI / 2, leds: { user: 0b101 }, tone: 440, blocked: false }
+  const text = describe(bot, { room: 'classroom', motion: 'moving' })
+  assert.match(text, /^Simulated CodeBot in the classroom, about 0\.3 m east and 1\.0 m south of the room's middle, facing north, driving forward\./)
+  assert.match(text, /2 of 8 user lights on\. Its speaker plays 440 hertz\./)
+  assert.equal(compass(-Math.PI / 2), 'south')
+  assert.equal(compass(3 * Math.PI / 4 + 0.1), 'north-west')
+  assert.equal(change(bot, { ...bot, blocked: true }, 'moving', 'still'), 'Bumped into something.')
+  assert.equal(change({ ...bot, z: 0.97 }, bot, 'moving', 'moving'), 'Fell off the edge.')
+  assert.equal(change(bot, bot, 'moving', 'still'), 'Stopped.')
+  assert.equal(change(bot, bot, 'still', 'still'), null)
+  const air = { kind: 'codeair', x: 0, y: 0, z: 1.47, above: 0.5, heading: 0, motors: true, pixels: [[0, 0, 9], [0, 0, 0]] }
+  assert.match(describe(air, { room: 'auditorium' }), /CodeAIR in the auditorium, flying 0\.5 m up,.*Motors on\. 1 of 8 NeoPixels lit\./)
+  assert.equal(change({ ...air, above: 0 }, air, 'still', 'still'), 'Took off.')
+  assert.match(describe({ kind: 'codex', pixels: [[1, 0, 0]], leds: [1, 0, 0, 0, 0, 0] }), /1 of 4 NeoPixels lit, 1 of 6 red LEDs on/)
+})
 
 console.log('radio')
 
