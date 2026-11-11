@@ -10,6 +10,7 @@ import { World } from './world/world.js'
 import { Environment } from './world/environment.js'
 import { createDevice } from './devices.js'
 import { Engine } from './runtime/engine.js'
+import { KINDS as BOARDS } from './kinds.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '../..')
@@ -29,10 +30,10 @@ export async function loadEnvironment(id) {
   return new Environment(world, { ...world.floor, width: info.width, height: info.height, data })
 }
 
-// The Python modules: python/common/ for every device, python/<kind>/ for one.
+// The Python modules: the folders under python/ that the kind lists.
 export function pythonFiles(kind = 'codebot') {
   const files = {}
-  for (const dir of ['common', kind]) {
+  for (const dir of BOARDS[kind].python) {
     const d = path.join(HERE, 'python', dir)
     if (!fs.existsSync(d)) continue
     for (const f of fs.readdirSync(d, { recursive: true })) {
@@ -65,6 +66,7 @@ export async function runHeadless(opts) {
   const engine = new Engine({
     loadMicroPython, world,
     bridge: device.bridge,
+    stopGraceUs: device.stopGraceUs,
     files: pythonFiles(device.kind),
     speed: Infinity,
     onOutput: (b) => chunks.push(Buffer.from(b)),
@@ -84,5 +86,5 @@ export async function runHeadless(opts) {
 }
 
 function pick(s) {
-  return { x: s.x, y: s.y, heading: s.heading, leds: s.leds, tone: s.tone }
+  return { x: s.x, y: s.y, z: s.z, heading: s.heading, leds: s.leds, tone: s.tone, motors: s.motors }
 }

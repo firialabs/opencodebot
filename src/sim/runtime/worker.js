@@ -12,16 +12,18 @@ import { Engine } from './engine.js'
 import { World } from '../world/world.js'
 import { Environment } from '../world/environment.js'
 import { createDevice } from '../devices.js'
+import { KINDS as BOARDS } from '../kinds.js'
 
 const wasmUrl = new URL('./mp/micropython.wasm', import.meta.url).href
-// The Python modules: python/common/ for every device, python/<kind>/ for one.
+// The Python modules: the folders under python/ that the kind lists.
 const PY = import.meta.glob('../python/**/*.py', { query: '?raw', import: 'default', eager: true })
 function pythonFiles(kind) {
+  const dirs = BOARDS[kind].python
   const files = {}
   for (const [p, src] of Object.entries(PY)) {
     const rel = p.split('/python/')[1]           // e.g. codex/codex_drivers/funcgen.py
     const top = rel.slice(0, rel.indexOf('/'))
-    if (top === 'common' || top === kind) files[rel.slice(top.length + 1)] = src
+    if (dirs.includes(top)) files[rel.slice(top.length + 1)] = src
   }
   return files
 }
@@ -51,6 +53,7 @@ function build(kind, seed) {
   engine = new Engine({
     loadMicroPython, wasmUrl, world, files: pythonFiles(kind),
     bridge: device.bridge,
+    stopGraceUs: device.stopGraceUs,
     speed: engine?.speed ?? 1,
     onOutput: (bytes) => post({ t: 'output', bytes }, [bytes.buffer]),
     onFrame: () => frame(true),

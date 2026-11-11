@@ -1,4 +1,4 @@
-# Adafruit's neopixel, for the simulated CodeX: each pixel's colour goes to
+# Adafruit's neopixel, for the simulated boards: each pixel's colour goes to
 # the simulator as the strip would show it.
 import _sim
 

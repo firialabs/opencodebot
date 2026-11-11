@@ -20,6 +20,7 @@ export class Engine {
   //   wasmUrl          where micropython.wasm is (browser; Node finds it)
   //   world            a World
   //   bridge           (engine) => the `_sim` module object the shims call
+  //   stopGraceUs      simulated time a stopped program has to clean up
   //   files            { 'botcore.py': source, ... } put on the VM's path
   //   speed            simulated seconds per wall second; Infinity = flat out
   //   usPerBranch      simulated microseconds charged per backward branch
@@ -56,7 +57,7 @@ export class Engine {
   }
 
   _shouldYield() {
-    if (this.stopRequested || this.paused || this.stepPending) return true
+    if (this._interruptDue() || this.paused || this.stepPending) return true
     if (this.now() - this._lastYieldWall >= FRAME_MS) return true
     if (isFinite(this.speed) && this.world.timeUs - this._lastYieldSim >= FRAME_MS * 1000 * this.speed) return true
     return false
@@ -65,14 +66,14 @@ export class Engine {
   // Suspended: pace, report, take messages.
   async _yield() {
     this._flushOutput()
-    if (this.stopRequested) return this._interrupt()
+    if (this._interruptDue()) return this._interrupt()
     if (this.stepPending) { this.stepPending = false; this.paused = true }
     if (this.paused) {
       this._frame(true)
       this.o.onState?.('paused')
       while (this.paused && !this.stopRequested) await new Promise((r) => (this._resume = r))
       this._resume = null
-      if (this.stopRequested) return this._interrupt()
+      if (this._interruptDue()) return this._interrupt()
       this.o.onState?.('running')
       this._rebase()
     }
@@ -92,7 +93,7 @@ export class Engine {
     } else {
       await macrotask()
     }
-    if (this.stopRequested) return this._interrupt()
+    if (this._interruptDue()) return this._interrupt()
     this._lastYieldWall = this.now()
     this._lastYieldSim = this.world.timeUs
     this._frame(false)
@@ -105,8 +106,9 @@ export class Engine {
       const piece = isFinite(this.speed) ? Math.min(left, FRAME_MS * 1000 * this.speed) : left
       this.charge(piece)
       left -= piece
+      this._raised = false
       await this._yield()
-    } while (left > 0 && !this.stopRequested)
+    } while (left > 0 && !this._raised)
   }
 
   _rebase() {
@@ -122,11 +124,23 @@ export class Engine {
     }
   }
 
-  // A stop: raise KeyboardInterrupt in the program at this suspension. A
-  // program that catches it and carries on is cut off after a grace period.
+  // A stop raises KeyboardInterrupt in the program at the next suspension,
+  // once. A device whose program cleans up after it (CodeAIR lands, from a
+  // `with recorder:` block) gets `stopGraceUs` of simulated time to finish;
+  // after that, or at a second stop, it is raised at every suspension, and a
+  // program that still carries on is cut off.
+  _interruptDue() {
+    if (!this.stopRequested) return false
+    if (!this._interrupts || this._stopAgain) return true
+    return this.world.timeUs - this._firstInterruptUs >= (this.o.stopGraceUs ?? 0)
+  }
+
   _interrupt() {
     this.mp._module._mp_sched_keyboard_interrupt()
+    this._raised = true
     this._interrupts = (this._interrupts ?? 0) + 1
+    if (this._interrupts === 1) this._firstInterruptUs = this.world.timeUs
+    else if (this._interrupts === 2) this._stopAt = this.now()
     if (this._interrupts > 3 && this.now() - this._stopAt > 300) {
       this._abandon?.()
       return new Promise(() => {})        // never resumes; the VM is dropped
@@ -134,6 +148,12 @@ export class Engine {
   }
 
   // --- output ------------------------------------------------------------------
+
+  // Output from the device itself, not the program's print (a board's
+  // console, say): it goes out with the program's.
+  write(bytes) {
+    this._out(bytes)
+  }
 
   _out(bytes) {
     this._outBuf.push(bytes)
@@ -203,6 +223,7 @@ export class Engine {
     this.paused = false
     this.stepPending = false
     this._interrupts = 0
+    this._stopAgain = false
     this.replVM = null
     this._replPending = 0
     this.mp = await this._newVM()
@@ -278,6 +299,7 @@ export class Engine {
         if (--this._replPending === 0) {
           this.stopRequested = false
           this._interrupts = 0
+          this._stopAgain = false
         }
         this._flushOutput()
         this.o.onFrame?.()
@@ -288,6 +310,7 @@ export class Engine {
 
   stop() {
     if (!this.running) return
+    if (this.stopRequested) this._stopAgain = true
     this.stopRequested = true
     this._stopAt = this.now()
     this._resume?.()

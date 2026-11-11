@@ -202,6 +202,102 @@ print(seen)`,
   console.log('  skip  gym tests (no built gym: node sim/tools/build-env.mjs gym)')
 }
 
+console.log('CodeAIR')
+
+const air = (source, opts = {}) => runHeadless({ kind: 'codeair', env: 'empty', seconds: 40, traceEveryMs: 20, ...opts, source })
+const PRE = 'from codeair import *\nfrom flight import *\nimport time\n'
+
+await test('take off, hold, and land, with its own motion commander', async () => {
+  let top = 0
+  const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(2)\nprint(round(get_data(RANGERS)[2] / 1000, 1))\nfly.land()\nfly.steady(1)', {
+    setup: (w, d) => w.onTick(() => { if (w.timeUs > 6e6 && w.timeUs < 7e6) top = Math.max(top, d.z) }),
+  })
+  assert.equal(r.error, undefined, r.output)
+  assert.equal(r.output.trim(), '0.5')
+  assert.ok(Math.abs(top - 0.5) < 0.04, `held at ${top} m`)
+  assert.ok(r.device.z < 0.001 && !r.device.motors, `ended at ${r.device.z} m, motors ${r.device.motors}`)
+  // it waited for the estimator reset (2.1 s) before it left the floor
+  assert.ok(r.trace.find((s) => s.z > 0.01).t > 2.1)
+})
+
+await test('forward and turn go about as far as asked, with some drift', async () => {
+  const r = await air(PRE + 'fly.take_off(0.4)\nfly.forward(1.0)\nfly.turn_left(90)\nfly.land()')
+  const end = r.trace.at(-1)
+  // spawned at the centre facing +y
+  assert.ok(Math.abs(end.y - 1.0) < 0.25 && Math.abs(end.x) < 0.25, `ended at ${end.x}, ${end.y}`)
+  // turn_left(90) polls for round(12.5) = 12 tenths of a second: 86.4 degrees on the drone
+  const turned = ((end.heading - Math.PI / 2) * 180) / Math.PI
+  assert.ok(Math.abs(turned - 86.4) < 8, `turned ${turned} degrees`)
+})
+
+await test('the same seed flies the same path, bit for bit', async () => {
+  const src = PRE + 'fly.take_off(0.4)\nfly.forward(0.5)\nfly.circle_left(0.3)\nfly.land()'
+  const [a, b] = [await air(src), await air(src)]
+  assert.deepEqual(a.trace.map((s) => [s.x, s.y, s.z]), b.trace.map((s) => [s.x, s.y, s.z]))
+  const c = await air(src, { seed: 2 })
+  assert.notDeepEqual(a.trace.map((s) => s.x), c.trace.map((s) => s.x))
+})
+
+await test('with no setpoints for 2 s the flight controller stops the motors, and it falls', async () => {
+  const r = await air(PRE + 'fly.take_off(0.8)\ntime.sleep(3)\nprint(fly.is_flying())')
+  const t0 = r.trace.find((s) => s.z > 0.75).t
+  const fell = r.trace.find((s) => s.t > t0 && !s.motors && s.z > 0.5)
+  assert.ok(fell, 'the motors never stopped in the air')
+  assert.ok(r.device.z < 0.001, `still at ${r.device.z} m`)
+  assert.equal(r.output.trim(), 'True')          // the program does not know
+})
+
+await test('a stop inside `with recorder:` lands it, as on the drone', async () => {
+  const r = await air(PRE + 'with recorder:\n    fly.take_off(0.6)\n    while True:\n        fly.steady(1)', { seconds: 8 })
+  assert.equal(r.stopped, true)
+  assert.ok(r.simSeconds > 9, `ended at ${r.simSeconds} s`)
+  // land() stops the motors a few centimetres up, still sinking
+  assert.ok(r.device.z < 0.08 && r.device.cf.setpoint.mode === 'stop', `at ${r.device.z} m, ${r.device.cf.setpoint.mode}`)
+  // it came down under control, not falling: never faster than 0.5 m/s
+  let fastest = 0
+  for (let i = 1; i < r.trace.length; i++) fastest = Math.max(fastest, (r.trace[i - 1].z - r.trace[i].z) / 0.02)
+  assert.ok(fastest < 0.5, `fell at ${fastest} m/s`)
+  assert.equal(r.device.pixels[0][0] > 0 && r.device.pixels[0][1] === 0, true)   // the recorder's red
+})
+
+await test('a wall stops it, and the rangers see the room', async () => {
+  // the empty room's north wall is 2 m ahead
+  const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(0.5)\nprint(get_data(RANGERS))\nfly.forward(3, 0.5)\nprint(get_data(RANGERS)[0])\nfly.land()')
+  const [first, second] = r.output.trim().split('\n')
+  const [front, up, down] = first.replace(/[()]/g, '').split(',').map(Number)
+  assert.ok(Math.abs(front - 1960) < 120, `front ${front}`)
+  assert.equal(up, 32767)                        // nothing above in reach
+  assert.ok(Math.abs(down - 510) < 30, `down ${down}`)
+  assert.ok(Number(second) < 60, `front at the wall ${second}`)
+  const far = Math.max(...r.trace.map((s) => s.y))
+  assert.ok(far < 2 - 0.06 && far > 1.85, `got to ${far}`)
+})
+
+await test('its board: LEDs, NeoPixels, buttons, speaker, battery, parameters', async () => {
+  let tone = 0
+  const r = await air(PRE + `leds.set(0, 200)
+leds.set_status(9)
+pixels.set(TOP_FRONT_LEFT, RED, 100)
+print(leds.get(0), leds.get_status(), pixels.get(TOP_FRONT_LEFT))
+speaker.beep(880, 100)
+while not buttons.was_pressed(BTN_1):
+    time.sleep(0.01)
+print(buttons.is_pressed(), round(power.battery_voltage(5), 1), power.is_usb())
+set_param('motorPowerSet.m1', 1234)
+print(get_param('motorPowerSet.m1'), version())`, {
+    inputs: [{ t: 1, fn: (w, d) => d.press(1, true) }],
+    setup: (w, d) => w.onTick(() => { tone = Math.max(tone, d.tone) }),
+  })
+  assert.equal(r.error, undefined, r.output)
+  const lines = r.output.trim().split('\n')
+  assert.equal(lines[0], '200 9 (255, 0, 0)')
+  assert.equal(lines[1], '(False, True) 3.9 False')
+  assert.match(lines[2], /^1234 CodeAIR/)
+  assert.equal(r.device.leds[7], 200)            // LED 0 is the driver's output 7
+  assert.equal(tone, 880)
+  assert.equal(r.device.tone, 0)
+})
+
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)) }
 
 if (failed) { console.log(`${failed} failed`); process.exit(1) }

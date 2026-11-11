@@ -1,5 +1,6 @@
-# CodeX's radio, for the simulator: messages go to the other simulated
-# devices in this page on the same channel (none yet: nothing is heard).
+# The radio of CodeX and CodeAIR (a C module on both), for the simulator:
+# messages go to the other simulated devices in this page on the same
+# channel (none yet: nothing is heard).
 import _sim
 
 _on = False
