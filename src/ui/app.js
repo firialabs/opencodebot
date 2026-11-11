@@ -127,7 +127,7 @@ export class App {
     }
     const target = this.pickedTarget || 'codebot'
     if (!SimDevice.canSimulate(target)) {
-      toast({ kind: 'warn', title: `No simulated ${getTarget(target)?.name} yet`, detail: 'The simulator has CodeBot and CodeX so far.' })
+      toast({ kind: 'warn', title: `No simulated ${getTarget(target)?.name} yet`, detail: 'The simulator has CodeBot, CodeX and CodeAIR so far.' })
       return
     }
     this._selectTab('sim')

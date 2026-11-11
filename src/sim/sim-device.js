@@ -43,7 +43,7 @@ export class SimDevice extends EventTarget {
   async connect(targetId = 'codebot') {
     if (this.worker) return true
     if (!SimDevice.canSimulate(targetId)) {
-      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot and CodeX so far.')
+      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot, CodeX and CodeAIR so far.')
       return false
     }
     this._setState(State.CONNECTING, 'Starting the simulator…')
@@ -145,6 +145,7 @@ export class SimDevice extends EventTarget {
       case 'ready': this._ready?.(m.snapshot); break
       case 'frame': {
         this.view?.push(m.snapshot)
+        this.lastFrame = m.snapshot
         const d = m.snapshot.devices[0]
         this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))
         break

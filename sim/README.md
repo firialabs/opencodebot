@@ -11,11 +11,12 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/engine.js` | MicroPython on simulated time: charging, pacing, pause, step, stop, the REPL |
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
-| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot and CodeX models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), maths and randomness |
-| `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time` |
-| `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules |
+| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
+| `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
+| `src/sim/python/radio/` | the radio module CodeX and CodeAIR share |
+| `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs |
 | `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
-| `src/sim/view/` | the pictures: Three.js for CodeBot's room (`view.js`), a flat face for CodeX (`codex-face.js`) |
+| `src/sim/view/` | the pictures: Three.js for the room (`view.js`) with CodeBot and CodeAIR in it (`codebot-figure.js`, `codeair-figure.js`), a flat face for CodeX (`codex-face.js`) |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
 | `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
@@ -43,8 +44,15 @@ the device code drives the hardware: a pin's level, an ADC channel, a PWM
 duty and frequency, an I2C register, an SPI write. A device's C modules
 get small Python stand-ins beside its modules: `cb3_drivers` on the CB3;
 `bitmap`, `canvas`, `tft`, `codex_drivers` (with `funcgen`), `radio` and the
-CircuitPython audio modules on CodeX. Adafruit's `neopixel` is replaced by a
-small equivalent. The MicroPython build stores no docstrings, as the devices'
+CircuitPython audio modules on CodeX; `crtp`, `codeair_drivers`, `img_utils`,
+`stm_fw` and CircuitPython's `espcamera` (sees nothing), `sdcardio` and
+`storage` (no card), `supervisor` and `traceback` on CodeAIR. Adafruit's
+`neopixel` is replaced by a small equivalent.
+
+CodeAIR's flight controller is not Python: the device's `crtp` module talks
+over a UART to an STM32 running Crazyflie firmware. Here `crtp` reaches a
+simulated Crazyflie (`world/crazyflie.js`) that decodes the same packets, with
+the tables of contents from the device's own `flight_catalog.py`. The MicroPython build stores no docstrings, as the devices'
 CircuitPython does not, because Firia's modules test for `__doc__`.
 
 CodeX's font is its own, read from its firmware image by

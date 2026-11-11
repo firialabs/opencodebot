@@ -134,11 +134,18 @@ stop, as on the real robot. Constants from the CB3 itself: the old simulator's d
 are from the CB2 model (wheel 65 mm, track about 111 mm, line sensors 61 mm ahead at 0,
 plus or minus 9.7 and 19.1 mm) and are re-measured on a CB3 before they are trusted.
 
-**CodeAIR.** Arcade flight. The `fly` commands set velocity and yaw targets, reached through
-a first-order lag; drift is seeded Ornstein-Uhlenbeck noise on position and yaw; a sphere
-against the room's boxes and floor, with restitution and damping, gives the bumps; take-off
-and landing are phases of a state machine. Blocking calls (`fly.forward(0.5)`) advance
-simulated time until the motion completes, as on the drone.
+**CodeAIR.** Arcade flight under a simulated flight controller. On the drone the ESP32's
+Python reaches the STM32 (Crazyflie firmware) only through the C module `crtp`, so the
+simulator puts a virtual Crazyflie behind that module (`world/crazyflie.js`): it decodes
+CRTP as the firmware does (parameters, log blocks, the generic, legacy and high-level
+commanders, platform, link), keeps the firmware's setpoint watchdog (stale after 500 ms:
+level and hold height; after 2 s: motors off, and it falls), and streams log values
+computed from the room. The device's own `flight`, `flightdb`, `cflib` and `recorder` run
+unchanged over it. Under that, the airframe (`world/codeair.js`): setpoint velocities,
+height and yaw rate reached through first-order lags; seeded Ornstein-Uhlenbeck drift,
+doubled near the floor; a flat puck against the floor and the room's boxes, bouncing with
+restitution and a random sideways kick; free fall with the motors off. Blocking calls
+(`fly.forward(0.5)`) poll setpoints on simulated time, as on the drone.
 
 **CodeX.** No physics. Tilt comes from the user (drag the device, or a phone's orientation)
 as gravity in the device frame.
@@ -281,6 +288,15 @@ is measured on a device:
 
 A bench session with a CB3, a tape line and a ruler settles all of these.
 
+- **CodeAIR** (`AIR` in `src/sim/world/codeair.js`, constants in `crazyflie.js`): how
+  closely it tracks a velocity, height and yaw rate (the lags and gains); how far it drifts
+  in a hover, high and near the floor; how it bounces off a wall; how far above the floor
+  `land()` cuts the motors; what a ranger reports with nothing in range (32767 here); the
+  flow sensor's sign and scale; which way roll and pitch are signed in the log; how many log
+  packets the `crtp` module queues (two here, so `get_data` is at most one period stale);
+  the battery's voltage in flight. Positions of the LEDs and NeoPixels on the figure are
+  from the board's silkscreen.
+
 ## Where it stands
 
 Built, on branch `sim` (local commits; pushing waits for David):
@@ -308,63 +324,56 @@ Built, on branch `sim` (local commits; pushing waits for David):
   LEDs, NeoPixels; full screen for a class with the arrow keys and A and B; tilt and light
   sliders; sound from the voices the program connects.
 
+- CodeAIR in the gymnasium: its own codeair, flight, flightdb, recorder and cflib over a
+  virtual Crazyflie and the arcade airframe (section 2); rangers, flow, IMU, barometer,
+  magnetometer and state estimate from the room; NeoPixels, blue and status LEDs (an LP5009
+  at its registers), buttons, speaker, battery; the figure leans, spins its propellers and
+  lights its pixels. A stopped program gets 12 s of simulated time to clean up, so a stop
+  inside `with recorder:` lands it, as on the drone.
+
 Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
-them; nothing lays them yet); radio between simulated devices; calibration; CodeAIR.
+them; nothing lays them yet); radio between simulated devices; calibration.
+
+Found by running CodeAIR's own Python (firia-circuitpython `codeair` at `752129a9f`), both
+reproduced by the simulator because the device's VM behaves the same way, to confirm on a
+real CodeAIR: `fly_high` cannot fly. `cflib/high_level_commander.py` never imports `crtp`,
+so every command raises `NameError`; and `takeoff` and `land` pack with struct code `?`,
+which neither CircuitPython nor MicroPython has (`ValueError: bad typecode`).
 
 To check on a real CodeX: how `show()` scales and centres, how `print` wraps and scrolls,
 how long a full-screen update takes, the order of LEDs 0 to 3 and of the NeoPixels.
 
-## HANDOFF (2026-11-11, from the first build session)
+## HANDOFF (2026-11-11, from the CodeAIR session)
 
 **State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
-local commits only, last `d7ee22a`; nothing is pushed: pushing to the public repository
-waits for David's own go, typed in the session. CodeBot (in the gymnasium) and CodeX run in
-the app and headless; all tests pass (`npm run test:sim` with `CHROME_PATH` set on p52-lab,
-see sim/README.md). The manager has approved the design; assets are CC BY-NC 4.0 and may be
-published; the devices' own Python may ship.
+local commits only; nothing is pushed: pushing to the public repository waits for David's
+own go, typed in the session. CodeBot, CodeX and CodeAIR run in the app and headless; all
+tests pass (`npm run test:sim` with `CHROME_PATH` set on p52-lab, see sim/README.md). The
+manager has approved the design; assets are CC BY-NC 4.0 and may be published; the
+devices' own Python may ship. Commits are authored as David (`git -c user.name=... -c
+user.email=...`: this checkout has no identity configured).
 
 **Working setup on p52-lab.** Emscripten in `~/.cache/emsdk`; MicroPython checkout in
 `sim/build/micropython` (ignored); Firia's CircuitPython fork cloned (blobless) at
 `~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref` (its
-firmware images hold the CodeX font). Playwright's own browser does not match the repo's
-pinned version here: use `CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
+firmware images hold the CodeX font; `models/CodeAIR/TopPcb.jpg` shows the drone's board,
+forward arrow and LED layout). Playwright's own browser does not match the repo's pinned
+version here: use `CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
 Never `pkill -f` a pattern that appears in the same command line (it kills the shell).
 
-**Next: CodeAIR.** Sources: firia-circuitpython branch `codeair` at `752129a9f`,
-`ports/espressif/boards/codeair/frozen/` (`general/` has codeair.py, flight.py, flightdb.py,
-flight_catalog.py, cflib/*, recorder.py, lp5009.py, embedded_data.py; `pure_c_py_docs/` has
-stubs for the C modules crtp, codeair_drivers, radio, img_utils). What is known:
+**Things learned.** MicroPython (and CircuitPython) compile `for _ in range(x)` to an
+inline loop that accepts a float, so `flightdb`'s `range(int(t) / 10)` works on the device;
+`range(10.0)` anywhere else raises. The CodeAIR figure's model is in metres, front +z, left
++x. The CodeAIR finding in "Where it stands" (`fly_high` cannot fly) is for the manager to
+raise; the simulator keeps the device's code unchanged.
 
-- The whole flight stack meets the hardware at one C module, `crtp`: `send(port, channel,
-  data)`, `receive()` -> `(port, chan, data)` or None, `log_avail()`, `log_read()`, `flush()`,
-  `console_read()`. Behind it is an STM32 running Crazyflie firmware. So the boundary to
-  simulate is a **virtual Crazyflie that speaks CRTP**, in JS, over an arcade flight model:
-  - port 7 (generic commander) channel 0: packed `<B` type then floats: TYPE_STOP 0,
-    VELOCITY_WORLD 1, ZDISTANCE 2, HOVER 5 (vx, vy, yawrate, zdistance), POSITION 7;
-    channel 1: notify setpoint stop. Port 3: legacy roll/pitch/yawrate/thrust.
-  - port 8: high-level commander (takeoff, land, go_to) for `fly_high`.
-  - port 2 (param) and port 5 (log): flightdb uses the TOCs baked into flight_catalog.py
-    (no TOC fetch normally): implement param get/set and log block create, append, start,
-    stop, reset on the control channel (commands in LogManager), then stream log data that
-    `log_read()` returns, with values for the names in flight.py (stateEstimate.x/y/z/yaw,
-    vx/vy/vz, roll/pitch, acc, gyro, range.front/up/zrange, motion.deltaX/Y, baro, mag).
-  - port 13 (platform) channel 1 for `version()`.
-  Read motion_commander.py first: its moves send hover setpoints; find how it waits for a
-  move to finish (several `time.sleep` calls are commented out).
-- Arcade model as the design says: first-order lag to the setpoint velocities and height,
-  seeded Ornstein-Uhlenbeck drift, sphere against the room's boxes with restitution, take-off
-  and landing phases; the rangers and flow sensor computed from the room (down to the floor,
-  up to the ceiling, front to the walls), the state estimate from the true state plus drift.
-- The rest of codeair.py is board work like CodeX's: neopixel (8 pixels), LP5009 LEDs over
-  I2C (cam_i2c), buttons, speaker (beep), power (ADC), sdcard and camera (stub as absent),
-  `embedded_data` pipe (send to the terminal or ignore).
-- Room: the gymnasium, with the CodeAIR model (`CodeAir_revC-2.glb` in botsim-ref
-  `models/CodeAIR/`; add it to sim/assets and its LICENSE).
-- Blocks it must pass (src/blocks/codeair.js): `with recorder:`, `fly.take_off(h)`, `land`,
-  forward/back/left/right/up/down, turn_left/right, circle_left/right, `steady`, pixels,
-  leds, `speaker.beep`, buttons, power. Add CodeAIR to `tests/sim-ui.mjs` as CodeX is.
+**Next, in this order.**
+1. Radio between simulated devices: a CodeX and a CodeAIR in one page (CodeAIR's `xfly.py`
+   pairs with a CodeX as a remote), or two of one kind. `python/radio/radio.py` is shared;
+   the bridges' `radio_send`/`radio_receive` are the seam; the world holds devices already.
+   Needs a page layout with two boards.
+2. Tape line courses on the floor (the floor reflectance map supports them).
+3. Line-level stepping in the editor.
+4. The device target interface from the app worker (`src/sim/device-switch.js` is the seam).
+5. Calibration on real devices (the lists in "Calibration").
 
-**Also open.** Radio between simulated devices (CodeX and CodeAIR stubs answer, nothing
-is heard yet); tape line courses on the floor; line-level stepping in the editor;
-calibration on real devices (lists above); the device target interface from the app worker
-(the SimDevice still matches DeviceManager; `src/sim/device-switch.js` is the seam).

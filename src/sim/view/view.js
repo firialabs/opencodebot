@@ -9,8 +9,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CodeBotFigure } from './codebot-figure.js'
+import { CodeAIRFigure } from './codeair-figure.js'
 
-const FIGURES = { codebot: CodeBotFigure }
+const FIGURES = { codebot: CodeBotFigure, codeair: CodeAIRFigure }
 
 export class SimView {
   constructor(host, { assetsBase }) {
@@ -112,9 +113,9 @@ export class SimView {
   }
 
   _placeCamera(s, jump) {
-    const target = new THREE.Vector3(s.x, 0.04, -s.y)
+    const target = new THREE.Vector3(s.x, (s.z ?? 0) + 0.04, -s.y)
     if (this.cameraMode === 'top') {
-      this.camera.position.set(s.x, 2.2, -s.y + 0.001)
+      this.camera.position.set(s.x, 2.2 + (s.z ?? 0), -s.y + 0.001)
       this.controls.target.copy(target)
     } else if (this.cameraMode === 'chase') {
       const back = new THREE.Vector3(-Math.cos(s.heading), 0, Math.sin(s.heading)).multiplyScalar(0.45)
@@ -136,7 +137,7 @@ export class SimView {
       if (this.cameraMode !== 'orbit') this._placeCamera(devices[0], false)
       else {
         // Orbit follows the robot without fighting the student's drag.
-        const t = new THREE.Vector3(devices[0].x, 0.04, -devices[0].y)
+        const t = new THREE.Vector3(devices[0].x, (devices[0].z ?? 0) + 0.04, -devices[0].y)
         const d = t.clone().sub(this.controls.target)
         this.controls.target.add(d)
         this.camera.position.add(d)
@@ -151,10 +152,10 @@ function lerpSnap(a, b, f) {
   let dh = b.heading - a.heading
   if (dh > Math.PI) dh -= 2 * Math.PI
   if (dh < -Math.PI) dh += 2 * Math.PI
+  const L = (k) => (b[k] === undefined || a[k] === undefined ? b[k] : a[k] + (b[k] - a[k]) * f)
   return {
     ...b,
-    x: a.x + (b.x - a.x) * f,
-    y: a.y + (b.y - a.y) * f,
+    x: L('x'), y: L('y'), z: L('z'), roll: L('roll'), pitch: L('pitch'), propAngle: L('propAngle'),
     heading: a.heading + dh * f,
     wheelAngle: b.wheelAngle && a.wheelAngle ? b.wheelAngle.map((w, i) => a.wheelAngle[i] + (w - a.wheelAngle[i]) * f) : b.wheelAngle,
   }

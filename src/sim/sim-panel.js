@@ -12,12 +12,12 @@ export class SimPanel {
       <div class="sim-stage" data-off="true">
         <div class="sim-view"></div>
         <div class="sim-off">
-          <p>Try your program on a simulated CodeBot or CodeX. No cable needed!</p>
+          <p>Try your program on a simulated CodeBot, CodeX or CodeAIR. No cable needed!</p>
           <button type="button" class="btn btn-run sim-start">🎮 Start the simulator</button>
         </div>
       </div>
       <div class="sim-bar" hidden>
-        <span class="sim-group sim-cameras" data-for="codebot"></span>
+        <span class="sim-group sim-cameras" data-for="codebot codeair"></span>
         <span class="sim-group" data-for="codex">
           <label title="Tilt left and right">↔ <input type="range" class="sim-tilt-x" min="-90" max="90" value="0"></label>
           <label title="Tilt toward and away">↕ <input type="range" class="sim-tilt-y" min="-90" max="90" value="0"></label>
@@ -28,11 +28,11 @@ export class SimPanel {
           <button type="button" class="icon-btn sim-step" title="Step: run a moment, then pause">⏭</button>
           <select class="sim-speed" title="Simulation speed"></select>
         </span>
-        <span class="sim-group sim-buttons" data-for="codebot">
-          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the robot">BTN 0</button>
-          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the robot">BTN 1</button>
+        <span class="sim-group sim-buttons" data-for="codebot codeair">
+          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the board">BTN 0</button>
+          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the board">BTN 1</button>
         </span>
-        <button type="button" class="icon-btn sim-reset" data-for="codebot" title="Put the robot back at the start">↺</button>
+        <button type="button" class="icon-btn sim-reset" data-for="codebot codeair" title="Put it back at the start">↺</button>
       </div>`
     const q = (s) => host.querySelector(s)
     this.stage = q('.sim-stage')
@@ -91,7 +91,7 @@ export class SimPanel {
     const on = this.sim.isConnected
     this.stage.dataset.off = String(!on)
     this.bar.hidden = !on
-    for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = el.dataset.for !== this.sim.targetId
+    for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = !el.dataset.for.split(' ').includes(this.sim.targetId)
     if (!on || this.sim.state !== 'running') {
       this.paused = false
       this.bar.querySelector('.sim-pause').textContent = '⏸'

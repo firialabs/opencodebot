@@ -172,6 +172,73 @@ const green = await page.evaluate(() => {
 if (!(green[1] > 200 && green[0] < 50)) problems.push(`CodeX: the screen is ${green}, not green`)
 else console.log('sim-ui: CodeX drew, and the keyboard pressed its A button')
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-codex.png` })
+
+// CodeAIR: switch boards, run every CodeAIR block, and fly.
+await page.click('#btn-sim')
+await page.evaluate(() => { window.openCodeBot._pickTarget('codeair') })
+await page.waitForTimeout(300)
+if (await page.evaluate(() => document.getElementById('modal')?.open)) await page.click('#modal button[value="ok"]')
+await page.click('#btn-sim')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready' && window.openCodeBot.device.targetId === 'codeair', null, { timeout: 20000 })
+await page.evaluate(() => {
+  const d = window.openCodeBot.device
+  d.addEventListener('data', (e) => { window.__sim.out += new TextDecoder('latin1').decode(e.detail) })
+  d.addEventListener('program-error', (e) => window.__sim.errors.push(e.detail))
+  d.sim.setSpeed(8)
+})
+const airCodes = await page.evaluate(() => {
+  const { Blockly, toolboxFor, generatePython } = window.openCodeBotInternals
+  const types = []
+  const walk = (items) => { for (const it of items || []) { if (it.kind === 'block') types.push(it.type); if (it.contents) walk(it.contents) } }
+  walk(toolboxFor('codeair').contents)
+  const scratch = new Blockly.Workspace()
+  const out = []
+  for (const type of types.filter((t) => t.startsWith('codeair'))) {
+    const block = scratch.newBlock(type)
+    let code = generatePython(scratch, 'codeair')
+    // a move alone would rightly fail on the ground: take off first
+    if (/\nfly\.(?!take_off|land|steady)/.test(code)) code = code.replace(/\nfly\./, '\nfly.take_off(0.4)\nfly.')
+    out.push([type, code])
+    block.dispose(false)
+  }
+  scratch.dispose()
+  return out
+})
+for (const [type, code] of airCodes) {
+  const errs = await page.evaluate(async (code) => {
+    const d = window.openCodeBot.device
+    window.__sim.errors = []
+    await d.run(code)
+    const t0 = performance.now()
+    while (d.state === 'running' && performance.now() - t0 < 8000) await new Promise((r) => setTimeout(r, 25))
+    if (d.state === 'running') await d.stop()
+    return window.__sim.errors
+  }, code)
+  for (const e of errs) problems.push(`${type} ▸ ${e.name}: ${e.message} (line ${e.line})\n${code}`)
+}
+console.log(`sim-ui: ran ${airCodes.length} CodeAIR blocks on the simulator`)
+
+// A flight at real speed: take off, light up, and see it in the air.
+await page.evaluate(() => { window.openCodeBot.device.sim.reset(); window.openCodeBot.device.sim.setSpeed(1) })
+await page.evaluate(() => window.openCodeBot.device.run(`from codeair import *
+from flight import *
+with recorder:
+    pixels.fill(BLUE, 100)
+    leds.set_mask(0b10101010, 255)
+    fly.take_off(0.5)
+    fly.turn_left(45)
+    fly.steady(5)
+    fly.land()
+`))
+await page.waitForFunction(() => (window.openCodeBot.device.sim.lastFrame?.devices[0].z ?? 0) > 0.45, null, { timeout: 15000 })
+  .catch(() => problems.push('CodeAIR: it never got to 0.45 m'))
+await page.waitForTimeout(1500)
+await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-codeair.png` })
+await page.evaluate(() => window.openCodeBot.device.stop())
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+const landed = await page.evaluate(() => window.openCodeBot.device.sim.lastFrame.devices[0].z)
+if (landed > 0.08) problems.push(`CodeAIR: stopped inside with recorder:, it did not land (at ${landed} m)`)
+else console.log('sim-ui: CodeAIR flew, and a stop landed it')
 await browser.close()
 server?.kill()
 
