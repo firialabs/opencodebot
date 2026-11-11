@@ -87,9 +87,10 @@ export class CodeAIRFigure {
     this.root.position.set(s.x, s.z, -s.y)
     this.root.rotation.y = s.heading
     this.tilt.rotation.set(s.roll, 0, -s.pitch)
-    // the shadow stays on the floor, softer and wider the higher it flies
-    this.shadow.position.y = 0.0015 - s.z
-    const k = 1 + s.z * 1.5
+    // the shadow stays on what is below, softer and wider the higher it flies
+    const above = s.above ?? s.z
+    this.shadow.position.y = 0.0015 - above
+    const k = 1 + above * 1.5
     this.shadow.scale.set(k, k, 1)
     this.shadow.material.opacity = 1 / k
     // turning, slowed so it does not strobe; neighbours turn opposite ways

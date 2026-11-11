@@ -5,9 +5,10 @@ import * as THREE from 'three'
 
 const MAT_Y = 0.001, TAPE_Y = 0.002
 
-export function courseMesh({ mat, tapes, width }) {
+export function courseMesh({ mat, tapes, width, z = 0 }) {
   const group = new THREE.Group()
   group.name = 'course'
+  group.position.y = z
 
   const [x0, y0, x1, y1] = mat
   const sheet = new THREE.Mesh(

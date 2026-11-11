@@ -2,6 +2,7 @@
 // speed, the board's buttons). It builds its own DOM inside `host`.
 import './sim.css'
 import { COURSES } from './world/courses.js'
+import { KINDS, ROOMS } from './kinds.js'
 
 const CAMERAS = [['chase', '🎥 Follow'], ['orbit', '🔄 Orbit'], ['top', '🗺️ Top']]
 const SPEEDS = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']]
@@ -19,6 +20,9 @@ export class SimPanel {
       </div>
       <div class="sim-bar" hidden>
         <span class="sim-group sim-cameras" data-for="codebot codeair"></span>
+        <span class="sim-group" data-for="codebot codeair">
+          <label title="The room it is in">🏫 <select class="sim-room" aria-label="Room"></select></label>
+        </span>
         <span class="sim-group" data-for="codebot">
           <label title="A line course of black tape on the floor">〰️ <select class="sim-course" aria-label="Line course"></select></label>
         </span>
@@ -61,6 +65,10 @@ export class SimPanel {
     course.add(new Option('No course', ''))
     for (const [id, c] of Object.entries(COURSES)) course.add(new Option(c.name, id))
     course.addEventListener('change', () => sim.setCourse(course.value))
+
+    const room = (this.roomSelect = q('.sim-room'))
+    for (const [id, name] of Object.entries(ROOMS)) room.add(new Option(name, id))
+    room.addEventListener('change', () => sim.setRoom(room.value))
 
     const speed = q('.sim-speed')
     for (const [v, label] of SPEEDS) speed.add(new Option(label, v, v === 1, v === 1))
@@ -111,7 +119,8 @@ export class SimPanel {
     this.stage.dataset.off = String(!on)
     this.bar.hidden = !on
     for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = !el.dataset.for.split(' ').includes(this.sim.targetId)
-    this.courseSelect.disabled = this.sim.state === 'running'
+    this.courseSelect.disabled = this.roomSelect.disabled = this.sim.state === 'running'
+    if (on) this.roomSelect.value = this.sim.room ?? KINDS[this.sim.targetId]?.env
     if (!on || this.sim.state !== 'running') {
       this.paused = false
       this.bar.querySelector('.sim-pause').textContent = '⏸'

@@ -6,7 +6,10 @@ import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import { runHeadless, runHeadlessGroup } from '../src/sim/headless.js'
 import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR, REMOTE_FOR_CODEAIR, XFLY_CODEAIR } from '../src/sim/boards/examples.js'
-import { COURSES } from '../src/sim/world/courses.js'
+import { COURSES, courseShape } from '../src/sim/world/courses.js'
+import { CB3 } from '../src/sim/world/codebot.js'
+import { ROOMS } from '../src/sim/kinds.js'
+import { loadEnvironment } from '../src/sim/headless.js'
 import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
 import { Environment } from '../src/sim/world/environment.js'
@@ -392,6 +395,109 @@ print(get_param('motorPowerSet.m1'), version())`, {
   assert.equal(tone, 880)
   assert.equal(r.device.tone, 0)
 })
+
+console.log('rooms')
+
+// An upright cylinder, as the rooms' table legs are: in world.json's shape.
+const cylinder = (name, x, y, r, z0, z1) => ({ name, min: [x - r, y - r, z0], max: [x + r, y + r, z1], c: [x, y], r })
+
+await test('a table leg (an upright cylinder) stops a CodeBot, and its proximity sensors see it', async () => {
+  const env = new Environment({ id: 'leg', floor: null, obstacles: [cylinder('leg', 0, 0.5, 0.02, 0, 0.7)], spawns: [{ x: 0, y: 0, heading: Math.PI / 2 }] })
+  const world = new World(env)
+  const bot = world.add(createDevice('codebot', env, world.rng.fork(), env.spawns[0]))
+  // the left sensor is 36 mm left of the centre line, so its beam meets the leg
+  const d = bot.proxDistance(0)
+  assert.ok(d > 0.25 && d < 0.4, `saw it at ${d} m`)
+  bot.enable(true); bot.setPower(0, 60); bot.setPower(1, 60)
+  world.advance(4e6)
+  // stopped with its body (radius 77 mm, centred 43.5 mm ahead of the axle) against the leg
+  const front = bot.y + 0.0435 + 0.077
+  assert.ok(bot.blocked && front > 0.47 && front < 0.49, `body front at ${front}, blocked ${bot.blocked}`)
+  assert.ok(Math.abs(bot.x) < 0.02, `pushed aside to ${bot.x}`)
+})
+
+const ROOM_IDS = Object.keys(ROOMS).filter((id) => fs.existsSync(new URL(`../public/sim-assets/env/${id}/world.json`, import.meta.url)))
+if (ROOM_IDS.length < Object.keys(ROOMS).length) console.log(`  skip  rooms not built: ${Object.keys(ROOMS).filter((id) => !ROOM_IDS.includes(id)).join(', ')} (npm run sim:assets)`)
+
+for (const id of ROOM_IDS) {
+  await test(`${id}: a board starts on clear floor, and every course lies on clear floor`, async () => {
+    const env = await loadEnvironment(id)
+    const p = CB3
+    // the start: on its floor, and the body touching nothing
+    const s = env.spawns[0], z = s.z ?? 0
+    assert.ok(Math.abs(env.supportAt(s.x, s.y, z, p.step) - z) < 0.005, `the start is not on its floor (${z} m)`)
+    const band = env.obstaclesIn(z + p.step, z + 0.5)
+    const bx = s.x + p.bodyCenter * Math.cos(s.heading), by = s.y + p.bodyCenter * Math.sin(s.heading)
+    const hit = band.find((o) => Math.hypot(...Environment.nearest(o, bx, by).map((v, i) => v - [bx, by][i])) < p.bodyRadius + 0.1)
+    assert.ok(!hit, `the start is within 10 cm of ${hit?.name}`)
+    // each course: its mat, and 15 cm round it, on one level and clear up to half a metre
+    for (const [cid, c] of Object.entries(COURSES)) {
+      const shape = courseShape(cid, env)
+      const [x0, y0, x1, y1] = shape.mat, m = 0.15
+      const near = env.obstaclesIn(shape.z + p.step, shape.z + 0.5).find((o) => {
+        const qx = Math.min(Math.max(o.r ? o.c[0] : (o.min[0] + o.max[0]) / 2, x0 - m), x1 + m)
+        const qy = Math.min(Math.max(o.r ? o.c[1] : (o.min[1] + o.max[1]) / 2, y0 - m), y1 + m)
+        const [nx, ny] = Environment.nearest(o, qx, qy)
+        return nx >= x0 - m && nx <= x1 + m && ny >= y0 - m && ny <= y1 + m
+      })
+      assert.ok(!near, `${c.name}: ${near?.name} is on or by the mat`)
+      for (let x = x0 - m; x <= x1 + m; x += 0.05) {
+        for (let y = y0 - m; y <= y1 + m; y += 0.05) {
+          const g = env.supportAt(x, y, shape.z, p.step)
+          assert.ok(Math.abs(g - shape.z) < 0.005, `${c.name}: the floor at (${x.toFixed(2)}, ${y.toFixed(2)}) is at ${g} m, not ${shape.z}`)
+        }
+      }
+    }
+  })
+
+  if (id !== 'gym') {
+    await test(`${id}: a follower keeps to the oval`, async () => {
+      const r = await runHeadless({ source: FOLLOW, course: 'oval', env: id, seconds: 15, traceEveryMs: 100 })
+      assert.ok(!r.error, r.output)
+      const dist = r.trace.reduce((a, q, i) => (i ? a + Math.hypot(q.x - r.trace[i - 1].x, q.y - r.trace[i - 1].y) : 0), 0)
+      assert.ok(dist > 3, `went ${dist.toFixed(1)} m`)
+      assert.ok(offTape(r) < 0.03, `off the tape ${(offTape(r) * 100).toFixed(0)}% of the time`)
+    })
+  }
+}
+
+if (ROOM_IDS.includes('auditorium')) {
+  await test('auditorium: a CodeBot driven off the stage sees the edge, then falls to the floor', async () => {
+    const env = await loadEnvironment('auditorium')
+    const world = new World(env)
+    const bot = world.add(createDevice('codebot', env, world.rng.fork(), env.spawns[0]))
+    const stage = bot.z
+    assert.ok(stage > 0.9, `starts at ${stage} m`)
+    const onStage = bot.lineRead(2)
+    // 2.4 m to the front of the apron
+    bot.enable(true); bot.setPower(0, 60); bot.setPower(1, 60)
+    let edge = null
+    while (bot.z === stage && world.timeUs < 15e6) {
+      world.advance(5000)
+      if (edge === null && bot.lineRead(2) > 3800) edge = { t: world.timeUs, z: bot.z }
+    }
+    assert.ok(edge && edge.z === stage, 'its middle line sensor never saw the edge from the stage')
+    assert.ok(onStage < 3800, `on the stage it read ${onStage}, as over the edge`)
+    assert.ok(bot.z < 0.01, `fell to ${bot.z} m`)
+    // and on the floor it bumps into the stage it fell from
+    bot.setPower(0, -60); bot.setPower(1, -60)
+    world.advance(3e6)
+    assert.ok(bot.z < 0.01 && bot.blocked, `backing up: at ${bot.z} m, blocked ${bot.blocked}`)
+  })
+
+  await test('auditorium: CodeAIR takes off from the stage, holds its height above it, and lands back on it', async () => {
+    let top = 0
+    const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(2)\nprint(round(get_data(RANGERS)[2] / 1000, 1))\nfly.land()\nfly.steady(1)', {
+      env: 'auditorium',
+      setup: (w, d) => w.onTick(() => { if (w.timeUs > 6e6 && w.timeUs < 7e6) top = Math.max(top, d.z) }),
+    })
+    assert.equal(r.error, undefined, r.output)
+    assert.equal(r.output.trim(), '0.5')
+    const stage = r.world.env.spawns[0].z
+    assert.ok(Math.abs(top - stage - 0.5) < 0.04, `held at ${top} m, the stage at ${stage} m`)
+    assert.ok(Math.abs(r.device.z - stage) < 0.01 && !r.device.motors, `ended at ${r.device.z} m, motors ${r.device.motors}`)
+  })
+}
 
 console.log('radio')
 

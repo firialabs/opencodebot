@@ -18,6 +18,7 @@ export const CB3 = {
   bodyRadius: 0.077,          // collision circle, around the body centre
   bodyCenter: 0.0435,         // body centre ahead of the axle (153 mm long body)
   height: 0.05,               // the band in which it meets obstacles
+  step: 0.01,                 // a ledge this low it drives over; higher, it drives off
 
   wheelMaxSpeed: 22,          // rad/s at 100% power, unloaded (3.5 rev/s)
   deadband: 12,               // % power below which the wheels do not turn
@@ -52,18 +53,21 @@ export const CB3 = {
 }
 
 export class CodeBot {
-  constructor(env, rng, { x = 0, y = 0, heading = 0, id = 'codebot', params = CB3 } = {}) {
+  // z: the floor it starts on (a stage); 0, the room's floor, if not given.
+  constructor(env, rng, { x = 0, y = 0, z = 0, heading = 0, id = 'codebot', params = CB3 } = {}) {
     this.kind = 'codebot'
     this.id = id
     this.env = env
     this.rng = rng
     this.p = params
-    this.boxes = env.obstaclesIn(0, params.height)
-    this.reset(x, y, heading)
+    this.reset(x, y, heading, z)
   }
 
-  reset(x, y, heading) {
+  reset(x, y, heading, z = 0) {
     this.x = x; this.y = y; this.heading = heading
+    // on the floor nearest the height asked, as stepping would put it
+    const [s, c] = sincos(heading)
+    this.setLevel(this.env.supportAt(x + this.p.bodyCenter * c, y + this.p.bodyCenter * s, z, this.p.step))
     this.v = 0; this.omega = 0                     // body speed (m/s) and turn rate (rad/s)
     this.wheel = [0, 0]                            // wheel speeds, rad/s
     this.wheelAngle = [0, 0]
@@ -79,6 +83,13 @@ export class CodeBot {
   }
 
   // --- the model --------------------------------------------------------
+
+  // The floor it is on: the height of its wheels, and so what it can bump
+  // into (whatever reaches above a climbable step and below its top).
+  setLevel(z) {
+    this.z = z
+    this.boxes = this.env.obstaclesIn(z + this.p.step, z + this.p.height)
+  }
 
   step(dt) {
     const p = this.p
@@ -123,6 +134,23 @@ export class CodeBot {
     }
     this.x = x; this.y = y; this.heading = heading
     this.v = v; this.omega = om
+
+    // Off the edge of a stage: once the body's centre is over the drop it
+    // falls, and lands on its wheels. (A real one would tumble; this one
+    // carries on, a simplification.) Onto a step it can climb, it climbs.
+    const ground = this.env.supportAt(x + p.bodyCenter * c2, y + p.bodyCenter * s2, this.z, p.step)
+    if (ground < this.z) {
+      // It tips off forward (or back, reversing), and lands clear of the ledge.
+      this.setLevel(ground)
+      const dir = v >= 0 ? 1 : -1
+      for (let d = 0; d <= 2 * p.bodyRadius; d += 0.005) {
+        const lx = this.x + dir * d * c2, ly = this.y + dir * d * s2
+        if (!Environment.pushOut(lx + p.bodyCenter * c2, ly + p.bodyCenter * s2, p.bodyRadius, this.boxes).hit) {
+          this.x = lx; this.y = ly
+          break
+        }
+      }
+    } else if (ground > this.z) this.setLevel(ground)
     this.wheelAngle[0] += this.wheel[0] * dt
     this.wheelAngle[1] += this.wheel[1] * dt
 
@@ -153,11 +181,13 @@ export class CodeBot {
   enable(on) { this.enabled = !!on }
 
   // Line sensor n's 12-bit reading (0 brightest) with its emitter on at
-  // `gain` (1 at full power): reflected light pulls it down from dark.
+  // `gain` (1 at full power): reflected light pulls it down from dark. Over
+  // the edge of a stage nothing comes back, as over black.
   lineRead(n, gain = 1) {
     const p = this.p
     const [wx, wy] = this.toWorld(...p.lineSensors[n])
-    const r = this.env.floor.reflectance(wx, wy, p.lineSpot)
+    const over = this.env.supportAt(wx, wy, this.z, p.step) < this.z - p.step
+    const r = over ? 0 : this.env.floor.reflectance(wx, wy, p.lineSpot)
     const raw = p.lineBlack + (p.lineWhite - p.lineBlack) * r * gain + p.lineNoise * this.rng.normal()
     return Math.round(clamp(raw, 0, 4095))
   }
@@ -172,7 +202,8 @@ export class CodeBot {
     const p = this.p
     const [fwd, left] = p.proxSensors[n]
     const [ox, oy] = this.toWorld(fwd, left)
-    const boxes = this.env.obstaclesIn(p.proxHeight - 0.005, p.proxHeight + 0.005)
+    const h = this.z + p.proxHeight
+    const boxes = this.env.obstaclesIn(h - 0.005, h + 0.005)
     let best = Infinity
     for (let i = 0; i < p.proxRays; i++) {
       const a = this.heading + p.proxHalfAngle * ((2 * i) / (p.proxRays - 1) - 1)
@@ -229,7 +260,7 @@ export class CodeBot {
   snapshot() {
     return {
       id: this.id, kind: this.kind,
-      x: this.x, y: this.y, heading: this.heading,
+      x: this.x, y: this.y, z: this.z, heading: this.heading,
       wheelAngle: [this.wheelAngle[0], this.wheelAngle[1]],
       leds: { ...this.leds }, tone: this.tone, enabled: this.enabled,
     }

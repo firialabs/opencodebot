@@ -149,6 +149,22 @@ await page.evaluate(() => window.openCodeBot.device.sim.setCourse(null))
 if (onOval.off > 0.08) problems.push(`course: the follower left the oval (at ${onOval.at}, ${onOval.off.toFixed(2)} m off)`)
 else console.log('sim-ui: a follower kept to the oval course')
 
+// The other rooms, from the picker: each drawn, the robot at its start.
+await page.evaluate(() => window.openCodeBot.device.sim.setCamera('chase'))
+for (const room of ['classroom', 'cafeteria', 'auditorium', 'gym']) {
+  await page.selectOption('.sim-room', room)
+  const ok = await page.waitForFunction(async (id) => {
+    const sim = window.openCodeBot.device.sim
+    const s = (await (await fetch(`sim-assets/env/${id}/world.json`)).json()).spawns[0]
+    const d = sim.lastFrame?.devices[0]
+    return sim.view?.roomId === id && d && Math.abs(d.x - s.x) < 0.01 && Math.abs(d.y - s.y) < 0.01 && Math.abs(d.z - (s.z ?? 0)) < 0.01
+  }, room, { timeout: 15000, polling: 200 }).catch(() => null)
+  if (!ok) { problems.push(`rooms: the ${room} did not load, or the robot is not at its start`); continue }
+  await page.waitForTimeout(1500)
+  await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-${room}.png` })
+}
+if (!problems.some((p) => p.startsWith('rooms'))) console.log('sim-ui: the room picker moved the robot through every room')
+
 // Step by line: from a stop the starter project pauses at its first line,
 // marked in the Python tab and on its block; each step moves on a line.
 await page.evaluate(() => window.openCodeBot.device.sim.setSpeed(1))

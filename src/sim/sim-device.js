@@ -5,7 +5,7 @@
 // gives the program's line while paused ({ line }, null when it runs on).
 import { State } from '../device/device-manager.js'
 import { getTarget } from '../device/targets.js'
-import { KINDS } from './kinds.js'
+import { KINDS, ROOMS } from './kinds.js'
 
 const enc = new TextEncoder()
 
@@ -22,6 +22,7 @@ export class SimDevice extends EventTarget {
     this.viewHost = null
     this.cameraMode = 'chase'
     this.course = null             // a line course on the floor (world/courses.js)
+    this.room = null               // a room from kinds.js ROOMS; null: the board's own
     this.supported = 'WebAssembly' in globalThis && typeof Worker !== 'undefined'
   }
 
@@ -58,8 +59,9 @@ export class SimDevice extends EventTarget {
     }
     this.targetId = targetId
     const kind = KINDS[targetId]
+    const room = kind.view === '3d' ? (this.room ?? kind.env) : kind.env
     const ready = new Promise((resolve) => (this._ready = resolve))
-    this.worker.postMessage({ t: 'init', kind: targetId, env: kind.env, assetsBase, course: this.course })
+    this.worker.postMessage({ t: 'init', kind: targetId, env: room, assetsBase, course: this.course })
     this.speaker = new Speaker()
 
     if (this.viewHost) {
@@ -70,7 +72,7 @@ export class SimDevice extends EventTarget {
         const { SimView } = await import('./view/view.js')
         this.view = new SimView(this.viewHost, { assetsBase })
         this.view.cameraMode = this.cameraMode
-        await this.view.loadRoom(kind.env).catch((err) => console.warn('room', err))
+        await this.view.loadRoom(room).catch((err) => console.warn('room', err))
       }
     }
     const snap = await ready
@@ -80,7 +82,7 @@ export class SimDevice extends EventTarget {
 
     this.firmware = { version: 'simulator', date: '' }
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target: this.target } }))
-    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.envName === 'hand' ? '' : ` in the ${kind.envName}`}.\x1b[0m\r\n`)
+    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.view === '3d' ? ` in the ${ROOMS[room].toLowerCase()}` : ''}.\x1b[0m\r\n`)
     this._setState(State.READY, 'Simulator ready. Press Run!')
     return true
   }
@@ -134,6 +136,16 @@ export class SimDevice extends EventTarget {
     this.course = id || null
     this._post({ t: 'course', course: this.course })
   }
+  // Move a 3D board to another room (an id from kinds.js ROOMS); it starts
+  // again at the room's start, on the course if one is laid.
+  setRoom(id) {
+    if (!ROOMS[id]) return
+    this.room = id
+    if (!this.worker || KINDS[this.targetId]?.view !== '3d') return
+    this._post({ t: 'room', env: id })
+    this._moved = true              // the camera goes with it, at the next frame
+    this.view?.loadRoom(id).catch((err) => console.warn('room', err))
+  }
   setCamera(mode) {
     this.cameraMode = mode
     this.view?.setCamera(mode)
@@ -157,6 +169,7 @@ export class SimDevice extends EventTarget {
       case 'course': this.view?.setCourse?.(m.course); break
       case 'frame': {
         this.view?.push(m.snapshot)
+        if (this._moved) { this._moved = false; this.view?.setCamera?.(this.cameraMode) }
         this.lastFrame = m.snapshot
         const d = m.snapshot.devices[0]
         this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))

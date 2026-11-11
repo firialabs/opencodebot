@@ -19,8 +19,16 @@ export default defineConfig({
       includeAssets: ['icons/*.svg', 'blockly-media/*'],
       workbox: {
         // Everything the app needs is bundled: once loaded, it runs offline,
-        // the simulator (its wasm, models and rooms) included.
-        globPatterns: ['**/*.{js,css,html,svg,png,gif,cur,mp3,woff,woff2,webmanifest,wasm,glb,json}'],
+        // the simulator (its wasm, models and first room) included. The
+        // other rooms are fetched when chosen, and kept from then on: a
+        // class need not download three rooms it may never visit.
+        globPatterns: ['**/*.{js,css,html,svg,png,gif,cur,mp3,woff,woff2,webmanifest,wasm,glb,json,webp}'],
+        globIgnores: ['**/sim-assets/env/!(gym)/**'],
+        runtimeCaching: [{
+          urlPattern: /\/sim-assets\/env\//,
+          handler: 'CacheFirst',
+          options: { cacheName: 'sim-rooms', expiration: { maxEntries: 32 } },
+        }],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         // boards.html?boards=codex,codeair is still boards.html, not the app
         // (the navigation fallback).

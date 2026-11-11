@@ -221,20 +221,21 @@ export class Crazyflie {
     const mm = (m) => (m >= 0 && m <= RANGE_MAX ? Math.round(m * 1000) : OUT_OF_RANGE_MM)
     const [s, c] = sincos(a.heading)
     // specific force in g, body frame: what an accelerometer reads
-    const fall = !a.motors && a.z > 0.001
+    const above = a.rangeDown()                // over whatever is below it
+    const fall = !a.motors && above > 0.001
     const accFwd = fall ? 0 : (c * a.ax + s * a.ay) / p.gravity
     const accLeft = fall ? 0 : (-s * a.ax + c * a.ay) / p.gravity
     const accUp = fall ? 0 : 1 + a.az / p.gravity
     const n = (sd) => sd * rng.normal()
     const est = a.estimateXY()
     const [hs, hc] = sincos(a.est.h0)
-    const height = Math.max(0.02, a.rangeDown())
+    const height = Math.max(0.02, above)
     const flow = 4.8 * 0.01 / height           // pixels per (m/s) in one 10 ms frame of the PMW3901
     const asl = 270 + a.z + n(0.05)
     switch (name) {
       case 'stateEstimate.x': return est[0]
       case 'stateEstimate.y': return est[1]
-      case 'stateEstimate.z': return a.z
+      case 'stateEstimate.z': return a.estimateZ()
       case 'stateEstimate.vx': return hc * a.vx + hs * a.vy
       case 'stateEstimate.vy': return -hs * a.vx + hc * a.vy
       case 'stateEstimate.vz': return a.vz
@@ -252,7 +253,7 @@ export class Crazyflie {
       case 'range.back': case 'range.left': case 'range.right': return OUT_OF_RANGE_MM
       case 'motion.deltaX': return Math.round(-left * flow * 100 + n(0.6))
       case 'motion.deltaY': return Math.round(-fwd * flow * 100 + n(0.6))
-      case 'motion.squal': return a.z > 0.05 ? 90 + Math.round(n(5)) : 20
+      case 'motion.squal': return above > 0.05 ? 90 + Math.round(n(5)) : 20
       case 'motion.motion': return 1
       case 'acc.x': return accFwd + n(0.01) + a.bump * rng.normal()
       case 'acc.y': return accLeft + n(0.01) + a.bump * rng.normal()
@@ -276,9 +277,9 @@ export class Crazyflie {
       case 'pm.state': return 0
       // The supervisor's bits: can arm, auto-arm and can fly always (it never
       // tumbles or locks here); armed with the motors on; flying once off the floor.
-      case 'supervisor.info': return 0x01 | 0x04 | 0x08 | (a.motors ? 0x02 : 0) | (a.motors && a.z > 0.02 ? 0x10 : 0)
+      case 'supervisor.info': return 0x01 | 0x04 | 0x08 | (a.motors ? 0x02 : 0) | (a.motors && above > 0.02 ? 0x10 : 0)
       case 'sys.canfly': return 1
-      case 'sys.isFlying': return a.motors && a.z > 0.02 ? 1 : 0
+      case 'sys.isFlying': return a.motors && above > 0.02 ? 1 : 0
       case 'sys.isTumbled': return 0
       case 'motor.m1': case 'motor.m2': case 'motor.m3': case 'motor.m4':
         return a.motors ? Math.round(36000 + 4000 * a.vz) : 0
@@ -318,7 +319,7 @@ export class Crazyflie {
   _highLevel(d, v) {
     const a = this.air
     const [ex, ey] = a.estimateXY()
-    const here = { x: ex, y: ey, z: a.z, yaw: wrapAngle(a.heading - a.est.h0) }
+    const here = { x: ex, y: ey, z: a.estimateZ(), yaw: wrapAngle(a.heading - a.est.h0) }
     const plan = (to, dur, landing) => {
       this.hl = { from: here, to, t0: a.tUs, dur: Math.max(0.1, dur) * 1e6, landing }
       this.setpoint = null
@@ -345,7 +346,7 @@ export class Crazyflie {
     if (this.hl) {
       const h = this.hl
       let f = Math.min(1, (tUs - h.t0) / h.dur)
-      if (f >= 1 && h.landing && this.air.z < 0.03) { this.hl = null; return null }
+      if (f >= 1 && h.landing && this.air.rangeDown() < 0.03) { this.hl = null; return null }
       f = f * f * (3 - 2 * f)
       const L = (k) => h.from[k] + (h.to[k] - h.from[k]) * f
       return { mode: 'position', x: L('x'), y: L('y'), z: L('z'), yaw: L('yaw') }

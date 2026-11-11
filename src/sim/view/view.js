@@ -61,8 +61,19 @@ export class SimView {
   }
 
   async loadRoom(id) {
+    const ask = (this._roomAsked = id)
     const gltf = await this.loader.loadAsync(`${this.assetsBase}env/${id}/room.glb`)
+    if (ask !== this._roomAsked) return        // another room was chosen meanwhile
     this.room?.removeFromParent()
+    // the last room's buffers and textures, off the GPU
+    this.room?.traverse((o) => {
+      if (!o.isMesh) return
+      o.geometry.dispose()
+      for (const m of [o.material].flat()) {
+        for (const v of Object.values(m)) if (v?.isTexture) v.dispose()
+        m.dispose()
+      }
+    })
     this.room = gltf.scene
     // The rooms are modelled at 1 unit = 10 cm.
     this.room.scale.setScalar(0.1)
@@ -70,6 +81,7 @@ export class SimView {
       if (o.isMesh && o.material?.map) o.material.map.anisotropy = 4
     })
     this.scene.add(this.room)
+    this.roomId = id
     this._touch()
   }
 
@@ -210,7 +222,7 @@ function lerpSnap(a, b, f) {
   const L = (k) => (b[k] === undefined || a[k] === undefined ? b[k] : a[k] + (b[k] - a[k]) * f)
   return {
     ...b,
-    x: L('x'), y: L('y'), z: L('z'), roll: L('roll'), pitch: L('pitch'), propAngle: L('propAngle'),
+    x: L('x'), y: L('y'), z: L('z'), above: L('above'), roll: L('roll'), pitch: L('pitch'), propAngle: L('propAngle'),
     heading: a.heading + dh * f,
     wheelAngle: b.wheelAngle && a.wheelAngle ? b.wheelAngle.map((w, i) => a.wheelAngle[i] + (w - a.wheelAngle[i]) * f) : b.wheelAngle,
   }

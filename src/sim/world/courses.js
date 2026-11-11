@@ -92,19 +92,35 @@ export const COURSES = {
   tee: { name: 'T', mat: [-0.8, -1.1, 0.8, 0.8], ...tee() },
 }
 
+// A course where a room lays it (its `courseAt`: clear floor, which may be
+// a stage): the mat and tapes moved there, and its height.
+function placed(c, env) {
+  const { x = 0, y = 0, z = 0 } = env?.courseAt ?? {}
+  const [x0, y0, x1, y1] = c.mat
+  return {
+    mat: [x0 + x, y0 + y, x1 + x, y1 + y],
+    tapes: c.tapes.map((pts) => pts.map(([px, py]) => [px + x, py + y])),
+    spawn: { ...c.spawn, x: c.spawn.x + x, y: c.spawn.y + y, z },
+    z,
+  }
+}
+
 // Lay a course on a room's floor (none: take it up). Returns where a
 // CodeBot starts on it, or null.
 export function layCourse(env, id) {
   env.floor.clear()
   const c = COURSES[id]
   if (!c) return null
-  env.floor.addMat(...c.mat, MAT_REFLECTANCE)
-  for (const pts of c.tapes) env.floor.addTape(pts, TAPE_WIDTH, TAPE_REFLECTANCE)
-  return { name: c.name, ...c.spawn }
+  const p = placed(c, env)
+  env.floor.addMat(...p.mat, MAT_REFLECTANCE)
+  for (const pts of p.tapes) env.floor.addTape(pts, TAPE_WIDTH, TAPE_REFLECTANCE)
+  return { name: c.name, ...p.spawn }
 }
 
-// What the view draws: the mat and the tape lines.
-export function courseShape(id) {
+// What the view draws: the mat and the tape lines, where the room lays them.
+export function courseShape(id, env) {
   const c = COURSES[id]
-  return c ? { mat: c.mat, tapes: c.tapes, width: TAPE_WIDTH } : null
+  if (!c) return null
+  const { mat, tapes, z } = placed(c, env)
+  return { mat, tapes, z, width: TAPE_WIDTH }
 }

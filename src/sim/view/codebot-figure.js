@@ -86,7 +86,7 @@ export class CodeBotFigure {
   }
 
   update(s) {
-    this.root.position.set(s.x, 0, -s.y)
+    this.root.position.set(s.x, s.z ?? 0, -s.y)
     this.root.rotation.y = s.heading
     if (this.wheels && s.wheelAngle) {
       this.wheels[0].rotation.z = -s.wheelAngle[0]

@@ -3,6 +3,7 @@
 //
 // in:  init { kind, env, assetsBase, seed, course }
 //      course { course }   (lay a line course, world/courses.js; null takes it up)
+//      room { env }        (move to another room; the course comes too)
 //      run { source, seed, stepFirst } | stop | pause | resume | step | stepLine
 //      speed { value } | input { what: 'button', n, down } | reset
 //      stdin { text }   (keys typed at the terminal: the REPL between programs)
@@ -32,7 +33,7 @@ function pythonFiles(kind) {
   return files
 }
 
-let world, device, engine, env, spawn, course = null
+let world, device, engine, env, spawn, assetsBase, course = null
 // The radio's link to the other boards (CodeX and CodeAIR have a radio).
 const air = new BroadcastAir(() => world?.timeUs ?? 0)
 let lastFrame = 0
@@ -104,21 +105,24 @@ self.onmessage = async (e) => {
   try {
     switch (m.t) {
       case 'init':
-        env = await loadEnv(m.env, m.assetsBase)
+        assetsBase = m.assetsBase
+        env = await loadEnv(m.env, assetsBase)
         course = m.course ?? null
         spawn = layCourse(env, course) ?? env.spawns[0]
         build(m.kind, m.seed ?? 1)
         idle(true)
-        post({ t: 'ready', snapshot: world.snapshot(), course: courseShape(course) })
+        post({ t: 'ready', snapshot: world.snapshot(), course: courseShape(course, env) })
         break
+      case 'room':
       case 'course':
-        // A new course puts the robot back at its start.
+        // A new room or course puts the robot back at its start.
         if (engine.running) return
-        course = m.course ?? null
+        if (m.t === 'room') env = await loadEnv(m.env, assetsBase)
+        else course = m.course ?? null
         spawn = layCourse(env, course) ?? env.spawns[0]
         build(device.kind, m.seed ?? 1)
         screenVersion = -1
-        post({ t: 'course', course: courseShape(course) })
+        post({ t: 'course', course: courseShape(course, env) })
         frame(true)
         break
       case 'run': {

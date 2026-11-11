@@ -161,6 +161,17 @@ restitution and a random sideways kick; free fall with the motors off. Blocking 
 **CodeX.** No physics. Tilt comes from the user (drag the device, or a phone's orientation)
 as gravity in the device frame.
 
+**Rooms** (`world/environment.js`). A room's physics is CodeSpace's impostors: axis-aligned
+boxes and upright cylinders (table legs, pillars), each meeting a device only in its band of
+heights, so a CodeBot drives under a table a CodeAIR hits. The top of any obstacle is also a
+floor (`supportAt`): the auditorium's stage is a box 0.97 m high. CodeBot and CodeAIR carry a
+height. A CodeBot drives over a ledge up to 1 cm; past a higher one, once its body's centre is
+over the drop, it falls and lands on its wheels clear of the ledge (a real one would tumble:
+a simplification), and its line sensors read a drop as black, as a real sensor gets no light
+back. CodeAIR's heights (its setpoints, its state estimate) are from where it took off, and
+its rangers and ground effect from whatever is under it. Line courses are laid where each
+room has clear floor (its `courseAt`, on the stage in the auditorium).
+
 If pushable props ever need real 3D physics, `rapier3d-deterministic` is the fallback: it
 documents bit-exact cross-platform results in wasm.
 
@@ -245,10 +256,12 @@ through the whole UI with no hardware.
 
 ## 7. Assets
 
-The device and room GLBs come from CodeSpace's simulator. They are not committed until David
-agrees to publish them: `sim/assets/` is in `.gitignore`, and the build reads them from
-there. The derived files (merged meshes, world JSON, reflectance maps) are generated, also
-ignored, and published with the assets when that is agreed. Only the gymnasium at first.
+The device and room GLBs come from CodeSpace's simulator and are committed in `sim/assets/`
+under CC BY-NC 4.0 (its LICENSE; David, 2026-11-11). The derived files (merged meshes, world
+JSON, reflectance maps) are generated into `public/sim-assets/` by `npm run sim:assets` and
+not committed. Four rooms: the gymnasium, a classroom, the cafeteria and the auditorium. The
+service worker keeps the gymnasium for offline use from the first visit, and each other room
+once it has been chosen.
 
 ## 8. Build order
 
@@ -275,7 +288,6 @@ ignored, and published with the assets when that is agreed. Only the gymnasium a
   from the docs.
 - **Patch upkeep.** The variant changes about 170 lines of MicroPython's port and is rebased
   on upstream releases.
-- **Assets** wait on David's agreement to publish them.
 
 ## Research record
 
@@ -373,6 +385,12 @@ Built, on branch `sim` (local commits; pushing waits for David):
   "Performance"): lighter device models, a view that trades resolution for frame rate and
   rests when nothing moves, a smaller floor map; all within budget at 4x CPU with software
   GL. CI runs the simulator's tests in `npm test` and the budget as a report.
+- Rooms (section 2, "Rooms"): the gymnasium, a classroom, the cafeteria and the auditorium,
+  chosen from the simulator bar for CodeBot and CodeAIR (or `env` headless), each fetched
+  only when chosen. In the auditorium a CodeBot starts on the stage facing the audience and
+  can drive off it; a CodeAIR takes off from the stage. Left out of CodeSpace's models: the
+  classroom's line arena of sign boards (shown only for CodeSpace's lessons), and an
+  invisible rail in the auditorium from the stage over the seats.
 
 Not yet: calibration.
 
@@ -455,11 +473,8 @@ not the simulation (simulated time keeps up at 4x).
    table says otherwise). Things to check: the CodeX face's buttons have labels for the
    arrows only by letter; the 3D view has no text alternative; the step and pause buttons
    are icon-only with titles.
-3. (d) The other rooms (classroom, auditorium, cafeteria) behind a room picker, assets
-   under the same licence (sim/assets/LICENSE). Their GLBs are in CodeSpace's simulator
-   (`botsim-ref`); `sim/tools/build-env.mjs` takes a room's floor layers and physics boxes;
-   the gym's entry is the pattern. Line courses are laid around the room's origin: check
-   each room has clear floor there, or give courses a place per room. Keep the simulator
-   start within `npm run perf`'s budget (a room is fetched only when chosen).
+3. (d) Done: the other rooms behind a room picker ("Where it stands", "Rooms"). The
+   room picker's strings join step 2's list (`sim-panel.js`, and the room names in
+   `kinds.js` ROOMS).
 4. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
    in "Where it stands", and the Chromebook checks in sim/README.md "Performance").

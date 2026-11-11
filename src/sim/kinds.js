@@ -2,7 +2,16 @@
 // folders (under src/sim/python/) it runs. Kept apart from the models so the
 // page can ask without loading them.
 export const KINDS = {
-  codebot: { env: 'gym', envName: 'gymnasium', view: '3d', python: ['common', 'codebot'] },
-  codex: { env: 'empty', envName: 'hand', view: 'codex', python: ['common', 'radio', 'codex'] },
-  codeair: { env: 'gym', envName: 'gymnasium', view: '3d', python: ['common', 'radio', 'codeair'] },
+  codebot: { env: 'gym', view: '3d', python: ['common', 'codebot'] },
+  codex: { env: 'empty', view: 'codex', python: ['common', 'radio', 'codex'] },
+  codeair: { env: 'gym', view: '3d', python: ['common', 'radio', 'codeair'] },
+}
+
+// The rooms a 3D board can be in (built by sim/tools/build-env.mjs), in the
+// picker's order. A room is fetched only when it is chosen.
+export const ROOMS = {
+  gym: 'Gymnasium',
+  classroom: 'Classroom',
+  cafeteria: 'Cafeteria',
+  auditorium: 'Auditorium',
 }

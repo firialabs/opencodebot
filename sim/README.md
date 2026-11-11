@@ -11,10 +11,10 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/engine.js` | MicroPython on simulated time: charging, pacing, pause, step, stop, the REPL |
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
-| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
+| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms (`environment.js`: boxes, cylinders, raised floors), floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
 | `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `world/infrared.js` (its infrared, under `python/common/pulseio.py`), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
-| `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs |
+| `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs, and lists the rooms |
 | `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
 | `src/sim/view/` | the pictures: Three.js for the room (`view.js`) with CodeBot and CodeAIR in it (`codebot-figure.js`, `codeair-figure.js`), a flat face for CodeX (`codex-face.js`) |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
@@ -102,7 +102,9 @@ const r = await runHeadless({ source, env: 'gym', seconds: 10, seed: 1 })
 ```
 
 On a line course (`oval`, `eight`, `gap`, `tee`; `world/courses.js`), the robot
-starting on it: `runHeadless({ source, course: 'oval', env: 'gym' })`.
+starting on it: `runHeadless({ source, course: 'oval', env: 'gym' })`. The rooms are
+`gym`, `classroom`, `cafeteria` and `auditorium` (on its stage), and `empty`, a 4 m
+square with nothing in it.
 
 Several boards at once, their radios linked, on one timeline (the same run every time):
 
@@ -151,7 +153,8 @@ What keeps it there:
 
 After the first visit the service worker fetches the rest of the site in
 the background, about 2 MB gzip (1.4 MB of it the simulator), so the
-simulator works offline after that.
+simulator works offline after that, in the gymnasium. The other rooms
+(0.8 to 1.5 MB each) are fetched only when chosen, and kept from then on.
 
 To check on a real Chromebook: the frame rate and resolution the view
 settles at, and the first visit on a school network.
@@ -168,12 +171,19 @@ settles at, and the first visit on a school network.
 ## Adding a line course
 
 Add it to `COURSES` in `src/sim/world/courses.js`: a name, the mat (a rectangle in
-metres around the room's origin), the tape as polylines, and a spawn on the line
-(`spawnAlong` puts the line sensors over the tape). The simulator's course picker
-and `runHeadless({ course })` list it from there. Add a follower test to
-`tests/sim.mjs`.
+metres around the origin), the tape as polylines, and a spawn on the line
+(`spawnAlong` puts the line sensors over the tape). Each room lays it at its own
+`courseAt`. The simulator's course picker and `runHeadless({ course })` list it
+from there. Add a follower test to `tests/sim.mjs`; the rooms test checks that
+every course lies on clear floor in every room.
 
 ## Adding a room
 
-Add its GLB to `sim/assets/` (and to its LICENSE), and an entry in
-`sim/tools/build-env.mjs` naming its floor layers and its physics boxes.
+Add its GLB to `sim/assets/` (and to its LICENSE), an entry in
+`sim/tools/build-env.mjs` (its floor layers, the faces too high to be floor, its
+physics impostors, what to leave out, its start and where courses go), a name in
+`ROOMS` in `src/sim/kinds.js`, and its build to `sim:assets` in package.json.
+CodeSpace's start positions are Babylon's: its z is the glTF z, and its x the
+glTF x mirrored. `tests/sim.mjs` then checks its start and courses are on clear
+floor; look at it from the simulator before trusting it (an impostor may stand
+for something no picture shows).

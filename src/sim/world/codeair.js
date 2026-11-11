@@ -49,7 +49,8 @@ export const AIR = {
 }
 
 export class CodeAIR {
-  constructor(env, rng, { x = 0, y = 0, heading = 0, id = 'codeair', params = AIR } = {}) {
+  // z: the floor it starts on (a stage); 0, the room's floor, if not given.
+  constructor(env, rng, { x = 0, y = 0, z = 0, heading = 0, id = 'codeair', params = AIR } = {}) {
     this.kind = 'codeair'
     this.id = id
     this.env = env
@@ -62,11 +63,13 @@ export class CodeAIR {
     // KeyboardInterrupt sets off: `with recorder:` lands, at 0.2 m/s from up
     // to 2 m.
     this.stopGraceUs = 12e6
-    this.reset(x, y, heading)
+    this.reset(x, y, heading, z)
   }
 
-  reset(x, y, heading) {
-    this.x = x; this.y = y; this.z = 0; this.heading = heading
+  reset(x, y, heading, z = 0) {
+    // on the floor nearest the height asked (a stage's top, to the millimetre)
+    z = this.env.supportAt(x, y, z, 0.01)
+    this.x = x; this.y = y; this.z = z; this.heading = heading
     this.vx = 0; this.vy = 0; this.vz = 0; this.yawRate = 0
     this.ax = 0; this.ay = 0; this.az = 0          // world acceleration, m/s^2, last step
     this.roll = 0; this.pitch = 0                  // rad, as drawn and as the estimator reports
@@ -76,7 +79,7 @@ export class CodeAIR {
     this.propAngle = 0
     this.bump = 0                                  // g, a knock the accelerometer feels
     this.tUs = 0
-    this.est = { x0: x, y0: y, z0: 0, h0: heading, ex: 0, ey: 0 }
+    this.est = { x0: x, y0: y, z0: z, h0: heading, ex: 0, ey: 0 }
     // the board
     this.pixels = Array.from({ length: 8 }, () => [0, 0, 0])
     this.leds = new Array(9).fill(0)               // LP5009 outputs: 0-7 the blue LEDs (reversed), 8 status
@@ -97,43 +100,45 @@ export class CodeAIR {
     const sp = this.cf.setpointNow(this.tUs)
     const vx0 = this.vx, vy0 = this.vy, vz0 = this.vz
     const [s, c] = sincos(this.heading)
-    const onFloor = this.z <= 1e-6
+    const onFloor = this.rangeDown() <= 1e-6
 
     this.motors = !!sp
     if (sp) {
-      // What the flight controller asks for, in the world frame.
+      // What the flight controller asks for, in the world frame. Its heights
+      // are the estimator's, from where it took off (a stage, a table).
+      const z0 = this.est.z0
       let tvx = 0, tvy = 0, tvz = null, tz = this.z, tyaw = 0
       if (sp.mode === 'hover' || sp.mode === 'velocity') {
         if (sp.world) { tvx = sp.vx; tvy = sp.vy } else { tvx = c * sp.vx - s * sp.vy; tvy = s * sp.vx + c * sp.vy }
         tyaw = sp.yawRate
         if (sp.vz !== undefined) tvz = sp.vz
-        else tz = sp.z
+        else tz = z0 + sp.z
       } else if (sp.mode === 'position') {
         const [ex, ey] = this.estimateXY()
         const [hs, hc] = sincos(this.est.h0)
         const dx = sp.x - ex, dy = sp.y - ey
         tvx = p.posGain * (hc * dx - hs * dy)
         tvy = p.posGain * (hs * dx + hc * dy)
-        tz = sp.z
+        tz = z0 + sp.z
         tyaw = clamp(3 * wrapAngle(this.est.h0 + sp.yaw - this.heading), -3, 3)
       } else if (sp.mode === 'level') {
         // A setpoint gone stale: level, holding its height, coasting.
         tvx = this.vx * (1 - p.drag * dt); tvy = this.vy * (1 - p.drag * dt)
-        tz = sp.z ?? this.z
+        tz = sp.z === undefined ? this.z : z0 + sp.z
       } else if (sp.mode === 'tilt') {
         // Roll and pitch angles: lean, and accelerate along the lean.
         const ax = p.gravity * sp.pitch, ay = -p.gravity * sp.roll
         tvx = this.vx + (c * ax - s * ay) * p.tauXY
         tvy = this.vy + (s * ax + c * ay) * p.tauXY
         tyaw = sp.yawRate
-        if (sp.z !== undefined) tz = sp.z
+        if (sp.z !== undefined) tz = z0 + sp.z
         else tvz = sp.climb ?? 0
       }
       const sp2 = tvx * tvx + tvy * tvy
       if (sp2 > p.maxV * p.maxV) { const k = p.maxV / Math.sqrt(sp2); tvx *= k; tvy *= k }
       if (tvz === null) tvz = clamp(p.zGain * (tz - this.z), -p.maxVz, p.maxVz)
 
-      const airborne = this.z > 0.002 || tvz > 0
+      const airborne = this.rangeDown() > 0.002 || tvz > 0
       if (airborne) {
         this.driftStep(dt)
         tvx += this.drift[0]; tvy += this.drift[1]; tyaw += this.drift[2]
@@ -176,7 +181,7 @@ export class CodeAIR {
     this.bump *= 1 - 30 * dt
 
     // The estimate wanders from the truth while it flies.
-    if (this.motors && this.z > 0.002) {
+    if (this.motors && this.rangeDown() > 0.002) {
       const q = p.estDriftSigma * Math.sqrt(dt)
       this.est.ex += q * this.rng.normal(); this.est.ey += q * this.rng.normal()
     }
@@ -184,7 +189,7 @@ export class CodeAIR {
 
   driftStep(dt) {
     const p = this.p
-    const sig = (this.z < p.groundEffect ? 2 : 1) * p.driftSigma * Math.sqrt(dt)
+    const sig = (this.rangeDown() < p.groundEffect ? 2 : 1) * p.driftSigma * Math.sqrt(dt)
     const d = this.drift
     d[0] += -p.driftTheta * d[0] * dt + sig * this.rng.normal()
     d[1] += -p.driftTheta * d[1] * dt + sig * this.rng.normal()
@@ -203,7 +208,7 @@ export class CodeAIR {
     }
     const boxes = this.env.obstaclesIn(this.z, this.z + p.height)
     for (const b of boxes) {
-      const cx = clamp(this.x, b.min[0], b.max[0]), cy = clamp(this.y, b.min[1], b.max[1])
+      const [cx, cy] = Environment.nearest(b, this.x, this.y)
       const dx = this.x - cx, dy = this.y - cy
       const d2 = dx * dx + dy * dy
       if (d2 >= p.radius * p.radius) continue
@@ -254,7 +259,12 @@ export class CodeAIR {
   }
 
   resetEstimate() {
-    this.est = { x0: this.x, y0: this.y, z0: 0, h0: this.heading, ex: 0, ey: 0 }
+    this.est = { x0: this.x, y0: this.y, z0: this.z - this.rangeDown(), h0: this.heading, ex: 0, ey: 0 }
+  }
+
+  // The estimator's height: from the floor it was last reset on.
+  estimateZ() {
+    return this.z - this.est.z0
   }
 
   // Body-frame velocity: forward, left (m/s).
@@ -265,11 +275,7 @@ export class CodeAIR {
 
   // Down: underside to the floor or to the top of whatever is below.
   rangeDown() {
-    let top = 0
-    for (const b of this.env.obstacles) {
-      if (b.max[2] <= this.z + 1e-6 && b.max[2] > top && this.x >= b.min[0] && this.x <= b.max[0] && this.y >= b.min[1] && this.y <= b.max[1]) top = b.max[2]
-    }
-    return this.z - top
+    return this.z - this.env.supportAt(this.x, this.y, this.z)
   }
 
   // Up: the top of the frame to the ceiling or whatever is above.
@@ -277,7 +283,7 @@ export class CodeAIR {
     const z1 = this.z + this.p.height
     let low = Infinity
     for (const b of this.env.obstacles) {
-      if (b.min[2] >= z1 - 1e-6 && b.min[2] < low && this.x >= b.min[0] && this.x <= b.max[0] && this.y >= b.min[1] && this.y <= b.max[1]) low = b.min[2]
+      if (b.min[2] >= z1 - 1e-6 && b.min[2] < low && Environment.contains(b, this.x, this.y)) low = b.min[2]
     }
     return low - z1
   }
@@ -307,7 +313,7 @@ export class CodeAIR {
   snapshot() {
     return {
       id: this.id, kind: this.kind,
-      x: this.x, y: this.y, z: this.z, heading: this.heading,
+      x: this.x, y: this.y, z: this.z, above: this.rangeDown(), heading: this.heading,
       roll: this.roll, pitch: this.pitch,
       propAngle: this.propAngle, motors: this.motors,
       pixels: this.pixels.map((px) => [...px]),
