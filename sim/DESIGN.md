@@ -395,52 +395,71 @@ here, `LATENCY_US`); how many messages the receive queue holds and which it drop
 enforced here; ESP-NOW carries 250 bytes); RSSI between boards on one desk (about -42 dBm
 here, with a little noise); whether `send` with the radio off raises (silent here).
 
-## HANDOFF (2026-11-11, from the radio session)
+## HANDOFF (2026-11-11, from the radio, courses, stepping, infrared and performance session)
 
 **State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
-local commits only (last `e6d7154` before this handoff); nothing is pushed: pushing to the
-public repository waits for David's own go, typed in the session. CodeBot, CodeX and
-CodeAIR run in the app and headless, and the radio works between boards (section 1, "The
-device modules"; the boards page, `boards.html`). All tests pass: `npm run test:sim` with
-`CHROME_PATH` set (see below), and the app's smoke, subpath and protocol tests. The manager
-has approved the design; assets are CC BY-NC 4.0 and may be published; the devices' own
-Python may ship. Commits are authored as David (`git -c user.name=... -c user.email=...`:
-this checkout has no identity configured).
+local commits only (last `d1ffeec` before this handoff); nothing is pushed. David has given
+the manager a standing go to push, but p52-lab has no credential that can write to
+firialabs/opencodebot yet; the manager is sorting that out. Until the manager says so, commit
+locally. CodeBot, CodeX and CodeAIR run in the app and headless, with radio and infrared
+between boards, line courses, stepping by line, and a performance budget ("Where it
+stands"). All tests pass: `npm test` (the simulator's suites are in it, and so in CI) and
+`npm run perf`. The manager has approved the design; assets are CC BY-NC 4.0 and may be
+published; the devices' own Python may ship; CodeSpace's lesson content (its curriculum,
+such as its CodeX remote for xfly) may not. Commits are authored as David
+(`git -c user.name=... -c user.email=...`: this checkout has no identity configured).
 
 **Working setup on p52-lab.** Emscripten in `~/.cache/emsdk`; MicroPython checkout in
-`sim/build/micropython` (ignored); Firia's CircuitPython fork cloned (blobless) at
-`~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref` (its
-firmware images hold the CodeX font; `models/CodeAIR/TopPcb.jpg` shows the drone's board).
+`sim/build/micropython` (ignored); `sim/runtime/build.sh` rebuilds the VM (a few minutes)
+and applies `port.patch` and `py.patch`. Firia's CircuitPython fork cloned (blobless) at
+`~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref`.
 Playwright's own browser does not match the repo's pinned version here: use
 `CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
 `tests/smoke.mjs` and `tests/subpath.mjs` ignore `CHROME_PATH` and smoke uses port 4173
 (not ours): run copies with `executablePath` added, smoke against your own `vite preview`
-port through `OCB_URL`, subpath with `OCB_SUBPATH_PORT`. `tests/sim-ui.mjs` uses 4183.
-Never `pkill -f` a pattern that appears in the same command line (it kills the shell).
+port through `OCB_URL`, subpath with `OCB_SUBPATH_PORT`. `tests/sim-ui.mjs` uses 4183,
+`tests/perf.mjs` 4184. `npm run build` regenerates the models and rooms with the current
+tools (use `npx vite build` alone to keep hand-built ones). Never `pkill -f` a pattern that
+appears in the same command line (it kills the shell). Shell heredocs that mix quotes can
+trip the harness's removal check: write files with Edit and Write.
 
 **Things learned.** MicroPython's web port keeps its JS proxy tables on `globalThis`, so
 two VMs in one realm corrupt each other; the browser gives each board a worker, and the
-headless group swaps the globals (section 1). Playwright's `browser.newPage()` makes a new
-context each time, which isolates `BroadcastChannel`: open tabs that should hear each other
-from one `browser.newContext()`. The service worker answers a navigation whose query string
-it does not ignore with `index.html` (the fallback), so a page that takes a parameter needs
-it in `ignoreURLParametersMatching` (vite.config.js). `for _ in range(x)` takes a float on
-the devices' VMs (an inline loop), `range(10.0)` elsewhere raises. The CodeAIR figure's
-model is in metres, front +z, left +x. The CodeAIR finding in "Where it stands" is with the
-manager; the simulator keeps the device's code unchanged.
-
-Line courses, stepping by line and infrared are done ("Where it stands"). CodeSpace's own
-CodeX remote for xfly (`botsim-ref/public/lesson-content/objective-files/CodeXair_code`)
-also pairs and flies here; it is lesson content, so it is not in this repository.
+headless group swaps the globals (section 1). MicroPython's settrace reports a line only
+when its number changes; `py.patch` adds a jump back. Playwright's `browser.newPage()`
+makes a new context each time, which isolates `BroadcastChannel`: open tabs that should
+hear each other from one `browser.newContext()`. The service worker answers a navigation
+whose query string it does not ignore with `index.html`, so a page that takes a parameter
+needs it in `ignoreURLParametersMatching` (vite.config.js). CAD models with per-face normals
+cannot be simplified until the normals go (build-models.mjs `flat`). Chromium's CPU
+throttling and SwiftShader make a pessimistic Chromebook; software GL is the bottleneck,
+not the simulation (simulated time keeps up at 4x).
 
 **Next, in this order (the manager's order, 2026-11-11).**
 1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
-   `docs/device-targets.md`, `src/device/device-target.js`), rebase `sim` onto origin/main
-   and move SimDevice onto that interface (`registerDeviceKind('sim', ...)`, `?device=sim`;
-   template `src/device/loopback-device.js`, test `tests/device.mjs`); the seam is
-   `src/sim/device-switch.js`. The repo has Web Serial only, no WebUSB. Keep this branch's
-   Node 24 CI change alongside theirs (Playwright install with retries). Not merged on
-   origin/main at `3c30484` (checked 2026-11-11). The boards page builds on SimDevice
-   directly, so it moves with it.
-2. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
-   stands").
+   `docs/device-targets.md`, `src/device/device-target.js`), and before anything else:
+   rebase `sim` onto origin/main and move SimDevice onto that interface
+   (`registerDeviceKind('sim', ...)`, `?device=sim`; template
+   `src/device/loopback-device.js`, test `tests/device.mjs`); the seam is
+   `src/sim/device-switch.js`. Web Serial only, no WebUSB. `.github/workflows/ci.yml` will
+   conflict: keep theirs (Playwright install with retries) and this branch's Node 24, job
+   `timeout-minutes`, screenshot artifact and perf report step. The boards page builds on
+   SimDevice directly, so it moves with it. Not merged on origin/main at `3c30484`.
+2. (c) The simulator's own UI meets the app's accessibility and translation foundations:
+   a keyboard for every control, labels for screen readers, every string in the app's
+   string table. No string table exists yet on any pushed branch (checked 2026-11-11, after
+   `d1ffeec`); read what the app worker merged once PR #2 lands and follow it. The
+   simulator's strings are in `sim-panel.js`, `sim-device.js` (status messages and
+   notices), `view/codex-face.js`, `boards.html`, `boards/boards.js` and
+   `boards/examples.js` (the examples' comments are Python, and stay English unless the
+   table says otherwise). Things to check: the CodeX face's buttons have labels for the
+   arrows only by letter; the 3D view has no text alternative; the step and pause buttons
+   are icon-only with titles.
+3. (d) The other rooms (classroom, auditorium, cafeteria) behind a room picker, assets
+   under the same licence (sim/assets/LICENSE). Their GLBs are in CodeSpace's simulator
+   (`botsim-ref`); `sim/tools/build-env.mjs` takes a room's floor layers and physics boxes;
+   the gym's entry is the pattern. Line courses are laid around the room's origin: check
+   each room has clear floor there, or give courses a place per room. Keep the simulator
+   start within `npm run perf`'s budget (a room is fetched only when chosen).
+4. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
+   in "Where it stands", and the Chromebook checks in sim/README.md "Performance").
