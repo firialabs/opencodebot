@@ -31,7 +31,7 @@ export class Engine {
     this.o = opts
     this.world = opts.world
     this.speed = opts.speed ?? 1
-    this.usPerBranch = opts.usPerBranch ?? 12
+    this.usPerBranch = opts.usPerBranch ?? 5   // an ESP32-S2 at 240 MHz; to be measured
     this.hookPeriod = opts.hookPeriod ?? 1000
     this.paused = false
     this.stepPending = false

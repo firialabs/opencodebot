@@ -296,6 +296,10 @@ Built, on branch `sim` (local commits; pushing waits for David):
 - Tests: `tests/sim.mjs` (13 headless) and `tests/sim-ui.mjs` (every CodeBot block, the
   starter project, the REPL, in the app).
 
+- The CB3's own Python (botcore, botservices and their drivers, from Firia's CircuitPython
+  fork) runs unchanged on a thin CircuitPython layer over MicroPython and a simulated board
+  at the pin and bus level (David's direction, 2026-11-11: MicroPython in the browser, not
+  CircuitPython; port only the CircuitPython pieces the device code and programs use).
+
 Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
-them; nothing lays them yet); calibration; the device's own Python modules in place of the
-shims (David agreed they may ship; their sources are being located); CodeX; CodeAIR.
+them; nothing lays them yet); calibration; CodeX; CodeAIR.

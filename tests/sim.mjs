@@ -140,6 +140,24 @@ await test('pause holds simulated time; step and resume continue', async () => {
   assert.ok(performance.now() - stopAt < 50, 'stop was slow')
 })
 
+await test('proximity sees a wall ahead, and not one far away', async () => {
+  const src = 'from botcore import *\nprint(prox.detect(1, 100), prox.range(8, 4))'
+  const near = await runHeadless({ source: src, spawn: { x: 0, y: 1.82, heading: Math.PI / 2 } })
+  const far = await runHeadless({ source: src, spawn: { x: 0, y: 0, heading: Math.PI / 2 } })
+  assert.match(near.output, /^\(True, True\) \(\d+, \d+\)/)
+  assert.equal(far.output.trim(), '(False, False) (-1, -1)')
+})
+
+await test('the accelerometer reads as the CB3 does, flat and still', async () => {
+  const r = await runHeadless({ source: 'from botcore import *\nx, y, z = accel.read()\nprint(abs(x) < 400, abs(y) < 400, abs(z + 16384) < 400)' })
+  assert.equal(r.output.trim(), 'True True True')
+})
+
+await test('the device modules are the CB3\'s own, on the CircuitPython layer', async () => {
+  const r = await runHeadless({ source: 'import botcore, botservices, board, digitalio, busio\nprint(botcore.__doc__.split(chr(10))[0])\nprint(board.I2C().scan())' })
+  assert.equal(r.output.trim(), 'Core low-level module for CodeBot-CB3.\n[14, 28]')
+})
+
 await test('the REPL runs commands on the simulated board', async () => {
   const env = Environment.empty()
   const world = new World(env)

@@ -146,12 +146,19 @@ export class CodeBot {
   setPower(n, pct) { this.power[n] = clamp(pct, -100, 100) }
   enable(on) { this.enabled = !!on }
 
-  lineRead(n) {
+  // Line sensor n's 12-bit reading (0 brightest) with its emitter on at
+  // `gain` (1 at full power): reflected light pulls it down from dark.
+  lineRead(n, gain = 1) {
     const p = this.p
     const [wx, wy] = this.toWorld(...p.lineSensors[n])
     const r = this.env.floor.reflectance(wx, wy, p.lineSpot)
-    const raw = p.lineBlack + (p.lineWhite - p.lineBlack) * r + p.lineNoise * this.rng.normal()
+    const raw = p.lineBlack + (p.lineWhite - p.lineBlack) * r * gain + p.lineNoise * this.rng.normal()
     return Math.round(clamp(raw, 0, 4095))
+  }
+
+  // A line sensor's reading with its emitter off: only ambient light.
+  lineDark() {
+    return Math.round(clamp(this.p.lineBlack + this.p.lineNoise * this.rng.normal(), 0, 4095))
   }
 
   // Distance (m) from proximity sensor n to the nearest obstacle in its beam.
@@ -170,7 +177,8 @@ export class CodeBot {
     return best
   }
 
-  // Range (cm) at which sensor detects, for an emitter power and sensitivity.
+  // Range (cm) at which a sensor detects, for an emitter power and a
+  // sensitivity (0..100, the carrier's nearness to the receivers' frequency).
   static proxRangeCm(params, power, sens) {
     const [m, b] = params.proxTable[power - 1]
     return m * sens + b
@@ -182,12 +190,6 @@ export class CodeBot {
     return d <= CodeBot.proxRangeCm(this.p, power, sens)
   }
 
-  // The raw reading botcore's prox.read gives: 0 (touching) to 4095 (nothing).
-  proxRead(n) {
-    const d = this.proxDistance(n) * 100
-    return d === Infinity ? 4095 : Math.round(clamp((d / 50) * 4096, 0, 4095))
-  }
-
   encRead(n) {
     const p = this.p
     const phase = (this.wheelAngle[n] * p.encoderSlots) / (2 * Math.PI)
@@ -196,7 +198,9 @@ export class CodeBot {
     return Math.round(inSlot ? 4095 - noise : noise) & 4095
   }
 
-  // Signed 16-bit (x right, y forward, z up), at rest flat (0, 0, +1 g).
+  // What the KXTJ3 measures, signed 16-bit at +-2 g: specific force in the
+  // chip's frame (taken as x right, y forward, z up; to be checked on a CB3),
+  // so flat and still it measures (0, 0, +1 g).
   accelRead() {
     const p = this.p
     const g = p.accelPerG / p.gravity

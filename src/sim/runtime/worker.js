@@ -14,10 +14,16 @@ import { Environment } from '../world/environment.js'
 import { createDevice } from '../devices.js'
 
 const wasmUrl = new URL('./mp/micropython.wasm', import.meta.url).href
-const files = Object.fromEntries(
-  Object.entries(import.meta.glob('../python/*.py', { query: '?raw', import: 'default', eager: true }))
-    .map(([p, src]) => [p.split('/').pop(), src]),
-)
+// The Python modules: python/common/ for every device, python/<kind>/ for one.
+const PY = import.meta.glob('../python/**/*.py', { query: '?raw', import: 'default', eager: true })
+function pythonFiles(kind) {
+  const files = {}
+  for (const [p, src] of Object.entries(PY)) {
+    const [dir, name] = p.split('/').slice(-2)
+    if (dir === 'common' || dir === kind) files[name] = src
+  }
+  return files
+}
 
 let world, device, engine, env, spawn
 let lastFrame = 0
@@ -42,7 +48,7 @@ function build(kind, seed) {
   world = new World(env, { seed })
   device = world.add(createDevice(kind, env, world.rng.fork(), spawn))
   engine = new Engine({
-    loadMicroPython, wasmUrl, world, files,
+    loadMicroPython, wasmUrl, world, files: pythonFiles(kind),
     bridge: device.bridge,
     speed: engine?.speed ?? 1,
     onOutput: (bytes) => post({ t: 'output', bytes }, [bytes.buffer]),

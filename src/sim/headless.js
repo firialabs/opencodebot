@@ -29,11 +29,14 @@ export async function loadEnvironment(id) {
   return new Environment(world, { ...world.floor, width: info.width, height: info.height, data })
 }
 
-export function pythonFiles(kind) {
-  const dir = path.join(HERE, 'python')
+// The Python modules: python/common/ for every device, python/<kind>/ for one.
+export function pythonFiles(kind = 'codebot') {
   const files = {}
-  for (const f of fs.readdirSync(dir)) if (f.endsWith('.py')) files[f] = fs.readFileSync(path.join(dir, f), 'utf8')
-  void kind
+  for (const dir of ['common', kind]) {
+    const d = path.join(HERE, 'python', dir)
+    if (!fs.existsSync(d)) continue
+    for (const f of fs.readdirSync(d)) if (f.endsWith('.py')) files[f] = fs.readFileSync(path.join(d, f), 'utf8')
+  }
   return files
 }
 

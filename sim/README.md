@@ -12,8 +12,9 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
 | `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot model, maths and randomness |
-| `src/sim/python/` | the device modules as the program sees them (`botcore`, CircuitPython's `time`) |
-| `src/sim/bridge/` | each device's `_sim` module: what the Python modules call, and what each call costs in device time |
+| `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time` |
+| `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules |
+| `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
 | `src/sim/view/` | the Three.js picture, drawn from the world's snapshots |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
@@ -22,6 +23,27 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `sim/runtime/` | the MicroPython variant (`variant/`), the port patch and `build.sh` |
 | `sim/tools/` | turn the source GLBs into what the browser and the world load |
 | `sim/assets/` | the source models and rooms (CC BY-NC 4.0, see its LICENSE) |
+
+## The device's own Python
+
+The simulator runs each device's own frozen Python modules, unchanged, so a
+program meets the same `botcore` (and its bugs and timing) as on the device.
+They come from Firia's CircuitPython fork, `git@bitbucket.org:firia/firia-circuitpython.git`:
+
+| Device | Branch | Commit | Path |
+|---|---|---|---|
+| CodeBot CB3 | `codex` | `4d3064021` (2025-04-04) | `ports/esp32s2/boards/cb3/frozen/general/` |
+| CodeX | `codex` | `4d3064021` (2025-04-04) | `ports/esp32s2/boards/codex_mk1/frozen/` |
+| CodeAIR | `codeair` | `752129a9f` (2026-11-05) | `ports/espressif/boards/codeair/frozen/` |
+
+Under them is a thin CircuitPython layer over MicroPython (`python/common/`):
+only what the device code and students' programs use, nothing more. Under
+that, each device's simulated board (`src/sim/bridge/`) answers at the level
+the device code drives the hardware: a pin's level, an ADC channel, a PWM
+duty and frequency, an I2C register, an SPI write. A device's C modules
+(`cb3_drivers` on the CB3) get small Python stand-ins beside its modules.
+
+To update them, copy the files from a newer commit and change the table.
 
 ## Building
 
