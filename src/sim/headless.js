@@ -79,7 +79,7 @@ export async function runHeadlessGroup(opts) {
   for (const [i, d] of opts.devices.entries()) {
     const seed = d.seed ?? (opts.seed ?? 1) + i
     const run = await prepare({ ...d, seed }, d.seconds ?? opts.seconds, lockstep)
-    if (run.device.radio) air.add(run.device.radio)
+    for (const part of [run.device.radio, run.device.infrared]) if (part) air.add(part)
     runs.push(run)
   }
   const t0 = performance.now()

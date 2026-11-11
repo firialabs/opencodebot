@@ -50,7 +50,9 @@ export function codeairBridge(air) {
 
   return (engine) => {
     const c = (us) => engine.charge(us)
-    air.radio.reset(engine.world.timeUs)  // a fresh VM: the radio module starts over
+    // a fresh VM: the radio and infrared start over
+    air.radio.reset(engine.world.timeUs)
+    air.infrared.reset(engine.world.timeUs)
     if (engine.o.files?.['flight_catalog.py']) cf.loadCatalog(engine.o.files['flight_catalog.py'])
     cf.onConsole = (text) => { if (consoleOut) engine.write(new TextEncoder().encode(text.replace(/\n/g, '\r\n'))) }
     consoleOut = false
@@ -123,6 +125,19 @@ export function codeairBridge(air) {
       radio_set(on, channel) { c(COST_US.gpio); air.radio.set(on, channel, engine.world.timeUs) },
       radio_send(message) { c(2000); air.radio.send(message, engine.world.timeUs) },
       radio_receive() { c(COST_US.gpio); return air.radio.receive(engine.world.timeUs) },
+
+      // infrared (world/infrared.js), as pulseio's PulseOut and PulseIn
+      ir_send(csv) {
+        const pulses = csv ? csv.split(',').map(Number) : []
+        air.infrared.send(pulses, engine.world.timeUs)
+        c(pulses.reduce((a, b) => a + b, 0))       // PulseOut.send blocks while it sends
+      },
+      ir_open(maxlen) { air.infrared.open(maxlen) },
+      ir_len() { c(COST_US.gpio); return air.infrared.length(engine.world.timeUs) },
+      ir_get(i) { return air.infrared.get(i) },
+      ir_popleft() { return air.infrared.popleft() },
+      ir_clear() { air.infrared.clear() },
+      ir_pause(on) { air.infrared.pause(on, engine.world.timeUs) },
     }
   }
 }

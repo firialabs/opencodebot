@@ -56,7 +56,7 @@ async function loadEnv(id, base) {
 function build(kind, seed) {
   world = new World(env, { seed })
   device = world.add(createDevice(kind, env, world.rng.fork(), spawn))
-  if (device.radio) air.add(device.radio)
+  for (const part of [device.radio, device.infrared]) if (part) air.add(part)
   engine = new Engine({
     loadMicroPython, wasmUrl, world, files: pythonFiles(kind),
     bridge: device.bridge,

@@ -10,7 +10,7 @@ import '../sim.css'
 import './boards.css'
 import { SimDevice } from '../sim-device.js'
 import { TerminalPanel } from '../../ui/terminal.js'
-import { exampleFor } from './examples.js'
+import { EXAMPLES, example, exampleFor } from './examples.js'
 
 const KINDS = [['codex', 'CodeX'], ['codeair', 'CodeAIR'], ['codebot', 'CodeBot']]
 const STORE = 'opencodebot-boards'
@@ -28,11 +28,14 @@ class Board {
     this.el.className = 'bd-card'
     this.el.innerHTML = `
       <div class="bd-head">
-        <span class="bd-name"></span>
+        <div class="bd-title-row">
+          <span class="bd-name"></span>
+          <button type="button" class="bd-remove" title="Remove this board" aria-label="Remove this board">✕</button>
+        </div>
         <select class="bd-kind" aria-label="Which board">${KINDS.map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select>
+        <select class="bd-example" aria-label="Start from an example"></select>
         <button type="button" class="btn btn-run bd-run">▶ Run</button>
         <button type="button" class="btn btn-stop bd-stop" disabled>■ Stop</button>
-        <button type="button" class="bd-remove" title="Remove this board" aria-label="Remove this board">✕</button>
       </div>
       <div class="bd-stage" data-on="false">
         <div class="sim-view"></div>
@@ -56,6 +59,13 @@ class Board {
     this.status = q('.bd-status')
     this.code = q('.bd-code')
     this.kindSelect.value = kind
+    this.exampleSelect = q('.bd-example')
+    this._fillExamples()
+    this.exampleSelect.addEventListener('change', () => {
+      const code = example(this.kind, this.exampleSelect.value)
+      if (code) { this.code.value = code; save() }
+      this.exampleSelect.value = ''
+    })
     this.code.value = code ?? exampleFor(kind, boards.length)
     this.sim.attachView(q('.sim-view'))
     grid.appendChild(this.el)
@@ -78,6 +88,12 @@ class Board {
       b.addEventListener('pointerup', up)
       b.addEventListener('pointerleave', up)
     }
+  }
+
+  _fillExamples() {
+    const s = this.exampleSelect
+    s.replaceChildren(new Option('Examples…', ''))
+    for (const [id, name] of EXAMPLES[this.kind] ?? []) s.add(new Option(name, id))
   }
 
   // Numbered by place, so the names stay 1, 2, 3 as boards come and go.
@@ -107,6 +123,7 @@ class Board {
     this.stage.dataset.on = 'false'
     this.bar.hidden = true
     this.kind = kind
+    this._fillExamples()
     if (wasExample) this.code.value = exampleFor(kind, boards.indexOf(this))
     save()
   }
@@ -162,9 +179,13 @@ function load() {
   return null
 }
 
-// ?boards=codex,codeair starts with those boards and their examples.
-const asked = new URLSearchParams(location.search).get('boards')?.split(',').filter((k) => KINDS.some(([id]) => id === k))
-const start = asked?.length ? asked.map((kind) => ({ kind })) : load() ?? [{ kind: 'codex' }, { kind: 'codex' }]
+// ?boards=codex,codeair starts with those boards and their first examples;
+// kind:example picks one (?boards=codex:codeair-remote,codeair:xfly).
+const asked = new URLSearchParams(location.search).get('boards')?.split(',')
+  .map((s) => s.split(':'))
+  .filter(([k]) => KINDS.some(([id]) => id === k))
+  .map(([kind, ex]) => ({ kind, code: (ex && example(kind, ex)) ?? undefined }))
+const start = asked?.length ? asked : load() ?? [{ kind: 'codex' }, { kind: 'codex' }]
 for (const spec of start.slice(0, MAX_BOARDS)) add(spec)
 addButton.addEventListener('click', () => { add({ kind: 'codex' }); save() })
 window.boards = boards       // for tests and the console

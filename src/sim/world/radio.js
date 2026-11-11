@@ -1,10 +1,11 @@
-// The 2.4 GHz radio of CodeX and CodeAIR, and the air between radios.
+// The 2.4 GHz radio of CodeX and CodeAIR, and the air between boards.
 //
 // On the device the radio is a C module over ESP-NOW broadcast: a message
 // goes to every radio on the same channel, the sender does not hear itself,
 // and each receiver queues what it hears until the program asks for it. Here
 // a Radio is that queue and its settings; an Air carries messages between
-// radios. Which Air depends on where the devices are:
+// radios, and infrared between boards (world/infrared.js), each medium to its
+// own kind. Which Air depends on where the devices are:
 // - in the browser each board runs in its own worker, and BroadcastAir
 //   (runtime/broadcast-air.js) carries messages between workers, so boards in
 //   one page, or in two tabs of the same browser, hear each other;
@@ -15,6 +16,8 @@ export const LATENCY_US = 2000     // send to queued; ESP-NOW takes a few ms (to
 export const QUEUE_DEPTH = 32      // what the device's queue holds (to check on a device)
 
 export class Radio {
+  medium = 'radio'          // what the air carries it on (with 'ir')
+
   constructor(rng) {
     this.rng = rng
     this.air = null         // set by whoever connects this device to others
@@ -40,12 +43,12 @@ export class Radio {
 
   send(message, nowUs) {
     if (!this.on) return
-    this.air?.transmit(this, this.channel, String(message), nowUs)
+    this.air?.transmit(this, { channel: this.channel, message: String(message) }, nowUs)
   }
 
   // A message on the air reaches this radio at `atUs` on its own clock;
   // whether it is heard depends on the radio's settings then.
-  hear(channel, message, atUs) {
+  hear({ channel, message }, atUs) {
     let i = this.flying.length
     while (i > 0 && this.flying[i - 1].atUs > atUs) i--
     this.flying.splice(i, 0, { channel, message, atUs })

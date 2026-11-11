@@ -22,8 +22,10 @@ body.bd-page { overflow: auto; height: auto; min-height: 100%; background: var(-
   box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .bd-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; }
+.bd-title-row { display: flex; align-items: center; width: 100%; }
 .bd-name { font: 600 16px var(--font-display); color: var(--ink); margin-right: auto; }
-.bd-kind {
+.bd-example { flex: 1 1 120px; min-width: 0; }
+.bd-kind, .bd-example {
   font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-sm);
   padding: 4px 6px; background: var(--paper); color: var(--ink);
 }

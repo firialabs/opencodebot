@@ -33,7 +33,9 @@ const QUEUE_MAX = 64                 // packets the C module buffers
 // Log packets it keeps, oldest dropped. flight.get_data() reads the oldest,
 // so this is how stale a reading can be (to check on a CodeAIR).
 const LOG_QUEUE_MAX = 2
-const VERSION = 'CodeAIR Crazyflie 2024.10 (simulated)'
+// Its last word is what stm_fw.version() names, so selftest.check_firmware
+// finds it up to date (python/codeair/stm_fw.py).
+const VERSION = 'CodeAIR Crazyflie 2024.10-codeair-sim'
 
 export class Crazyflie {
   constructor(air) {
@@ -272,6 +274,12 @@ export class Crazyflie {
       case 'pm.vbatMV': return Math.round(a.volts * 1000)
       case 'pm.batteryLevel': return 80
       case 'pm.state': return 0
+      // The supervisor's bits: can arm, auto-arm and can fly always (it never
+      // tumbles or locks here); armed with the motors on; flying once off the floor.
+      case 'supervisor.info': return 0x01 | 0x04 | 0x08 | (a.motors ? 0x02 : 0) | (a.motors && a.z > 0.02 ? 0x10 : 0)
+      case 'sys.canfly': return 1
+      case 'sys.isFlying': return a.motors && a.z > 0.02 ? 1 : 0
+      case 'sys.isTumbled': return 0
       case 'motor.m1': case 'motor.m2': case 'motor.m3': case 'motor.m4':
         return a.motors ? Math.round(36000 + 4000 * a.vz) : 0
       default: return 0

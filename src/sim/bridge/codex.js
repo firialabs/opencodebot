@@ -59,7 +59,9 @@ export function codexBridge(cx) {
 
   return (engine) => {
     const c = (us) => engine.charge(us)
-    cx.radio.reset(engine.world.timeUs)   // a fresh VM: the radio module starts over
+    // a fresh VM: the radio and infrared start over
+    cx.radio.reset(engine.world.timeUs)
+    cx.infrared.reset(engine.world.timeUs)
     const g = cx.gfx
     const draw = (n) => c(COST_US.gfxCall + n * COST_US.gfxPixel)
     return {
@@ -146,6 +148,19 @@ export function codexBridge(cx) {
       radio_set(on, channel) { c(COST_US.gpio); cx.radio.set(on, channel, engine.world.timeUs) },
       radio_send(message) { c(2000); cx.radio.send(message, engine.world.timeUs) },
       radio_receive() { c(COST_US.gpio); return cx.radio.receive(engine.world.timeUs) },
+
+      // infrared (world/infrared.js), as pulseio's PulseOut and PulseIn
+      ir_send(csv) {
+        const pulses = csv ? csv.split(',').map(Number) : []
+        cx.infrared.send(pulses, engine.world.timeUs)
+        c(pulses.reduce((a, b) => a + b, 0))       // PulseOut.send blocks while it sends
+      },
+      ir_open(maxlen) { cx.infrared.open(maxlen) },
+      ir_len() { c(COST_US.gpio); return cx.infrared.length(engine.world.timeUs) },
+      ir_get(i) { return cx.infrared.get(i) },
+      ir_popleft() { return cx.infrared.popleft() },
+      ir_clear() { cx.infrared.clear() },
+      ir_pause(on) { cx.infrared.pause(on, engine.world.timeUs) },
     }
   }
 }

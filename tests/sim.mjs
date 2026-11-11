@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import { runHeadless, runHeadlessGroup } from '../src/sim/headless.js'
-import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR } from '../src/sim/boards/examples.js'
+import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR, REMOTE_FOR_CODEAIR, XFLY_CODEAIR } from '../src/sim/boards/examples.js'
 import { COURSES } from '../src/sim/world/courses.js'
 import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
@@ -461,6 +461,30 @@ await test('the boards page examples: a CodeX remote lights the listeners', asyn
     const p = r.device.snapshot().pixels[0]
     assert.ok(p[0] > 0 && p[1] === 0, `after B: ${p}`)
   }
+})
+
+console.log('infrared')
+
+await test('infrared: the devices\' own infrared.py, between boards and back to the sender', async () => {
+  const { results } = await runHeadlessGroup({ seconds: 8, devices: [
+    { kind: 'codex', source: 'import infrared, time\nfrom codex import *\nir = infrared.Infrared(power)\ntime.sleep(1.5)\nir.send("Hi!")\nprint(ir.receive())\nir.send("ok")\nir.flush()\nprint(ir.receive())' },
+    { kind: 'codeair', source: 'import infrared, time\nfrom codeair import *\nir = infrared.Infrared()\nheard = []\nfor i in range(200):\n    heard += ir.receive_queue()\n    time.sleep(0.02)\nprint(heard)' },
+  ] })
+  assert.deepEqual(results.map((r) => r.output.trim()), ['Hi!\nNone', "['Hi!', 'ok']"])
+})
+
+await test('CodeAIR\'s factory program pairs with a CodeX remote by infrared, then flies by radio', async () => {
+  const press = (n, t, d = 0.3) => [{ t, fn: (w, dv) => dv.press(n, true) }, { t: t + d, fn: (w, dv) => dv.press(n, false) }]
+  let top = 0
+  const { results } = await runHeadlessGroup({ seconds: 16, devices: [
+    { kind: 'codex', source: REMOTE_FOR_CODEAIR, inputs: [...press(5, 1, 2), ...press(4, 5), ...press(0, 9, 1.5), ...press(5, 12)] },
+    { kind: 'codeair', source: XFLY_CODEAIR, env: haveGym ? 'gym' : 'empty', setup: (w, d) => w.onTick(() => { top = Math.max(top, d.z) }) },
+  ] })
+  const [remote, air] = results
+  assert.ok(!remote.error && !air.error, remote.output + air.output)
+  assert.match(air.output, /Ctrl mode: ch=\d+, nid=\d+/)
+  assert.ok(top > 0.3, `it rose to ${top.toFixed(2)} m`)
+  assert.ok(air.device.z < 0.02 && air.device.y > 0.15, `it ended at z ${air.device.z.toFixed(2)}, y ${air.device.y.toFixed(2)}`)
 })
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)) }

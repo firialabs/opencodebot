@@ -13,7 +13,7 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
 | `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
-| `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
+| `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `world/infrared.js` (its infrared, under `python/common/pulseio.py`), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
 | `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs |
 | `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
 | `src/sim/view/` | the pictures: Three.js for the room (`view.js`) with CodeBot and CodeAIR in it (`codebot-figure.js`, `codeair-figure.js`), a flat face for CodeX (`codex-face.js`) |
@@ -112,9 +112,10 @@ const { results } = await runHeadlessGroup({ seconds: 5, devices: [
 ## The boards page
 
 `boards.html` (the "📡 More boards" link in the simulator bar, for CodeX and CodeAIR) shows
-several simulated boards, each with its own Python, picture and terminal. Every board runs
-in its own worker, and the radios of all of them hear each other, and the app's board in
-another tab of the same browser. `?boards=codex,codeair` starts with those boards; otherwise
+several simulated boards, each with its own Python, picture and terminal, and examples to
+start from (among them CodeAIR's factory program and a CodeX remote that pairs with it by
+infrared). Every board runs in its own worker, and their radios and infrared reach each
+other, and the app's board in another tab of the same browser. `?boards=codex,codeair` starts with those boards; otherwise
 the page remembers its boards and programs in this browser.
 
 ## Adding a device

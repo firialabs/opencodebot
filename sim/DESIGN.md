@@ -361,8 +361,16 @@ Built, on branch `sim` (local commits; pushing waits for David):
   generating the program once more with a marker before each statement
   (`generateWithLines`).
 
-Not yet: infrared, so `xfly` (which pairs by IR before it flies by
-radio) cannot pair yet; calibration.
+- Infrared between boards (`world/infrared.js`): the devices' own `infrared.py` on CodeX and
+  CodeAIR runs unchanged over a `pulseio` stand-in (`python/common/pulseio.py`). A burst of
+  pulses reaches every other board on the air once it has been sent, and the sender's own
+  receiver, as on the device; range and aim are not modelled. CodeAIR's factory program
+  (`xfly.py`, with its `selftest.py`) pairs with a CodeX remote by infrared and flies by
+  radio; the simulated flight controller reports `supervisor.info` and a version that
+  `selftest.check_firmware` finds current. The boards page has a remote for it among its
+  examples (written here, speaking xfly's protocol).
+
+Not yet: calibration.
 
 Found by running CodeAIR's own Python (firia-circuitpython `codeair` at `752129a9f`), both
 reproduced by the simulator because the device's VM behaves the same way, to confirm on a
@@ -372,6 +380,10 @@ which neither CircuitPython nor MicroPython has (`ValueError: bad typecode`).
 
 To check on a real CodeX: how `show()` scales and centres, how `print` wraps and scrolls,
 how long a full-screen update takes, the order of LEDs 0 to 3 and of the NeoPixels.
+
+To check on real infrared: how far apart and how aimed two boards still see each other
+(here, always); the receiver's timing error (3% here); whether a CodeX sees its own emitter
+as a CodeAIR does (here both do).
 
 To check on real radios (CodeX or CodeAIR): the latency from `send` to `receive` (2 ms
 here, `LATENCY_US`); how many messages the receive queue holds and which it drops when full
@@ -413,7 +425,9 @@ the devices' VMs (an inline loop), `range(10.0)` elsewhere raises. The CodeAIR f
 model is in metres, front +z, left +x. The CodeAIR finding in "Where it stands" is with the
 manager; the simulator keeps the device's code unchanged.
 
-Line courses and stepping by line are done ("Where it stands").
+Line courses, stepping by line and infrared are done ("Where it stands"). CodeSpace's own
+CodeX remote for xfly (`botsim-ref/public/lesson-content/objective-files/CodeXair_code`)
+also pairs and flies here; it is lesson content, so it is not in this repository.
 
 **Next, in this order (the manager's order, 2026-11-11).**
 1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
@@ -424,9 +438,5 @@ Line courses and stepping by line are done ("Where it stands").
    Node 24 CI change alongside theirs (Playwright install with retries). Not merged on
    origin/main at `3c30484` (checked 2026-11-11). The boards page builds on SimDevice
    directly, so it moves with it.
-2. Infrared between boards, so CodeAIR's `xfly.py` can pair with a CodeX remote (it pairs
-   by IR, `infrared.py` over `pulseio`, then flies by radio); `xfly`, `infrared` and
-   `selftest` are not yet among the simulator's CodeAIR modules. CodeSpace's CodeX side is
-   in `botsim-ref/public/lesson-content/objective-files/CodeXair_code`.
-3. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
+2. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
    stands").

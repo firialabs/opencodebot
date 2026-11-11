@@ -56,22 +56,24 @@ export class Lockstep {
   }
 }
 
-// The air of a lockstep group: a message is heard by every other radio
-// after the radio's latency, and no sooner than the barrier after the one
-// the sender is working toward.
+// The air of a lockstep group: what one board sends (a radio message, an
+// infrared burst) reaches every other board's part of the same medium after
+// the radio's latency, and no sooner than the barrier after the one the
+// sender is working toward.
 export class LockstepAir {
   constructor(lockstep) {
     this.lockstep = lockstep
-    this.radios = []
+    this.parts = []
   }
 
-  add(radio) {
-    this.radios.push(radio)
-    radio.air = this
+  // A board's radio or infrared (anything with `medium` and `hear`).
+  add(part) {
+    this.parts.push(part)
+    part.air = this
   }
 
-  transmit(from, channel, message, nowUs) {
+  transmit(from, payload, nowUs) {
     const at = Math.max(nowUs + LATENCY_US, this.lockstep.horizonUs + this.lockstep.sliceUs)
-    for (const r of this.radios) if (r !== from) r.hear(channel, message, at)
+    for (const p of this.parts) if (p !== from && p.medium === from.medium) p.hear(payload, at)
   }
 }
