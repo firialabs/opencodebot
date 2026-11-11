@@ -364,22 +364,23 @@ Never `pkill -f` a pattern that appears in the same command line (it kills the s
 **Things learned.** MicroPython (and CircuitPython) compile `for _ in range(x)` to an
 inline loop that accepts a float, so `flightdb`'s `range(int(t) / 10)` works on the device;
 `range(10.0)` anywhere else raises. The CodeAIR figure's model is in metres, front +z, left
-+x. The CodeAIR finding in "Where it stands" (`fly_high` cannot fly) is for the manager to
-raise; the simulator keeps the device's code unchanged.
++x. The CodeAIR finding in "Where it stands" (`fly_high` cannot fly at `752129a9f`:
+`high_level_commander.py` lacks `import crtp`, and `takeoff`/`land` pack struct code `?`)
+is with the manager, who is taking it to David; the simulator keeps the device's code
+unchanged, so it reproduces the failure until the firmware is fixed.
 
-**Next, in this order.**
-0. When PR #2 (branch `feat/device-targets`, the device target interface:
-   `docs/device-targets.md`, `src/device/device-target.js`) is merged to origin/main,
-   rebase `sim` onto it and move SimDevice onto that interface (`registerDeviceKind('sim',
-   ...)`, `?device=sim`; template `src/device/loopback-device.js`, test `tests/device.mjs`).
-   Keep this branch's Node 24 CI change alongside theirs (Playwright install with retries).
-   Not merged at 16d06d1. `tests/sim-ui.mjs` serves on its own port, 4183.
-1. Radio between simulated devices: a CodeX and a CodeAIR in one page (CodeAIR's `xfly.py`
-   pairs with a CodeX as a remote), or two of one kind. `python/radio/radio.py` is shared;
-   the bridges' `radio_send`/`radio_receive` are the seam; the world holds devices already.
-   Needs a page layout with two boards.
-2. Tape line courses on the floor (the floor reflectance map supports them).
-3. Line-level stepping in the editor.
-4. The device target interface from the app worker (`src/sim/device-switch.js` is the seam).
+**Next, in this order (the manager's order, 2026-11-11).**
+1. Radio between simulated devices, on a two-board page: a CodeX and a CodeAIR in one page
+   (CodeAIR's `xfly.py` pairs with a CodeX as a remote), or two of one kind.
+   `python/radio/radio.py` is shared; the bridges' `radio_send`/`radio_receive` are the
+   seam; the world holds devices already.
+2. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
+   `docs/device-targets.md`, `src/device/device-target.js`), rebase `sim` onto origin/main
+   and move SimDevice onto that interface (`registerDeviceKind('sim', ...)`, `?device=sim`;
+   template `src/device/loopback-device.js`, test `tests/device.mjs`). Keep this branch's
+   Node 24 CI change alongside theirs (Playwright install with retries). Not merged at
+   0d3fd4d. `tests/sim-ui.mjs` serves on its own port, 4183.
+3. Tape line courses on the floor (the floor reflectance map supports them).
+4. Line-level stepping in the editor.
 5. Calibration on real devices (the lists in "Calibration").
 
