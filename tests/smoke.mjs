@@ -34,7 +34,7 @@ async function reachable(url) {
 const server = await ensureServer()
 
 const problems = []
-const browser = await chromium.launch()
+const browser = await chromium.launch(process.env.OCB_CHROMIUM ? { executablePath: process.env.OCB_CHROMIUM } : {})
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 page.on('pageerror', (e) => problems.push(`page error: ${e.message}`))
 page.on('console', (m) => {
