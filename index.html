@@ -33,6 +33,9 @@
           <button id="btn-connect" class="btn btn-connect">
             <span class="btn-emoji" aria-hidden="true">🔌</span><span class="btn-text">Connect</span>
           </button>
+          <button id="btn-sim" class="btn btn-sim" title="Try your program on a simulated device">
+            <span class="btn-emoji" aria-hidden="true">🎮</span><span class="btn-text">Simulate</span>
+          </button>
           <button id="btn-run" class="btn btn-run" disabled>
             <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text">Run</span>
           </button>
@@ -73,6 +76,9 @@
             <button class="tab is-active" role="tab" data-tab="terminal" aria-selected="true">
               <span aria-hidden="true">💬</span> Talk to device
             </button>
+            <button class="tab" role="tab" data-tab="sim" aria-selected="false">
+              <span aria-hidden="true">🎮</span> Simulator
+            </button>
             <button class="tab" role="tab" data-tab="python" aria-selected="false">
               <span aria-hidden="true">🐍</span> Python
             </button>
@@ -85,6 +91,10 @@
             <div class="terminal-foot" id="terminal-foot">
               <span class="term-hint">Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.</span>
             </div>
+          </div>
+
+          <div class="tab-panel" data-panel="sim">
+            <div id="sim-host" class="sim-host"></div>
           </div>
 
           <div class="tab-panel" data-panel="python">

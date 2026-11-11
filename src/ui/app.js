@@ -6,6 +6,9 @@ import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
 import { HELP_HTML, ABOUT_HTML, welcomeHtml } from './copy.js'
+import { DeviceSwitch } from '../sim/device-switch.js'
+import { SimDevice } from '../sim/sim-device.js'
+import { SimPanel } from '../sim/sim-panel.js'
 
 const SEEN_WELCOME = 'opencodebot.welcomed.v1'
 const PICKED_DEVICE = 'opencodebot.device.v1'
@@ -14,7 +17,8 @@ const $ = (id) => document.getElementById(id)
 
 export class App {
   constructor() {
-    this.device = new DeviceManager()
+    this.device = new DeviceSwitch(new DeviceManager(), new SimDevice())
+    this.simPanel = new SimPanel($('sim-host'), this.device.sim, { onStart: () => this._toggleSimulate() })
     this.pickedTarget = localStorage.getItem(PICKED_DEVICE) || null
 
     this.workspace = new BlockWorkspace($('blockly-root'), this.pickedTarget)
@@ -115,8 +119,31 @@ export class App {
     }
   }
 
+  async _toggleSimulate() {
+    if (this.device.simulating) {
+      await this.device.disconnect()
+      this._refreshSimButton()
+      return
+    }
+    const target = this.pickedTarget || 'codebot'
+    if (!SimDevice.canSimulate(target)) {
+      toast({ kind: 'warn', title: `No simulated ${getTarget(target)?.name} yet`, detail: 'The simulator has CodeBot so far. Pick CodeBot to try it.' })
+      return
+    }
+    this._selectTab('sim')
+    await this.device.simulate(target)
+    this._refreshSimButton()
+  }
+
+  _refreshSimButton() {
+    const on = this.device.simulating
+    const b = $('btn-sim')
+    b.dataset.connected = String(on)
+    b.querySelector('.btn-text').textContent = on ? 'Stop simulator' : 'Simulate'
+  }
+
   async _toggleConnect() {
-    if (this.device.isConnected) {
+    if (this.device.isConnected && !this.device.simulating) {
       await this.device.disconnect()
       this.terminal.warn('Device disconnected.')
       return
@@ -155,6 +182,7 @@ export class App {
 
   _bindChrome() {
     $('btn-connect').addEventListener('click', () => this._toggleConnect())
+    $('btn-sim').addEventListener('click', () => this._toggleSimulate())
     $('btn-run').addEventListener('click', () => this._run())
     $('btn-stop').addEventListener('click', () => this._stop())
     $('btn-clear-term').addEventListener('click', () => this.terminal.clear())
@@ -224,6 +252,7 @@ export class App {
     for (const panel of document.querySelectorAll('.tab-panel')) {
       panel.classList.toggle('is-active', panel.dataset.panel === name)
     }
+    if (name === 'sim') this.device.sim.view?.resize()
     if (name === 'terminal') {
       this.terminal.resize()
       this.terminal.focus()
@@ -336,10 +365,12 @@ export class App {
     $('device-chip-label').textContent = target ? target.name : 'Pick a device'
     $('device-chip-icon').src = `./icons/${target?.icon || 'dev-any.svg'}`
 
+    const usb = connected && !this.device.simulating
     const connect = $('btn-connect')
-    connect.dataset.connected = String(connected)
-    connect.querySelector('.btn-text').textContent = connected ? 'Disconnect' : 'Connect'
-    connect.querySelector('.btn-emoji').textContent = connected ? '✅' : '🔌'
+    connect.dataset.connected = String(usb)
+    connect.querySelector('.btn-text').textContent = usb ? 'Disconnect' : 'Connect'
+    connect.querySelector('.btn-emoji').textContent = usb ? '✅' : '🔌'
+    this._refreshSimButton()
   }
 
   _refreshButtons() {
@@ -461,7 +492,7 @@ export class App {
     $('btn-connect').disabled = true
     this.terminal.warn(
       'This browser does not support Web Serial, so OpenCodeBot cannot talk to your device.\r\n' +
-        'You can still build blocks and download the Python. Chrome or Edge on a computer will connect.',
+        'You can still build blocks, try them in the simulator and download the Python. Chrome or Edge on a computer will connect.',
     )
   }
 

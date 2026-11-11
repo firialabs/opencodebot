@@ -1,0 +1,95 @@
+// The simulator's panel: the 3D view and its controls (camera, pause, step,
+// speed, the board's buttons). It builds its own DOM inside `host`.
+import './sim.css'
+
+const CAMERAS = [['chase', '🎥 Follow'], ['orbit', '🔄 Orbit'], ['top', '🗺️ Top']]
+const SPEEDS = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']]
+
+export class SimPanel {
+  constructor(host, sim, { onStart }) {
+    this.sim = sim
+    host.innerHTML = `
+      <div class="sim-stage" data-off="true">
+        <div class="sim-view"></div>
+        <div class="sim-off">
+          <p>Try your program on a simulated CodeBot. No cable needed!</p>
+          <button type="button" class="btn btn-run sim-start">🎮 Start the simulator</button>
+        </div>
+      </div>
+      <div class="sim-bar" hidden>
+        <span class="sim-group sim-cameras"></span>
+        <span class="sim-group">
+          <button type="button" class="icon-btn sim-pause" title="Pause">⏸</button>
+          <button type="button" class="icon-btn sim-step" title="Step: run a moment, then pause">⏭</button>
+          <select class="sim-speed" title="Simulation speed"></select>
+        </span>
+        <span class="sim-group sim-buttons">
+          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the robot">BTN 0</button>
+          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the robot">BTN 1</button>
+        </span>
+        <button type="button" class="icon-btn sim-reset" title="Put the robot back at the start">↺</button>
+      </div>`
+    const q = (s) => host.querySelector(s)
+    this.stage = q('.sim-stage')
+    this.bar = q('.sim-bar')
+    sim.attachView(q('.sim-view'))
+    q('.sim-start').addEventListener('click', () => onStart())
+
+    for (const [mode, label] of CAMERAS) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'sim-chip'
+      b.dataset.mode = mode
+      b.textContent = label
+      b.addEventListener('click', () => this._camera(mode))
+      q('.sim-cameras').appendChild(b)
+    }
+    this._camera('chase')
+
+    const speed = q('.sim-speed')
+    for (const [v, label] of SPEEDS) speed.add(new Option(label, v, v === 1, v === 1))
+    speed.addEventListener('change', () => sim.setSpeed(Number(speed.value)))
+
+    this.paused = false
+    const pause = q('.sim-pause')
+    pause.addEventListener('click', () => {
+      this.paused = !this.paused
+      if (this.paused) sim.pause(); else sim.resume()
+      pause.textContent = this.paused ? '▶' : '⏸'
+      pause.title = this.paused ? 'Resume' : 'Pause'
+    })
+    q('.sim-step').addEventListener('click', () => {
+      this.paused = true
+      pause.textContent = '▶'
+      sim.step()
+    })
+    q('.sim-reset').addEventListener('click', () => sim.reset())
+
+    for (const b of host.querySelectorAll('.sim-board-btn')) {
+      const n = Number(b.dataset.n)
+      const down = (e) => { e.preventDefault(); b.classList.add('is-down'); sim.press(n, true) }
+      const up = () => { if (b.classList.contains('is-down')) { b.classList.remove('is-down'); sim.press(n, false) } }
+      b.addEventListener('pointerdown', down)
+      b.addEventListener('pointerup', up)
+      b.addEventListener('pointerleave', up)
+    }
+
+    sim.addEventListener('state', () => this.refresh())
+    sim.addEventListener('device', () => this.refresh())
+  }
+
+  refresh() {
+    const on = this.sim.isConnected
+    this.stage.dataset.off = String(!on)
+    this.bar.hidden = !on
+    if (!on || this.sim.state !== 'running') {
+      this.paused = false
+      this.bar.querySelector('.sim-pause').textContent = '⏸'
+    }
+  }
+
+  _camera(mode) {
+    for (const b of this.bar.querySelectorAll('.sim-chip')) b.classList.toggle('is-active', b.dataset.mode === mode)
+    this.sim.setCamera(mode)
+  }
+}

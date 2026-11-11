@@ -140,6 +140,28 @@ await test('pause holds simulated time; step and resume continue', async () => {
   assert.ok(performance.now() - stopAt < 50, 'stop was slow')
 })
 
+await test('the REPL runs commands on the simulated board', async () => {
+  const env = Environment.empty()
+  const world = new World(env)
+  const bot = world.add(createDevice('codebot', env, world.rng.fork(), env.spawns[0]))
+  const { loadMicroPython } = await import('../src/sim/runtime/mp/micropython.mjs')
+  let out = ''
+  const engine = new Engine({ loadMicroPython, world, bridge: bot.bridge, files: pythonFiles(), speed: Infinity, onOutput: (b) => (out += new TextDecoder().decode(b)) })
+  await engine.replInput('from botcore import *\r')
+  await engine.replInput('leds.user(5); print(6 * 7)\r')
+  await delay(50)
+  assert.match(out, />>> /)
+  assert.match(out, /42/)
+  assert.equal(bot.leds.user, 5)
+  // a command that loops forever, then Ctrl-C
+  await engine.replInput('while True:\r    pass\r\r')
+  await delay(50)
+  await engine.replInput('\x03')
+  await delay(100)
+  assert.match(out, /KeyboardInterrupt/)
+  assert.equal(engine.replBusy, false)
+})
+
 if (haveGym) {
   await test('gym: the line sensors see the court lines', async () => {
     const r = await runHeadless({

@@ -161,18 +161,33 @@ export class Engine {
       heapsize: 512 * 1024,
     })
     const M = mp._module
+    // A VM that has been replaced (a stopped program that would not stop, a
+    // REPL command cut off by Run) must never touch the world again: at its
+    // next suspension it stops for good, and the garbage collector has it.
+    const gen = (this.gen = (this.gen ?? 0) + 1)
+    const live = () => gen === this.gen
+    const never = () => new Promise(() => {})
     M.sim = {
-      charge: (n) => { this.charge(n * this.usPerBranch); return this._shouldYield() ? 1 : 0 },
-      advance: (us) => this.charge(us),
-      yield: () => this._yield(),
-      delay: (us) => this._delay(us),
+      charge: (n) => {
+        if (!live()) return 1
+        this.charge(n * this.usPerBranch)
+        return this._shouldYield() ? 1 : 0
+      },
+      advance: (us) => { if (live()) this.charge(us) },
+      yield: () => (live() ? this._yield() : never()),
+      delay: (us) => (live() ? this._delay(us) : never()),
       ticksUs: () => this.world.timeUs,
       timeMs: () => this.world.epochMs + this.world.timeUs / 1000,
     }
     M._sim_set_hook_period(this.hookPeriod)
     try { mp.FS.mkdir('/lib') } catch { /* exists */ }
     for (const [name, src] of Object.entries(this.o.files ?? {})) mp.FS.writeFile('/lib/' + name, src)
-    mp.registerJsModule('_sim', this.o.bridge(this))
+    const bridge = this.o.bridge(this)
+    const guarded = {}
+    for (const [k, f] of Object.entries(bridge)) {
+      guarded[k] = (...a) => (live() ? f(...a) : 0)
+    }
+    mp.registerJsModule('_sim', guarded)
     return mp
   }
 
@@ -184,6 +199,8 @@ export class Engine {
     this.paused = false
     this.stepPending = false
     this._interrupts = 0
+    this.replVM = null
+    this._replPending = 0
     this.mp = await this._newVM()
     this.mp.FS.writeFile('/main.py', source)
     this.mp.runPython(`import random\nrandom.seed(${(seed ?? 0) >>> 0})\ndel random`)
@@ -211,6 +228,58 @@ export class Engine {
     this.o.onFrame?.()
     this.o.onState?.('idle')
     return result
+  }
+
+  // --- the REPL, between programs ------------------------------------------------
+
+  get replBusy() {
+    return (this._replPending ?? 0) > 0
+  }
+
+  // Characters typed at the terminal. A fresh VM starts at the first one, as
+  // the device's REPL does after a program ends. Ctrl-C interrupts a command.
+  async replInput(text) {
+    if (this.running) return
+    if (!this.replVM) {
+      this._replStarting ??= (async () => {
+        const mp = await this._newVM()
+        mp.runPython(`import random\nrandom.seed(${Date.now() >>> 0})\ndel random`)
+        mp.replInit()
+        this.replVM = this.mp = mp
+        this._flushOutput()
+      })()
+      await this._replStarting
+      this._replStarting = null
+    }
+    for (const ch of text) {
+      const code = ch.charCodeAt(0)
+      if (code === 3 && this.replBusy) {
+        this.stopRequested = true
+        this._stopAt = this.now()
+        this._resume?.()
+        this._wake?.()
+        continue
+      }
+      if (!this.replBusy) {
+        this._rebase()
+        this._lastYieldWall = this.now()
+        this._lastYieldSim = this.world.timeUs
+      }
+      // Characters queue up behind a running command; the REPL is busy
+      // until the last one is done.
+      this._replPending = (this._replPending ?? 0) + 1
+      const vm = this.mp
+      this.mp.replProcessCharWithAsyncify(code).finally(() => {
+        if (vm !== this.mp) return
+        if (--this._replPending === 0) {
+          this.stopRequested = false
+          this._interrupts = 0
+        }
+        this._flushOutput()
+        this.o.onFrame?.()
+      })
+    }
+    this._flushOutput()
   }
 
   stop() {

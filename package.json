@@ -9,12 +9,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/protocol.mjs && node tests/smoke.mjs && node tests/subpath.mjs && node tests/sim.mjs",
+    "test": "node tests/protocol.mjs && node tests/smoke.mjs && node tests/subpath.mjs && node tests/sim.mjs && node tests/sim-ui.mjs",
     "test:protocol": "node tests/protocol.mjs",
     "test:ui": "node tests/smoke.mjs",
     "test:subpath": "node tests/subpath.mjs",
-    "test:sim": "node tests/sim.mjs",
-    "sim:assets": "node sim/tools/build-env.mjs gym",
+    "test:sim": "node tests/sim.mjs && node tests/sim-ui.mjs",
+    "sim:assets": "node sim/tools/build-env.mjs gym && node sim/tools/build-models.mjs",
     "sim:runtime": "sim/runtime/build.sh"
   },
   "dependencies": {

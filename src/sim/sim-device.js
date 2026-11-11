@@ -1,0 +1,213 @@
+// A simulated board, behind the same face as DeviceManager (the USB board):
+// connect, disconnect, run, stop, sendRaw; isConnected, targetId, target,
+// state; the events 'state', 'device', 'data', 'notice', 'progress' and
+// 'program-error'. The app treats it as one more device.
+import { State } from '../device/device-manager.js'
+import { getTarget } from '../device/targets.js'
+import { KINDS } from './kinds.js'
+
+const enc = new TextEncoder()
+
+export class SimDevice extends EventTarget {
+  constructor() {
+    super()
+    this.isSimulator = true
+    this.state = State.OFFLINE
+    this.targetId = null
+    this.firmware = null
+    this.busy = false
+    this.worker = null
+    this.view = null
+    this.viewHost = null
+    this.cameraMode = 'chase'
+    this.supported = 'WebAssembly' in globalThis && typeof Worker !== 'undefined'
+  }
+
+  get isConnected() {
+    return !!this.worker
+  }
+
+  get target() {
+    return getTarget(this.targetId)
+  }
+
+  static canSimulate(targetId) {
+    return !!KINDS[targetId]
+  }
+
+  // Where the picture goes; set before connect.
+  attachView(host) {
+    this.viewHost = host
+  }
+
+  async connect(targetId = 'codebot') {
+    if (this.worker) return true
+    if (!SimDevice.canSimulate(targetId)) {
+      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot so far.')
+      return false
+    }
+    this._setState(State.CONNECTING, 'Starting the simulator…')
+    const assetsBase = new URL('sim-assets/', document.baseURI).href
+    this.worker = new Worker(new URL('./runtime/worker.js', import.meta.url), { type: 'module' })
+    this.worker.onmessage = (e) => this._onMessage(e.data)
+    this.worker.onerror = (e) => {
+      console.error(e)
+      this._notice('error', 'The simulator stopped', e.message || 'Reload the page to start it again.')
+    }
+    this.targetId = targetId
+    const kind = KINDS[targetId]
+    const ready = new Promise((resolve) => (this._ready = resolve))
+    this.worker.postMessage({ t: 'init', kind: targetId, env: kind.env, assetsBase })
+    this.speaker = new Speaker()
+
+    if (this.viewHost) {
+      const { SimView } = await import('./view/view.js')
+      this.view = new SimView(this.viewHost, { assetsBase })
+      this.view.cameraMode = this.cameraMode
+      await this.view.loadRoom(kind.env).catch((err) => console.warn('room', err))
+    }
+    const snap = await ready
+    for (const d of snap.devices) await this.view?.addDevice(d)
+    this.view?.push(snap)
+
+    this.firmware = { version: 'simulator', date: '' }
+    this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target: this.target } }))
+    this._emitText(`\x1b[32mSimulated ${this.target?.name} in the ${kind.envName}.\x1b[0m\r\n`)
+    this._setState(State.READY, 'Simulator ready. Press Run!')
+    return true
+  }
+
+  async disconnect() {
+    this.worker?.terminate()
+    this.worker = null
+    this.view?.dispose()
+    this.view = null
+    this.speaker?.close()
+    this.speaker = null
+    this.targetId = null
+    this.busy = false
+    this.dispatchEvent(new CustomEvent('device', { detail: { targetId: null, target: null } }))
+    this._setState(State.OFFLINE, 'Simulator closed.')
+  }
+
+  async forget() {}
+
+  async run(source) {
+    if (!this.worker) return false
+    if (this.state === State.RUNNING) {
+      await this.stop()
+    }
+    this._post({ t: 'run', source })
+    this._setState(State.RUNNING, 'Your program is running in the simulator!')
+    return true
+  }
+
+  async stop() {
+    if (!this.worker || this.state !== State.RUNNING) return true
+    const done = new Promise((r) => (this._stopped = r))
+    this._post({ t: 'stop' })
+    await done
+    return true
+  }
+
+  pause() { this._post({ t: 'pause' }) }
+  resume() { this._post({ t: 'resume' }) }
+  step() { this._post({ t: 'step' }) }
+  setSpeed(value) { this._post({ t: 'speed', value }) }
+  press(n, down) { this._post({ t: 'input', what: 'button', n, down }) }
+  reset() { this._post({ t: 'reset' }) }
+  setCamera(mode) {
+    this.cameraMode = mode
+    this.view?.setCamera(mode)
+  }
+
+  // The terminal: Ctrl-C stops a program; between programs, a live REPL.
+  sendRaw(data) {
+    const text = typeof data === 'string' ? data : new TextDecoder('latin1').decode(data)
+    this._post({ t: 'stdin', text })
+  }
+
+  parkActuators() {}
+
+  _post(m) {
+    this.worker?.postMessage(m)
+  }
+
+  _onMessage(m) {
+    switch (m.t) {
+      case 'ready': this._ready?.(m.snapshot); break
+      case 'frame':
+        this.view?.push(m.snapshot)
+        this.speaker?.tone(m.snapshot.devices[0]?.tone ?? 0)
+        break
+      case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
+      case 'state':
+        if (m.state === 'paused') this._setState(State.RUNNING, 'Paused.')
+        else if (m.state === 'running') this._setState(State.RUNNING, 'Your program is running in the simulator!')
+        break
+      case 'done': {
+        const r = m.result
+        this._stopped?.()
+        this._stopped = null
+        if (r.error) {
+          this.dispatchEvent(new CustomEvent('program-error', { detail: r.error }))
+          this._setState(State.READY, 'Your program stopped with an error.')
+        } else if (r.stopped) {
+          this._emitText('\r\n\x1b[90mStopped.\x1b[0m\r\n')
+          this._setState(State.READY, 'Stopped. Ready when you are!')
+        } else {
+          this._emitText('\r\n\x1b[90mProgram finished.\x1b[0m\r\n')
+          this._setState(State.READY, 'Program finished.')
+        }
+        break
+      }
+      case 'error':
+        console.error(m.message)
+        this._notice('error', 'The simulator hit a problem', m.message.split('\n')[0])
+        break
+    }
+  }
+
+  _emitText(s) {
+    this.dispatchEvent(new CustomEvent('data', { detail: enc.encode(s) }))
+  }
+
+  _setState(state, message) {
+    this.state = state
+    this.dispatchEvent(new CustomEvent('state', { detail: { state, message } }))
+  }
+
+  _notice(kind, title, detail) {
+    this.dispatchEvent(new CustomEvent('notice', { detail: { kind, title, detail } }))
+  }
+}
+
+// The board's speaker: a square wave at the frequency the program set.
+// Created on the click that starts the simulator, which browsers require.
+class Speaker {
+  constructor() {
+    const AC = globalThis.AudioContext || globalThis.webkitAudioContext
+    if (!AC) return
+    this.ctx = new AC()
+    this.gain = this.ctx.createGain()
+    this.gain.gain.value = 0
+    this.gain.connect(this.ctx.destination)
+    this.osc = this.ctx.createOscillator()
+    this.osc.type = 'square'
+    this.osc.connect(this.gain)
+    this.osc.start()
+    this.freq = 0
+  }
+
+  tone(freq) {
+    if (!this.ctx || freq === this.freq) return
+    this.freq = freq
+    const t = this.ctx.currentTime
+    if (freq > 0) this.osc.frequency.setValueAtTime(Math.min(freq, 20000), t)
+    this.gain.gain.setTargetAtTime(freq > 0 ? 0.06 : 0, t, 0.005)
+  }
+
+  close() {
+    this.ctx?.close()
+  }
+}

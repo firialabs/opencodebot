@@ -8,14 +8,15 @@
 import { sincos, wrapAngle, clamp } from './fmath.js'
 import { Environment } from './environment.js'
 
-// Physical parameters. Dimensions are from CodeSpace's CodeBot model and the
-// motor and sensor curves are first estimates: all of them are to be measured
-// on a CB3 (see sim/DESIGN.md, "Calibration").
+// Physical parameters. Positions are from the CB3 3D model (BotBody.glb: its
+// motor shaft is the axle, 56 mm behind the model's origin); the motor and
+// sensor curves are first estimates. All are to be measured on a CB3 (see
+// sim/DESIGN.md, "Calibration").
 export const CB3 = {
   wheelRadius: 0.0325,        // 65 mm wheels
   track: 0.111,               // wheel centre to wheel centre
-  bodyRadius: 0.072,          // collision circle, around the body centre
-  bodyCenter: 0.0355,         // body centre ahead of the axle
+  bodyRadius: 0.077,          // collision circle, around the body centre
+  bodyCenter: 0.0435,         // body centre ahead of the axle (153 mm long body)
   height: 0.05,               // the band in which it meets obstacles
 
   wheelMaxSpeed: 22,          // rad/s at 100% power, unloaded (3.5 rev/s)
@@ -26,14 +27,14 @@ export const CB3 = {
   nominalVolts: 6.0,
 
   // Line sensors: 0 is the robot's left, 4 its right.
-  lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.0965, left]),
+  lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.116, left]),
   lineSpot: 0.003,            // radius of the area each sensor sees
   lineWhite: 180,             // ADC reading on white (0 is brightest)
   lineBlack: 3900,            // ADC reading on black
   lineNoise: 25,
 
   // Proximity: 0 is left, 1 right; they look straight ahead.
-  proxSensors: [[0.0951, 0.0358], [0.0951, -0.0358]],
+  proxSensors: [[0.1156, 0.0358], [0.1156, -0.0358]],
   proxHeight: 0.03,
   proxHalfAngle: 0.26,        // rad, half the beam's spread
   proxRays: 7,

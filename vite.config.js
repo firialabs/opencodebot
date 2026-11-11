@@ -9,13 +9,16 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 1500,
   },
+  // The simulator's worker is a module (MicroPython's loader uses top-level await).
+  worker: { format: 'es' },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.svg', 'blockly-media/*'],
       workbox: {
-        // Everything the app needs is bundled: once loaded, it runs offline.
-        globPatterns: ['**/*.{js,css,html,svg,png,gif,cur,mp3,woff,woff2,webmanifest}'],
+        // Everything the app needs is bundled: once loaded, it runs offline,
+        // the simulator (its wasm, models and rooms) included.
+        globPatterns: ['**/*.{js,css,html,svg,png,gif,cur,mp3,woff,woff2,webmanifest,wasm,glb,json}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
       manifest: {
