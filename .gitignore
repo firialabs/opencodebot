@@ -6,6 +6,6 @@ dev-dist/
 tests/screenshots/
 .vite/
 
-# Simulator assets: not published until agreed
-sim/assets/
+# Simulator: the MicroPython checkout and other build trees
 sim/build/
+public/sim-assets/

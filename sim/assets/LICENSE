@@ -1,0 +1,21 @@
+Simulator artwork: 3D models, rooms and textures
+
+The files in this folder, and everything built from them (the files under
+public/sim-assets/ that sim/tools/ generates), are copyright Firia Labs and
+are licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License (CC BY-NC 4.0):
+https://creativecommons.org/licenses/by-nc/4.0/
+
+  Gymnasium.glb    the gymnasium
+  BotBody.glb      CodeBot CB3, body
+  WheelAssy.glb    CodeBot, wheel
+
+Attribution: "Firia Labs (firialabs.com)".
+
+The code of this project is MIT licensed (see LICENSE at the top of the
+repository); that licence does not cover these files, and this one does not
+cover the code.
+
+Firia Labs, CodeBot, CodeX, CodeAIR, CodeSpace, the Firia Labs logo and the
+mascot are trademarks of Firia Labs. Neither licence grants any right to use
+them.

@@ -1,9 +1,0 @@
-<!doctype html><script type=module>
-const t0 = performance.now(); const msgs = []; let frames = 0, lastFrame = null;
-const w = new Worker("./worker.mjs", { type: "module" });
-window.w = w; window.msgs = msgs;
-window.next = (t) => new Promise((res) => { const h = (e) => { if (e.data.t === t) { w.removeEventListener("message", h); res(e.data); } }; w.addEventListener("message", h); });
-w.addEventListener("message", (e) => { if (e.data.t === "frame") { frames++; lastFrame = e.data; } else msgs.push(e.data); if (e.data.t === "ready") window.ready = { ...e.data, pageToReady: performance.now() - t0 }; });
-window.frames = () => ({ frames, lastFrame });
-w.onerror = (e) => { window.ready = { err: e.message }; };
-</script>
