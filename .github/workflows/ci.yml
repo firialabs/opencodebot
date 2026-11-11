@@ -33,6 +33,12 @@ jobs:
 
       - run: npm test
 
+      # The budget for a school Chromebook (tests/perf.mjs). A report only: a
+      # runner's speed is not a Chromebook's, and it varies from run to run.
+      - name: Performance budget (report)
+        run: npm run perf
+        continue-on-error: true
+
       # What the simulator's UI test saw, to read a failure on the runner.
       - name: Keep the test screenshots
         if: failure()

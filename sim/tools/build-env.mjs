@@ -7,7 +7,7 @@
 //               material, meshopt-compressed, textures as WebP
 //   world.json  what the simulation needs, and nothing it would have to render:
 //               obstacles as boxes, the floor's extent and spawn points
-//   floor.png   the floor's reflectance seen from above (8-bit grey), which the
+//   floor.webp  the floor's reflectance seen from above (8-bit grey, lossless), which the
 //               line sensors sample
 //
 // Units: the source rooms are modelled at 1 unit = 10 cm. The simulation works
@@ -34,7 +34,7 @@ const ENVIRONMENTS = {
     floor: ['Gym_Floor', 'Plane.002'],   // bottom to top: the wood, then the court mat
     impostor: /^ImpostorBox/,
     drop: [],
-    floorResolution: 0.01,           // metres per floor.png pixel
+    floorResolution: 0.01,           // metres per floor.webp pixel
     spawns: [{ name: 'center', x: 0, y: 0, heading: Math.PI / 2 }],
   },
 }
@@ -89,12 +89,12 @@ floor.height = Math.round((floor.maxY - floor.minY) / floor.resolution)
 const reflect = Buffer.alloc(floor.width * floor.height)
 for (const n of floorNodes) await rasteriseFloor(n, floor, reflect)
 await sharp(reflect, { raw: { width: floor.width, height: floor.height, channels: 1 } })
-  .png({ compressionLevel: 9 }).toFile(path.join(out, 'floor.png'))
+  .toColourspace('b-w').webp({ lossless: true, effort: 6 }).toFile(path.join(out, 'floor.webp'))
 
 const world = {
   id,
   units: 'metres; x east, y north, z up; heading counter-clockwise from +x',
-  floor: { ...roundAll(floor), image: 'floor.png', rows: 'north to south' },
+  floor: { ...roundAll(floor), image: 'floor.webp', rows: 'north to south' },
   obstacles,
   spawns: env.spawns,
 }
@@ -113,7 +113,7 @@ await doc.transform(
 doc.createExtension(EXTMeshoptCompression).setRequired(true)
 await io.write(path.join(out, 'room.glb'), doc)
 
-const sizes = await Promise.all(['room.glb', 'floor.png', 'world.json'].map(async (f) => `${f} ${(await fs.stat(path.join(out, f))).size}`))
+const sizes = await Promise.all(['room.glb', 'floor.webp', 'world.json'].map(async (f) => `${f} ${(await fs.stat(path.join(out, f))).size}`))
 console.log(`${id}: ${obstacles.length} obstacles, floor ${floor.width}x${floor.height}; ${sizes.join(', ')}`)
 
 async function rasteriseFloor(node, f, outBuf) {

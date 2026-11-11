@@ -369,6 +369,10 @@ Built, on branch `sim` (local commits; pushing waits for David):
   radio; the simulated flight controller reports `supervisor.info` and a version that
   `selftest.check_firmware` finds current. The boards page has a remote for it among its
   examples (written here, speaking xfly's protocol).
+- A performance budget for a low-end school Chromebook (`npm run perf`, sim/README.md
+  "Performance"): lighter device models, a view that trades resolution for frame rate and
+  rests when nothing moves, a smaller floor map; all within budget at 4x CPU with software
+  GL. CI runs the simulator's tests in `npm test` and the budget as a report.
 
 Not yet: calibration.
 

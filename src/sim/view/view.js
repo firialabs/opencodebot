@@ -24,7 +24,12 @@ export class SimView {
     this.cameraMode = 'chase'
 
     const r = (this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }))
-    r.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5))
+    // Resolution adapts to the machine (_govern): a school Chromebook's GPU
+    // gets fewer pixels rather than fewer frames.
+    this.maxRatio = Math.min(globalThis.devicePixelRatio || 1, 1.5)
+    this.ratio = this.maxRatio
+    r.setPixelRatio(this.ratio)
+    this._gov = { last: 0, sum: 0, n: 0, fastFor: 0 }
     r.outputColorSpace = THREE.SRGBColorSpace
     r.toneMapping = THREE.ACESFilmicToneMapping
     host.appendChild(r.domElement)
@@ -45,6 +50,8 @@ export class SimView {
     this.controls.minDistance = 0.12
     this.controls.maxDistance = 30
     this.controls.addEventListener('start', () => { if (this.cameraMode === 'chase') this.cameraMode = 'orbit' })
+    this.controls.addEventListener('change', () => this._touch())
+    this._changedAt = 0           // when the picture last had reason to change
 
     this._resize = new ResizeObserver(() => this.resize())
     this._resize.observe(host)
@@ -63,6 +70,7 @@ export class SimView {
       if (o.isMesh && o.material?.map) o.material.map.anisotropy = 4
     })
     this.scene.add(this.room)
+    this._touch()
   }
 
   // The line course on the floor (its shape from world/courses.js), or none.
@@ -70,6 +78,7 @@ export class SimView {
     this.course?.removeFromParent()
     this.course = shape ? courseMesh(shape) : null
     if (this.course) this.scene.add(this.course)
+    this._touch()
   }
 
   async addDevice(snap) {
@@ -78,6 +87,7 @@ export class SimView {
     await fig.load(this.loader, this.assetsBase)
     this.scene.add(fig.root)
     this.figures.set(snap.id, fig)
+    this._touch()
     fig.update(snap)
     this._placeCamera(snap, true)
     return fig
@@ -86,9 +96,17 @@ export class SimView {
   // A snapshot from the world: { t, devices: [...] }.
   push(frame) {
     this.frames = [this.frames[1], { frame, at: performance.now() }]
+    // Frames keep coming while nothing moves; only a change needs drawing.
+    const key = JSON.stringify(frame.devices)
+    if (key !== this._lastKey) { this._lastKey = key; this._touch() }
+  }
+
+  _touch() {
+    this._changedAt = performance.now()
   }
 
   setCamera(mode) {
+    this._touch()
     this.cameraMode = mode
     const s = this.frames[1]?.frame.devices[0]
     if (s) this._placeCamera(s, true)
@@ -97,6 +115,7 @@ export class SimView {
   resize() {
     const w = this.host.clientWidth || 1, h = this.host.clientHeight || 1
     this.renderer.setSize(w, h, false)
+    this._touch()
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()
   }
@@ -151,10 +170,38 @@ export class SimView {
         this.camera.position.add(d)
       }
     }
-    this.controls.update()
+    const moved = this.controls.update()
+    // Draw while things move, and a while after (the picture eases to rest:
+    // interpolation, the chase camera); then rest, and leave the CPU to the
+    // program.
+    const now = performance.now()
+    if (!moved && now - this._changedAt > SETTLE_MS) { this._gov.last = 0; return }
     this.renderer.render(this.scene, this.camera)
+    this._govern(now)
+  }
+
+  // Every second of continuous drawing: below 24 frames a second, fewer
+  // pixels (down to half); above 50 for three seconds, more again.
+  _govern(now) {
+    const g = this._gov
+    if (g.last) { g.sum += now - g.last; g.n++ }
+    g.last = now
+    if (g.sum < 1000) return
+    const fps = (1000 * g.n) / g.sum
+    g.sum = 0; g.n = 0
+    let ratio = this.ratio
+    if (fps < 24 && ratio > MIN_RATIO) { ratio = Math.max(MIN_RATIO, ratio * 0.8); g.fastFor = 0 }
+    else if (fps > 50 && ratio < this.maxRatio && ++g.fastFor >= 3) { ratio = Math.min(this.maxRatio, ratio * 1.15); g.fastFor = 0 }
+    if (ratio !== this.ratio) {
+      this.ratio = ratio
+      this.renderer.setPixelRatio(ratio)
+      this.resize()
+    }
   }
 }
+
+const SETTLE_MS = 1500
+const MIN_RATIO = 0.5
 
 function lerpSnap(a, b, f) {
   let dh = b.heading - a.heading

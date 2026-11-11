@@ -38,7 +38,14 @@ export class CodeAIRFigure {
   async load(loader, base) {
     const gltf = await loader.loadAsync(`${base}models/codeair.glb`)
     this.body.add(gltf.scene)
-    gltf.scene.traverse((o) => { if (/^Prop\d$/.test(o.name)) this.props.push(o) })
+    gltf.scene.traverse((o) => {
+      if (/^Prop\d$/.test(o.name)) this.props.push(o)
+      // The model comes without normals (sim/tools/build-models.mjs): shade it flat.
+      if (o.isMesh && !o.geometry.attributes.normal) {
+        for (const m of [o.material].flat()) m.flatShading = true
+        o.geometry.computeVertexNormals()
+      }
+    })
     this.props.sort((a, b) => a.name.localeCompare(b.name))
 
     const dot = (x, y, z, size, mats, glow) => {

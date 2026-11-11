@@ -124,6 +124,38 @@ infrared). Every board runs in its own worker, and their radios and infrared rea
 other, and the app's board in another tab of the same browser. `?boards=codex,codeair` starts with those boards; otherwise
 the page remembers its boards and programs in this browser.
 
+## Performance
+
+`npm run perf` (after a build) checks the budget for a low-end school
+Chromebook, roughly: the page's CPU throttled 4x and software GL, which is
+slower than any real GPU. CI runs it as a report. On p52-lab (2026-11-11):
+
+| | Budget | CodeBot | CodeAIR |
+|---|---|---|---|
+| First visit, gzip | 600 KB | 398 KB | 398 KB |
+| First visit, to load | 3 s | 0.9 s | 0.9 s |
+| Simulator start, gzip | 1,400 KB | 1,238 KB | 1,311 KB |
+| Simulator start, to ready | 5 s | 1.8 s | 1.7 s |
+| Frames a second in the gym, moving | 20 | 25 | 24 |
+| Simulated time per wall second | 0.95 | 0.97 | 1.00 |
+
+What keeps it there:
+- The device models are built for it (`sim/tools/build-models.mjs`): plain
+  colours share a palette texture (CodeAIR 63 draw calls to 10, CodeBot 25
+  to 6), meshes simplified (CodeAIR 85k triangles to 36k, its smallest board
+  parts dropped; CodeBot 22k to 12k), textures at most 1024 px.
+- The view lowers its resolution, to half at most, when it draws fewer than
+  24 frames a second, and raises it again above 50 (`SimView._govern`). It
+  stops drawing when nothing has moved for 1.5 s.
+- The room's floor map is lossless WebP (118 KB, was a 373 KB PNG).
+
+After the first visit the service worker fetches the rest of the site in
+the background, about 2 MB gzip (1.4 MB of it the simulator), so the
+simulator works offline after that.
+
+To check on a real Chromebook: the frame rate and resolution the view
+settles at, and the first visit on a school network.
+
 ## Adding a device
 
 1. Its model in `src/sim/world/` (a class with `step(dt)` and `snapshot()`).

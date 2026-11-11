@@ -14,6 +14,7 @@
     "test:ui": "node tests/smoke.mjs",
     "test:subpath": "node tests/subpath.mjs",
     "test:sim": "node tests/sim.mjs && node tests/sim-ui.mjs",
+    "perf": "node tests/perf.mjs",
     "sim:assets": "node sim/tools/build-env.mjs gym && node sim/tools/build-models.mjs",
     "sim:runtime": "sim/runtime/build.sh"
   },

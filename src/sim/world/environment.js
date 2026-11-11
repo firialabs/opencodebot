@@ -6,7 +6,7 @@
 import { Floor } from './floor.js'
 
 export class Environment {
-  // world: the parsed world.json; floorMap: the decoded floor.png (or null).
+  // world: the parsed world.json; floorMap: the decoded floor image (or null).
   constructor(world, floorMap = null) {
     this.id = world.id
     this.obstacles = world.obstacles.map((o) => ({ name: o.name, min: o.min, max: o.max }))
