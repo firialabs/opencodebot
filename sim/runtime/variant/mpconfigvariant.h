@@ -10,3 +10,7 @@ extern unsigned int sim_hook_count, sim_hook_period;
 void sim_vm_hook(void);
 #define MICROPY_VM_HOOK_LOOP if (++sim_hook_count >= sim_hook_period) { sim_vm_hook(); }
 #define MICROPY_VM_HOOK_RETURN MICROPY_VM_HOOK_LOOP
+
+// As on the devices (CircuitPython): no docstrings. Firia's modules depend on
+// it (songplayer and soundlib skip their setup when an object has __doc__).
+#define MICROPY_ENABLE_DOC_STRING (0)

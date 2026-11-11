@@ -33,9 +33,11 @@ waiting for them.
 ## No device? Simulate one
 
 Press **🎮 Simulate** to run your program on a simulated CodeBot in a
-gymnasium: it drives, sees lines and walls, lights up and beeps, and the
+gymnasium (it drives, sees lines and walls, lights up and beeps) or a
+simulated CodeX (its screen, buttons, lights and sound; the screen goes full
+screen for a class, with the arrow keys and A and B as its buttons). The
 terminal is a live Python prompt. It runs in any modern browser, no cable
-needed. CodeX and CodeAIR are on the way. How it works:
+needed. CodeAIR is on the way. How it works:
 [sim/README.md](sim/README.md).
 
 ## Supported devices

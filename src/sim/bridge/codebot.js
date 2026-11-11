@@ -17,6 +17,8 @@
 //   receivers' 56 kHz, the farther they see.
 // - Line sensors and encoders: ADC channels, read with their emitters on.
 
+import { KXTJ3, fromHex } from './chips.js'
+
 const PINS = [
   'IO0', 'IO1', 'IO2', 'IO3', 'IO4', 'IO5', 'IO6', 'IO7', 'IO8', 'IO9', 'IO10', 'IO11', 'IO12', 'IO13',
   'IO14', 'IO15', 'IO16', 'IO17', 'IO18', 'IO19', 'IO20', 'IO21', 'IO26', 'IO33', 'IO34', 'IO35', 'IO36',
@@ -44,8 +46,9 @@ export function codebotBridge(bot) {
   let shift = 0                  // the LED shift register, before latching
   let leds = 0                   // latched
   let pca = { ptr: 0, regs: [0, 0, 0xf0, 0xff] }
-  const kx = { ptr: 0, regs: new Uint8Array(0x80) }
-  kx.regs[0x0f] = 0x35           // WHO_AM_I
+  // What the chip measures; botcore's read turns it into what the program
+  // sees (x as is, y and z negated: flat, z reads -1 g).
+  const kx = new KXTJ3(() => bot.accelRead())
 
   const applyLeds = () => {
     const on = out.get(PIN.LED_OE) === 0
@@ -108,28 +111,13 @@ export function codebotBridge(bot) {
       }
       return true
     }
-    if (addr === KXTJ3_ADDR) {
-      kx.ptr = bytes[0] & 0x7f
-      for (let i = 1; i < bytes.length; i++) kx.regs[(kx.ptr + i - 1) & 0x7f] = bytes[i]
-      return true
-    }
+    if (addr === KXTJ3_ADDR) return kx.write(bytes)
     return false
   }
 
   const i2cRead = (addr, n) => {
     if (addr === PCA_ADDR) return [pca.ptr === 0 ? pca.regs[1] : pca.regs[pca.ptr]]
-    if (addr === KXTJ3_ADDR) {
-      if (kx.ptr === 0x06) {
-        // What the chip measures; botcore's read turns it into what the
-        // program sees (x as is, y and z negated: flat, z reads -1 g).
-        const [x, y, z] = bot.accelRead()
-        const put = (o, v) => { v = Math.max(-32768, Math.min(32767, v)) & 0xffff; kx.regs[o] = v & 0xff; kx.regs[o + 1] = v >> 8 }
-        put(0x06, x); put(0x08, y); put(0x0a, z)
-      }
-      const r = []
-      for (let i = 0; i < n; i++) r.push(kx.regs[(kx.ptr + i) & 0x7f])
-      return r
-    }
+    if (addr === KXTJ3_ADDR) return kx.read(n)
     return null
   }
 
@@ -186,8 +174,3 @@ export function codebotBridge(bot) {
   }
 }
 
-function fromHex(hex) {
-  const b = []
-  for (let i = 0; i < hex.length; i += 2) b.push(parseInt(hex.substr(i, 2), 16))
-  return b
-}

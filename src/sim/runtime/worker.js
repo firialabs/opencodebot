@@ -19,8 +19,9 @@ const PY = import.meta.glob('../python/**/*.py', { query: '?raw', import: 'defau
 function pythonFiles(kind) {
   const files = {}
   for (const [p, src] of Object.entries(PY)) {
-    const [dir, name] = p.split('/').slice(-2)
-    if (dir === 'common' || dir === kind) files[name] = src
+    const rel = p.split('/python/')[1]           // e.g. codex/codex_drivers/funcgen.py
+    const top = rel.slice(0, rel.indexOf('/'))
+    if (top === 'common' || top === kind) files[rel.slice(top.length + 1)] = src
   }
   return files
 }
@@ -57,10 +58,17 @@ function build(kind, seed) {
   })
 }
 
+let screenVersion = -1
 function frame(force) {
   const now = performance.now()
   if (!force && now - lastFrame < 15) return
   lastFrame = now
+  device.gfx?.present()
+  if (device.screen && device.screen.version !== screenVersion) {
+    screenVersion = device.screen.version
+    const px = device.screen.px.slice()
+    post({ t: 'screen', px }, [px.buffer])
+  }
   post({ t: 'frame', snapshot: world.snapshot() })
 }
 
@@ -95,8 +103,7 @@ self.onmessage = async (e) => {
         if (engine.running) return
         idle(false)
         const result = await engine.run(m.source, { seed: m.seed ?? (Math.random() * 2 ** 32) >>> 0 })
-        device.enable(false)          // as the device does when a program ends
-        device.tone = 0
+        device.programEnded()         // what the device does when a program ends
         frame(true)
         idle(true)
         post({ t: 'done', result })
@@ -116,10 +123,13 @@ self.onmessage = async (e) => {
       case 'speed': engine.speed = m.value; break
       case 'input':
         if (m.what === 'button') device.press(m.n, m.down)
+        if (m.what === 'tilt') { device.tiltX = m.x; device.tiltY = m.y }
+        if (m.what === 'light') device.lux = m.lux
         break
       case 'reset':
         if (engine.running) return
         build(device.kind, m.seed ?? 1)
+        screenVersion = -1
         frame(true)
         break
     }

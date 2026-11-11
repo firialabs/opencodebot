@@ -154,8 +154,8 @@ await test('the accelerometer reads as the CB3 does, flat and still', async () =
 })
 
 await test('the device modules are the CB3\'s own, on the CircuitPython layer', async () => {
-  const r = await runHeadless({ source: 'import botcore, botservices, board, digitalio, busio\nprint(botcore.__doc__.split(chr(10))[0])\nprint(board.I2C().scan())' })
-  assert.equal(r.output.trim(), 'Core low-level module for CodeBot-CB3.\n[14, 28]')
+  const r = await runHeadless({ source: 'import botcore, botservices, board, digitalio, busio\nprint(botcore.System.__name__, hasattr(botcore, \'__doc__\'))\nprint(board.I2C().scan())' })
+  assert.equal(r.output.trim(), 'System False\n[14, 28]')
 })
 
 await test('the REPL runs commands on the simulated board', async () => {

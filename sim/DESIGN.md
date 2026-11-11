@@ -301,5 +301,15 @@ Built, on branch `sim` (local commits; pushing waits for David):
   at the pin and bus level (David's direction, 2026-11-11: MicroPython in the browser, not
   CircuitPython; port only the CircuitPython pieces the device code and programs use).
 
+- CodeX: its own codex.py, colors, codec, soundlib and songplayer, sprites and tile grids,
+  on the same layer and a simulated board (IO expander, KXTJ3, LTR-303, the button ISR,
+  backlight), with Firia's C graphics (bitmaps, canvases, the two-root tree, its 6x8 font
+  from the firmware) and tone generator reimplemented. A flat face: screen, D-pad, A and B,
+  LEDs, NeoPixels; full screen for a class with the arrow keys and A and B; tilt and light
+  sliders; sound from the voices the program connects.
+
 Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
-them; nothing lays them yet); calibration; CodeX; CodeAIR.
+them; nothing lays them yet); radio between simulated devices; calibration; CodeAIR.
+
+To check on a real CodeX: how `show()` scales and centres, how `print` wraps and scrolls,
+how long a full-screen update takes, the order of LEDs 0 to 3 and of the NeoPixels.

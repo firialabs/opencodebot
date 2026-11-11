@@ -143,6 +143,12 @@ export class CodeBot {
 
   // --- what botcore reads and writes --------------------------------------
 
+  // A program ended: the board resets its pins, so the motors and speaker stop.
+  programEnded() {
+    this.enabled = false
+    this.tone = 0
+  }
+
   setPower(n, pct) { this.power[n] = clamp(pct, -100, 100) }
   enable(on) { this.enabled = !!on }
 

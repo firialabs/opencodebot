@@ -12,22 +12,27 @@ export class SimPanel {
       <div class="sim-stage" data-off="true">
         <div class="sim-view"></div>
         <div class="sim-off">
-          <p>Try your program on a simulated CodeBot. No cable needed!</p>
+          <p>Try your program on a simulated CodeBot or CodeX. No cable needed!</p>
           <button type="button" class="btn btn-run sim-start">🎮 Start the simulator</button>
         </div>
       </div>
       <div class="sim-bar" hidden>
-        <span class="sim-group sim-cameras"></span>
+        <span class="sim-group sim-cameras" data-for="codebot"></span>
+        <span class="sim-group" data-for="codex">
+          <label title="Tilt left and right">↔ <input type="range" class="sim-tilt-x" min="-90" max="90" value="0"></label>
+          <label title="Tilt toward and away">↕ <input type="range" class="sim-tilt-y" min="-90" max="90" value="0"></label>
+          <label title="Light on the sensor (lux)">💡 <input type="range" class="sim-light" min="0" max="1000" value="250"></label>
+        </span>
         <span class="sim-group">
           <button type="button" class="icon-btn sim-pause" title="Pause">⏸</button>
           <button type="button" class="icon-btn sim-step" title="Step: run a moment, then pause">⏭</button>
           <select class="sim-speed" title="Simulation speed"></select>
         </span>
-        <span class="sim-group sim-buttons">
+        <span class="sim-group sim-buttons" data-for="codebot">
           <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the robot">BTN 0</button>
           <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the robot">BTN 1</button>
         </span>
-        <button type="button" class="icon-btn sim-reset" title="Put the robot back at the start">↺</button>
+        <button type="button" class="icon-btn sim-reset" data-for="codebot" title="Put the robot back at the start">↺</button>
       </div>`
     const q = (s) => host.querySelector(s)
     this.stage = q('.sim-stage')
@@ -64,6 +69,10 @@ export class SimPanel {
       sim.step()
     })
     q('.sim-reset').addEventListener('click', () => sim.reset())
+    const tilt = () => sim.tilt((Number(q('.sim-tilt-x').value) * Math.PI) / 180, (Number(q('.sim-tilt-y').value) * Math.PI) / 180)
+    q('.sim-tilt-x').addEventListener('input', tilt)
+    q('.sim-tilt-y').addEventListener('input', tilt)
+    q('.sim-light').addEventListener('input', () => sim.setLight(Number(q('.sim-light').value)))
 
     for (const b of host.querySelectorAll('.sim-board-btn')) {
       const n = Number(b.dataset.n)
@@ -82,6 +91,7 @@ export class SimPanel {
     const on = this.sim.isConnected
     this.stage.dataset.off = String(!on)
     this.bar.hidden = !on
+    for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = el.dataset.for !== this.sim.targetId
     if (!on || this.sim.state !== 'running') {
       this.paused = false
       this.bar.querySelector('.sim-pause').textContent = '⏸'

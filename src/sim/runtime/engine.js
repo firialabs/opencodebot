@@ -181,7 +181,11 @@ export class Engine {
     }
     M._sim_set_hook_period(this.hookPeriod)
     try { mp.FS.mkdir('/lib') } catch { /* exists */ }
-    for (const [name, src] of Object.entries(this.o.files ?? {})) mp.FS.writeFile('/lib/' + name, src)
+    for (const [name, src] of Object.entries(this.o.files ?? {})) {
+      const dir = name.includes('/') ? '/lib/' + name.slice(0, name.lastIndexOf('/')) : null
+      if (dir) mp.FS.mkdirTree(dir)
+      mp.FS.writeFile('/lib/' + name, src)
+    }
     const bridge = this.o.bridge(this)
     const guarded = {}
     for (const [k, f] of Object.entries(bridge)) {

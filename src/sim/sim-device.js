@@ -43,7 +43,7 @@ export class SimDevice extends EventTarget {
   async connect(targetId = 'codebot') {
     if (this.worker) return true
     if (!SimDevice.canSimulate(targetId)) {
-      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot so far.')
+      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot and CodeX so far.')
       return false
     }
     this._setState(State.CONNECTING, 'Starting the simulator…')
@@ -61,10 +61,15 @@ export class SimDevice extends EventTarget {
     this.speaker = new Speaker()
 
     if (this.viewHost) {
-      const { SimView } = await import('./view/view.js')
-      this.view = new SimView(this.viewHost, { assetsBase })
-      this.view.cameraMode = this.cameraMode
-      await this.view.loadRoom(kind.env).catch((err) => console.warn('room', err))
+      if (kind.view === 'codex') {
+        const { CodeXFace } = await import('./view/codex-face.js')
+        this.view = new CodeXFace(this.viewHost, { onButton: (n, down) => this.press(n, down) })
+      } else {
+        const { SimView } = await import('./view/view.js')
+        this.view = new SimView(this.viewHost, { assetsBase })
+        this.view.cameraMode = this.cameraMode
+        await this.view.loadRoom(kind.env).catch((err) => console.warn('room', err))
+      }
     }
     const snap = await ready
     for (const d of snap.devices) await this.view?.addDevice(d)
@@ -72,7 +77,7 @@ export class SimDevice extends EventTarget {
 
     this.firmware = { version: 'simulator', date: '' }
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target: this.target } }))
-    this._emitText(`\x1b[32mSimulated ${this.target?.name} in the ${kind.envName}.\x1b[0m\r\n`)
+    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.envName === 'hand' ? '' : ` in the ${kind.envName}`}.\x1b[0m\r\n`)
     this._setState(State.READY, 'Simulator ready. Press Run!')
     return true
   }
@@ -115,6 +120,8 @@ export class SimDevice extends EventTarget {
   step() { this._post({ t: 'step' }) }
   setSpeed(value) { this._post({ t: 'speed', value }) }
   press(n, down) { this._post({ t: 'input', what: 'button', n, down }) }
+  tilt(x, y) { this._post({ t: 'input', what: 'tilt', x, y }) }
+  setLight(lux) { this._post({ t: 'input', what: 'light', lux }) }
   reset() { this._post({ t: 'reset' }) }
   setCamera(mode) {
     this.cameraMode = mode
@@ -136,10 +143,13 @@ export class SimDevice extends EventTarget {
   _onMessage(m) {
     switch (m.t) {
       case 'ready': this._ready?.(m.snapshot); break
-      case 'frame':
+      case 'frame': {
         this.view?.push(m.snapshot)
-        this.speaker?.tone(m.snapshot.devices[0]?.tone ?? 0)
+        const d = m.snapshot.devices[0]
+        this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))
         break
+      }
+      case 'screen': this.view?.screen?.(m.px); break
       case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
       case 'state':
         if (m.state === 'paused') this._setState(State.RUNNING, 'Paused.')
@@ -182,29 +192,45 @@ export class SimDevice extends EventTarget {
   }
 }
 
-// The board's speaker: a square wave at the frequency the program set.
-// Created on the click that starts the simulator, which browsers require.
+// The board's speaker: the voices the device is sounding, each an
+// oscillator at its frequency and level. Created on the click that starts the
+// simulator, which browsers require before they make sound.
+const WAVES = ['sine', 'square', 'sawtooth', 'triangle', 'square', 'sine', 'sawtooth']
+
 class Speaker {
   constructor() {
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext
     if (!AC) return
     this.ctx = new AC()
-    this.gain = this.ctx.createGain()
-    this.gain.gain.value = 0
-    this.gain.connect(this.ctx.destination)
-    this.osc = this.ctx.createOscillator()
-    this.osc.type = 'square'
-    this.osc.connect(this.gain)
-    this.osc.start()
-    this.freq = 0
+    this.out = this.ctx.createGain()
+    this.out.gain.value = 0.08
+    this.out.connect(this.ctx.destination)
+    this.voices = []
+    this.last = ''
   }
 
-  tone(freq) {
-    if (!this.ctx || freq === this.freq) return
-    this.freq = freq
+  play(sounds) {
+    if (!this.ctx) return
+    const key = JSON.stringify(sounds)
+    if (key === this.last) return
+    this.last = key
     const t = this.ctx.currentTime
-    if (freq > 0) this.osc.frequency.setValueAtTime(Math.min(freq, 20000), t)
-    this.gain.gain.setTargetAtTime(freq > 0 ? 0.06 : 0, t, 0.005)
+    while (this.voices.length < sounds.length) {
+      const osc = this.ctx.createOscillator()
+      const gain = this.ctx.createGain()
+      gain.gain.value = 0
+      osc.connect(gain).connect(this.out)
+      osc.start()
+      this.voices.push({ osc, gain })
+    }
+    this.voices.forEach((v, i) => {
+      const s = sounds[i]
+      if (s) {
+        v.osc.type = WAVES[s.wave] ?? 'triangle'
+        v.osc.frequency.setValueAtTime(Math.min(s.freq, 20000), t)
+      }
+      v.gain.gain.setTargetAtTime(s ? Math.min(1, s.level) : 0, t, 0.005)
+    })
   }
 
   close() {

@@ -35,7 +35,9 @@ export function pythonFiles(kind = 'codebot') {
   for (const dir of ['common', kind]) {
     const d = path.join(HERE, 'python', dir)
     if (!fs.existsSync(d)) continue
-    for (const f of fs.readdirSync(d)) if (f.endsWith('.py')) files[f] = fs.readFileSync(path.join(d, f), 'utf8')
+    for (const f of fs.readdirSync(d, { recursive: true })) {
+      if (f.endsWith('.py')) files[f.split(path.sep).join('/')] = fs.readFileSync(path.join(d, f), 'utf8')
+    }
   }
   return files
 }
@@ -47,6 +49,7 @@ export async function runHeadless(opts) {
   const env = opts.env instanceof Environment ? opts.env : await loadEnvironment(opts.env)
   const world = new World(env, { seed: opts.seed ?? 1 })
   const spawn = opts.spawn ?? env.spawns[0]
+  if ((opts.kind ?? 'codebot') === 'codex' && !opts.env) opts.env = 'empty'
   const device = world.add(createDevice(opts.kind ?? 'codebot', env, world.rng.fork(), spawn))
   opts.setup?.(world, device)
 

@@ -11,11 +11,11 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/engine.js` | MicroPython on simulated time: charging, pacing, pause, step, stop, the REPL |
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
-| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot model, maths and randomness |
+| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot and CodeX models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time` |
 | `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules |
 | `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
-| `src/sim/view/` | the Three.js picture, drawn from the world's snapshots |
+| `src/sim/view/` | the pictures: Three.js for CodeBot's room (`view.js`), a flat face for CodeX (`codex-face.js`) |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
 | `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
@@ -41,7 +41,14 @@ only what the device code and students' programs use, nothing more. Under
 that, each device's simulated board (`src/sim/bridge/`) answers at the level
 the device code drives the hardware: a pin's level, an ADC channel, a PWM
 duty and frequency, an I2C register, an SPI write. A device's C modules
-(`cb3_drivers` on the CB3) get small Python stand-ins beside its modules.
+get small Python stand-ins beside its modules: `cb3_drivers` on the CB3;
+`bitmap`, `canvas`, `tft`, `codex_drivers` (with `funcgen`), `radio` and the
+CircuitPython audio modules on CodeX. Adafruit's `neopixel` is replaced by a
+small equivalent. The MicroPython build stores no docstrings, as the devices'
+CircuitPython does not, because Firia's modules test for `__doc__`.
+
+CodeX's font is its own, read from its firmware image by
+`sim/tools/extract-codex-font.mjs`.
 
 To update them, copy the files from a newer commit and change the table.
 

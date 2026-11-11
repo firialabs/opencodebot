@@ -106,6 +106,72 @@ await page.evaluate(() => { window.__sim.out = ''; window.openCodeBot.device.sen
 await page.waitForFunction(() => /42/.test(window.__sim.out), null, { timeout: 5000 }).catch(() => problems.push('REPL: no answer to print(6 * 7)'))
 
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim.png` })
+
+// CodeX: switch boards, run every CodeX block, draw, and press a button
+// with the keyboard.
+await page.click('#btn-sim')                                   // stop simulating CodeBot
+await page.evaluate(() => { window.openCodeBot._pickTarget('codex') })
+await page.waitForTimeout(300)
+if (await page.evaluate(() => document.getElementById('modal')?.open)) await page.click('#modal button[value="ok"]')
+await page.click('#btn-sim')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready' && window.openCodeBot.device.targetId === 'codex', null, { timeout: 20000 })
+await page.evaluate(() => {
+  const d = window.openCodeBot.device
+  d.addEventListener('data', (e) => { window.__sim.out += new TextDecoder('latin1').decode(e.detail) })
+  d.addEventListener('program-error', (e) => window.__sim.errors.push(e.detail))
+  d.sim.setSpeed(8)
+})
+const cxCodes = await page.evaluate(() => {
+  const { Blockly, toolboxFor, generatePython } = window.openCodeBotInternals
+  const types = []
+  const walk = (items) => { for (const it of items || []) { if (it.kind === 'block') types.push(it.type); if (it.contents) walk(it.contents) } }
+  walk(toolboxFor('codex').contents)
+  const scratch = new Blockly.Workspace()
+  const out = []
+  for (const type of types.filter((t) => t.startsWith('codex'))) {
+    const block = scratch.newBlock(type)
+    out.push([type, generatePython(scratch, 'codex')])
+    block.dispose(false)
+  }
+  scratch.dispose()
+  return out
+})
+for (const [type, code] of cxCodes) {
+  const errs = await page.evaluate(async (code) => {
+    const d = window.openCodeBot.device
+    window.__sim.errors = []
+    await d.run(code)
+    const t0 = performance.now()
+    while (d.state === 'running' && performance.now() - t0 < 3000) await new Promise((r) => setTimeout(r, 25))
+    if (d.state === 'running') await d.stop()
+    return window.__sim.errors
+  }, code)
+  for (const e of errs) problems.push(`${type} ▸ ${e.name}: ${e.message} (line ${e.line})\n${code}`)
+}
+console.log(`sim-ui: ran ${cxCodes.length} CodeX blocks on the simulator`)
+
+await page.evaluate(() => window.openCodeBot.device.sim.setSpeed(1))
+await page.evaluate(() => window.openCodeBot.device.run(`from codex import *
+display.fill(BLUE)
+display.draw_text("Press A", x=36, y=100, color=WHITE, scale=3)
+while not buttons.was_pressed(BTN_A):
+    pass
+display.fill(GREEN)
+pixels.fill(RED, 100)
+`))
+await page.waitForTimeout(1500)
+await page.focus('.cx-wrap')
+await page.keyboard.down('a')
+await page.waitForTimeout(150)
+await page.keyboard.up('a')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 5000 }).catch(() => problems.push('CodeX: the A key did not press button A'))
+const green = await page.evaluate(() => {
+  const c = document.querySelector('.cx-screen').getContext('2d').getImageData(120, 20, 1, 1).data
+  return [c[0], c[1], c[2]]
+})
+if (!(green[1] > 200 && green[0] < 50)) problems.push(`CodeX: the screen is ${green}, not green`)
+else console.log('sim-ui: CodeX drew, and the keyboard pressed its A button')
+await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-codex.png` })
 await browser.close()
 server?.kill()
 

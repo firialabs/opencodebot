@@ -1,3 +1,17 @@
+diff --git a/ports/webassembly/mpconfigport.h b/ports/webassembly/mpconfigport.h
+index 63be05f..dcee9d5 100644
+--- a/ports/webassembly/mpconfigport.h
++++ b/ports/webassembly/mpconfigport.h
+@@ -53,7 +53,9 @@
+ #define MICROPY_KBD_EXCEPTION       (1)
+ #define MICROPY_REPL_EVENT_DRIVEN   (1)
+ #define MICROPY_LONGINT_IMPL        (MICROPY_LONGINT_IMPL_MPZ)
++#ifndef MICROPY_ENABLE_DOC_STRING
+ #define MICROPY_ENABLE_DOC_STRING   (1)
++#endif
+ #define MICROPY_WARNINGS            (1)
+ #define MICROPY_ERROR_PRINTER       (&mp_stderr_print)
+ #define MICROPY_FLOAT_IMPL          (MICROPY_FLOAT_IMPL_DOUBLE)
 diff --git a/ports/webassembly/mphalport.c b/ports/webassembly/mphalport.c
 index 3935068..7d6ca46 100644
 --- a/ports/webassembly/mphalport.c
