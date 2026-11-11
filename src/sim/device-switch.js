@@ -48,7 +48,7 @@ export class DeviceSwitch extends EventTarget {
 
   disconnect() { return this.active.disconnect() }
   forget() { return this.active.forget() }
-  run(source) { return this.active.run(source) }
+  run(source, opts) { return this.active.run(source, opts) }
   stop(opts) { return this.active.stop(opts) }
   sendRaw(data) { return this.active.sendRaw(data) }
   parkActuators() { return this.active.parkActuators() }

@@ -149,6 +149,39 @@ await page.evaluate(() => window.openCodeBot.device.sim.setCourse(null))
 if (onOval.off > 0.08) problems.push(`course: the follower left the oval (at ${onOval.at}, ${onOval.off.toFixed(2)} m off)`)
 else console.log('sim-ui: a follower kept to the oval course')
 
+// Step by line: from a stop the starter project pauses at its first line,
+// marked in the Python tab and on its block; each step moves on a line.
+await page.evaluate(() => window.openCodeBot.device.sim.setSpeed(1))
+await page.click('.sim-step-line')
+const marked = async () => page.evaluate(() => {
+  const el = document.querySelector('#python-view .py-line.is-current')
+  const ran = window.openCodeBot._ran
+  const n = el ? Number(el.dataset.n) : null
+  return { n, text: el?.textContent ?? null, block: n ? ran.blockAt[n] ?? null : null, state: window.openCodeBot.device.state }
+})
+await page.waitForSelector('#python-view .py-line.is-current', { state: 'attached', timeout: 10000 }).catch(() => {})
+// The imports come first, with no block; step on to the blocks' lines.
+const step = async () => {
+  const before = (await marked()).n
+  await page.click('.sim-step-line')
+  await page.waitForFunction((n) => {
+    const el = document.querySelector('#python-view .py-line.is-current')
+    return el && Number(el.dataset.n) !== n
+  }, before, { timeout: 5000 }).catch(() => {})
+  return marked()
+}
+let first = await marked()
+for (let i = 0; i < 8 && !first.block; i++) first = await step()
+const second = await step()
+await page.click('[data-tab="python"]').catch(() => {})
+await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-step.png` })
+await page.click('[data-tab="sim"]').catch(() => {})
+await page.evaluate(() => window.openCodeBot.device.stop())
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+if (!first.n || !first.block || !second.n || second.n === first.n || !second.block) {
+  problems.push(`step by line: ${JSON.stringify({ first, second })}`)
+} else console.log(`sim-ui: stepped by line, ${first.n} then ${second.n} (${second.text.trim()}), on their blocks`)
+
 // CodeX: switch boards, run every CodeX block, draw, and press a button
 // with the keyboard.
 await page.click('#btn-sim')                                   // stop simulating CodeBot

@@ -54,6 +54,38 @@ export function generatePython(workspace, targetId) {
     .concat('\n')
 }
 
+/**
+ * The program, and the block each of its lines comes from: { code, blockAt }
+ * where blockAt[n] is the id of the block that line n (from 1) belongs to,
+ * for showing a running program's line on its blocks. The code is exactly
+ * generatePython's: it is generated once more with a marker before each
+ * statement, and the markers taken out again.
+ */
+export function generateWithLines(workspace, targetId) {
+  const code = generatePython(workspace, targetId)
+  const blockAt = []
+  const saved = pythonGenerator.STATEMENT_PREFIX
+  pythonGenerator.STATEMENT_PREFIX = '#@@%1\n'
+  let marked
+  try {
+    marked = generatePython(workspace, targetId)
+  } finally {
+    pythonGenerator.STATEMENT_PREFIX = saved
+  }
+  const out = []
+  let pending = null
+  for (const line of marked.split('\n')) {
+    const m = /^\s*#@@'(.*)'$/.exec(line)
+    if (m) { pending = m[1]; continue }
+    out.push(line)
+    if (pending) { blockAt[out.length] = pending; pending = null }
+    // A line with no marker (the rest of a statement's code, an `else:`)
+    // belongs to the block before it.
+    else if (blockAt[out.length - 1]) blockAt[out.length] = blockAt[out.length - 1]
+  }
+  return out.join('\n') === code ? { code, blockAt } : { code, blockAt: [] }
+}
+
 /** Devices whose blocks appear in a workspace, by block-type prefix. */
 export function devicesUsed(workspace) {
   const used = new Set()

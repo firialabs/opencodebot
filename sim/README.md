@@ -22,7 +22,7 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
 | `src/sim/headless.js` | run a program in Node, no browser: for tests and the cloud; `runHeadlessGroup` runs several boards at once, radios linked |
 | `boards.html`, `src/sim/boards/` | the boards page: several simulated boards, each with its own program, and the radio examples they start with |
-| `sim/runtime/` | the MicroPython variant (`variant/`), the port patch and `build.sh` |
+| `sim/runtime/` | the MicroPython variant (`variant/`, with the line trace for stepping), the port patch, a one-hunk `py.patch` (a jump back reports its line again) and `build.sh` |
 | `sim/tools/` | turn the source GLBs into what the browser and the world load |
 | `sim/assets/` | the source models and rooms (CC BY-NC 4.0, see its LICENSE) |
 

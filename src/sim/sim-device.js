@@ -1,7 +1,8 @@
 // A simulated board, behind the same face as DeviceManager (the USB board):
 // connect, disconnect, run, stop, sendRaw; isConnected, targetId, target,
 // state; the events 'state', 'device', 'data', 'notice', 'progress' and
-// 'program-error'. The app treats it as one more device.
+// 'program-error'. The app treats it as one more device. Its own event 'line'
+// gives the program's line while paused ({ line }, null when it runs on).
 import { State } from '../device/device-manager.js'
 import { getTarget } from '../device/targets.js'
 import { KINDS } from './kinds.js'
@@ -99,12 +100,13 @@ export class SimDevice extends EventTarget {
 
   async forget() {}
 
-  async run(source) {
+  // stepFirst: pause at the program's first line, to step it by line.
+  async run(source, { stepFirst = false } = {}) {
     if (!this.worker) return false
     if (this.state === State.RUNNING) {
       await this.stop()
     }
-    this._post({ t: 'run', source })
+    this._post({ t: 'run', source, stepFirst })
     this._setState(State.RUNNING, 'Your program is running in the simulator!')
     return true
   }
@@ -120,6 +122,7 @@ export class SimDevice extends EventTarget {
   pause() { this._post({ t: 'pause' }) }
   resume() { this._post({ t: 'resume' }) }
   step() { this._post({ t: 'step' }) }
+  stepLine() { this._post({ t: 'stepLine' }) }
   setSpeed(value) { this._post({ t: 'speed', value }) }
   press(n, down) { this._post({ t: 'input', what: 'button', n, down }) }
   tilt(x, y) { this._post({ t: 'input', what: 'tilt', x, y }) }
@@ -162,11 +165,13 @@ export class SimDevice extends EventTarget {
       case 'screen': this.view?.screen?.(m.px); break
       case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
       case 'state':
-        if (m.state === 'paused') this._setState(State.RUNNING, 'Paused.')
+        if (m.state === 'paused') this._setState(State.RUNNING, m.line ? `Paused at line ${m.line}.` : 'Paused.')
         else if (m.state === 'running') this._setState(State.RUNNING, 'Your program is running in the simulator!')
+        this._line(m.state === 'paused' ? m.line : null)
         break
       case 'done': {
         const r = m.result
+        this._line(null)
         this._stopped?.()
         this._stopped = null
         if (r.error) {
@@ -186,6 +191,10 @@ export class SimDevice extends EventTarget {
         this._notice('error', 'The simulator hit a problem', m.message.split('\n')[0])
         break
     }
+  }
+
+  _line(line) {
+    this.dispatchEvent(new CustomEvent('line', { detail: { line } }))
   }
 
   _emitText(s) {

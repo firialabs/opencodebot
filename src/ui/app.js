@@ -2,7 +2,7 @@
 import { DeviceManager, State } from '../device/device-manager.js'
 import { SUPPORTED_TARGETS, getTarget } from '../device/targets.js'
 import { BlockWorkspace, STARTER_PROJECTS } from '../workspace/workspace.js'
-import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js'
+import { generatePython, generateWithLines, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
 import { HELP_HTML, ABOUT_HTML, welcomeHtml } from './copy.js'
@@ -18,7 +18,10 @@ const $ = (id) => document.getElementById(id)
 export class App {
   constructor() {
     this.device = new DeviceSwitch(new DeviceManager(), new SimDevice())
-    this.simPanel = new SimPanel($('sim-host'), this.device.sim, { onStart: () => this._toggleSimulate() })
+    this.simPanel = new SimPanel($('sim-host'), this.device.sim, {
+      onStart: () => this._toggleSimulate(),
+      onStepStart: () => this._run({ stepFirst: true }),
+    })
     this.pickedTarget = localStorage.getItem(PICKED_DEVICE) || null
 
     this.workspace = new BlockWorkspace($('blockly-root'), this.pickedTarget)
@@ -26,6 +29,8 @@ export class App {
 
     this._bindDevice()
     this._bindChrome()
+    // A paused program's line, on its block and in the Python tab.
+    this.device.sim.addEventListener('line', (e) => this._showLine(e.detail.line))
     this._bindWorkspace()
 
     if (!this.workspace.restore() && this.pickedTarget) {
@@ -152,7 +157,8 @@ export class App {
     if (ok) this.terminal.focus()
   }
 
-  async _run() {
+  // stepFirst (the simulator): pause at the first line, to step by line.
+  async _run(opts = {}) {
     if (this.workspace.isEmpty) {
       toast({ kind: 'warn', title: 'Nothing to run yet', detail: 'Drag some blocks in first!' })
       return
@@ -169,9 +175,24 @@ export class App {
       return
     }
 
-    const code = this._currentPython()
+    const { code, blockAt } = generateWithLines(this.workspace.workspace, this.workspace.targetId)
+    this._ran = { code, blockAt }
     this.terminal.say('Sending your program…')
-    await this.device.run(code)
+    await this.device.run(code, opts)
+  }
+
+  // Mark the line a paused program is at (null: none) on its block and in
+  // the Python tab, while that tab still shows the program that runs.
+  _showLine(line) {
+    const ws = this.workspace.workspace
+    const id = line && this._ran?.blockAt[line]
+    ws.highlightBlock?.(id && ws.getBlockById(id) ? id : null)
+    const view = $('python-view')
+    view.querySelector('.py-line.is-current')?.classList.remove('is-current')
+    if (!line || this._shownCode !== this._ran?.code) return
+    const el = view.querySelector(`.py-line[data-n="${line}"]`)
+    el?.classList.add('is-current')
+    el?.scrollIntoView({ block: 'nearest' })
   }
 
   async _stop() {
@@ -419,7 +440,11 @@ export class App {
 
   _refreshPython() {
     const code = this._currentPython()
-    $('python-view').innerHTML = `<code>${highlightPython(code)}</code>`
+    this._shownCode = code
+    // One span a line (the highlighter's spans never cross a line), so a
+    // paused program's line can be marked.
+    const lines = highlightPython(code).split('\n')
+    $('python-view').innerHTML = `<code>${lines.map((l, i) => `<span class="py-line" data-n="${i + 1}">${l}</span>`).join('\n')}</code>`
     $('blocks-hint').hidden = !this.workspace.isEmpty
   }
 

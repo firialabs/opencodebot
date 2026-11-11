@@ -3,12 +3,12 @@
 //
 // in:  init { kind, env, assetsBase, seed, course }
 //      course { course }   (lay a line course, world/courses.js; null takes it up)
-//      run { source, seed } | stop | pause | resume | step
+//      run { source, seed, stepFirst } | stop | pause | resume | step | stepLine
 //      speed { value } | input { what: 'button', n, down } | reset
 //      stdin { text }   (keys typed at the terminal: the REPL between programs)
 // out: ready { snapshot, course } | course { course } (its shape, to draw)
 //      frame { snapshot } | output { bytes }
-//      state { state } | done { result } | error { message }
+//      state { state, line } (line: main.py's, when paused) | done { result } | error { message }
 import { loadMicroPython } from './mp/micropython.mjs'
 import { Engine } from './engine.js'
 import { World } from '../world/world.js'
@@ -62,9 +62,10 @@ function build(kind, seed) {
     bridge: device.bridge,
     stopGraceUs: device.stopGraceUs,
     speed: engine?.speed ?? 1,
+    trace: true,                  // main.py's lines, for stepping by line
     onOutput: (bytes) => post({ t: 'output', bytes }, [bytes.buffer]),
     onFrame: () => frame(true),
-    onState: (state) => post({ t: 'state', state }),
+    onState: (state, line) => post({ t: 'state', state, line: line ?? null }),
   })
 }
 
@@ -123,7 +124,7 @@ self.onmessage = async (e) => {
       case 'run': {
         if (engine.running) return
         idle(false)
-        const result = await engine.run(m.source, { seed: m.seed ?? (Math.random() * 2 ** 32) >>> 0 })
+        const result = await engine.run(m.source, { seed: m.seed ?? (Math.random() * 2 ** 32) >>> 0, stepFirst: !!m.stepFirst })
         device.programEnded()         // what the device does when a program ends
         frame(true)
         idle(true)
@@ -141,6 +142,7 @@ self.onmessage = async (e) => {
       case 'pause': engine.pause(); break
       case 'resume': engine.resume(); break
       case 'step': engine.step(); break
+      case 'stepLine': engine.stepLine(); break
       case 'speed': engine.speed = m.value; break
       case 'input':
         if (m.what === 'button') device.press(m.n, m.down)

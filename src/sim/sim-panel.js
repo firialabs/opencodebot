@@ -7,7 +7,7 @@ const CAMERAS = [['chase', '🎥 Follow'], ['orbit', '🔄 Orbit'], ['top', '�
 const SPEEDS = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']]
 
 export class SimPanel {
-  constructor(host, sim, { onStart }) {
+  constructor(host, sim, { onStart, onStepStart }) {
     this.sim = sim
     host.innerHTML = `
       <div class="sim-stage" data-off="true">
@@ -30,6 +30,7 @@ export class SimPanel {
         <span class="sim-group">
           <button type="button" class="icon-btn sim-pause" title="Pause">⏸</button>
           <button type="button" class="icon-btn sim-step" title="Step: run a moment, then pause">⏭</button>
+          <button type="button" class="icon-btn sim-step-line" title="Step one line: run your program to its next line, and pause there" aria-label="Step one line">⤵</button>
           <select class="sim-speed" title="Simulation speed"></select>
         </span>
         <span class="sim-group sim-buttons" data-for="codebot codeair">
@@ -77,6 +78,14 @@ export class SimPanel {
       this.paused = true
       pause.textContent = '▶'
       sim.step()
+    })
+    // Step one line: from a stop, the program starts paused at its first line.
+    q('.sim-step-line').addEventListener('click', () => {
+      this.paused = true
+      pause.textContent = '▶'
+      pause.title = 'Resume'
+      if (sim.state === 'running') sim.stepLine()
+      else onStepStart?.()
     })
     q('.sim-reset').addEventListener('click', () => sim.reset())
     const tilt = () => sim.tilt((Number(q('.sim-tilt-x').value) * Math.PI) / 180, (Number(q('.sim-tilt-y').value) * Math.PI) / 180)
