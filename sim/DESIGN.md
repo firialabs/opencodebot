@@ -108,8 +108,19 @@ CircuitPython layer (`board`, `digitalio`, `analogio`, `pwmio`, `neopixel`, `tim
 ones (`Canvas`, `Bitmap`, `tft`, `radio`) are reimplemented in C in the build or in Python
 over a framebuffer.
 
-`radio` works between simulated devices in the same page (a classroom of one), so radio
-programs can be tried with two simulated boards.
+`radio` works between simulated devices, so radio programs can be tried with two or more
+simulated boards. Each board in a browser has its own worker; a `BroadcastChannel` carries a
+message to every other board of the app, on the boards page (`boards.html`, linked from the
+simulator bar) and in other tabs of the same browser, as a class's devices on one desk hear
+each other. Each `Radio` (`world/radio.js`) holds what is in the air toward it and what it
+has heard; a message is judged against the receiver's on/off and channel when it lands, the
+radio's latency after it was sent. Headless, `runHeadlessGroup` keeps several devices on one
+timeline in lockstep (`runtime/lockstep.js`): no world runs more than a 10 ms slice ahead of
+the slowest, and a message lands no sooner than the next barrier, so a conversation between
+devices is the same on every run. Their VMs share one JS realm, which MicroPython's web port
+does not expect (it keeps its proxy tables on `globalThis`): each VM comes from its own copy
+of the loader module, the engine swaps those globals as VMs take turns, and the barrier
+releases one engine per task so two never resume together.
 
 Error messages follow the device's where students see them (the traceback the terminal shows
 and the `program-error` event the app parses).
@@ -331,8 +342,13 @@ Built, on branch `sim` (local commits; pushing waits for David):
   lights its pixels. A stopped program gets 12 s of simulated time to clean up, so a stop
   inside `with recorder:` lands it, as on the drone.
 
+- The radio between boards (section 1, "The device modules"): CodeX and CodeAIR, channels,
+  on and off, RSSI and timestamp from `receive_full`; the boards page, with a CodeX remote
+  and listeners to start from (`src/sim/boards/examples.js`); headless groups in lockstep.
+
 Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
-them; nothing lays them yet); radio between simulated devices; calibration.
+them; nothing lays them yet); infrared, so `xfly` (which pairs by IR before it flies by
+radio) cannot pair yet; calibration.
 
 Found by running CodeAIR's own Python (firia-circuitpython `codeair` at `752129a9f`), both
 reproduced by the simulator because the device's VM behaves the same way, to confirm on a
@@ -342,6 +358,12 @@ which neither CircuitPython nor MicroPython has (`ValueError: bad typecode`).
 
 To check on a real CodeX: how `show()` scales and centres, how `print` wraps and scrolls,
 how long a full-screen update takes, the order of LEDs 0 to 3 and of the NeoPixels.
+
+To check on real radios (CodeX or CodeAIR): the latency from `send` to `receive` (2 ms
+here, `LATENCY_US`); how many messages the receive queue holds and which it drops when full
+(32 here, the newest dropped); whether `off()` empties it; the longest message (none
+enforced here; ESP-NOW carries 250 bytes); RSSI between boards on one desk (about -42 dBm
+here, with a little noise); whether `send` with the radio off raises (silent here).
 
 ## HANDOFF (2026-11-11, from the CodeAIR session)
 

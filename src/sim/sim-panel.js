@@ -32,6 +32,7 @@ export class SimPanel {
           <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the board">BTN 0</button>
           <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the board">BTN 1</button>
         </span>
+        <a class="sim-chip sim-boards" data-for="codex codeair" href="./boards.html" target="_blank" rel="noopener" title="More simulated boards, in a new tab: their radios hear this one">📡 More boards</a>
         <button type="button" class="icon-btn sim-reset" data-for="codebot codeair" title="Put it back at the start">↺</button>
       </div>`
     const q = (s) => host.querySelector(s)

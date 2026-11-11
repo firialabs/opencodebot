@@ -41,7 +41,9 @@ if (!(await reachable(new globalThis.URL('sim-assets/env/gym/world.json', URL).h
 const problems = []
 // CHROME_PATH: use an installed Chromium when Playwright's own is missing.
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+// One context, so a second page is another tab of the same browser.
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+const page = await context.newPage()
 page.on('pageerror', (e) => problems.push(`page error: ${e.message}`))
 page.on('console', (m) => { if (m.type() === 'error') problems.push(`console error: ${m.text()}`) })
 await page.addInitScript(() => {
@@ -244,6 +246,44 @@ await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', nu
 const landed = await page.evaluate(() => window.openCodeBot.device.sim.lastFrame.devices[0].z)
 if (landed > 0.08) problems.push(`CodeAIR: stopped inside with recorder:, it did not land (at ${landed} m)`)
 else console.log('sim-ui: CodeAIR flew, and a stop landed it')
+
+// The boards page: a CodeX remote and a CodeAIR listener, each in its own
+// worker, and the app's CodeX (still on this page's tab) listening too.
+await page.evaluate(async () => {
+  const d = window.openCodeBot.device
+  await d.disconnect()
+  await d.simulate('codex')
+})
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+await page.evaluate(() => window.openCodeBot.device.run(`import radio
+from codex import *
+radio.on()
+radio.config(channel=7)
+while True:
+    m = radio.receive()
+    if m:
+        print('app heard', m)
+`))
+if (!(await page.isVisible('.sim-boards'))) problems.push('boards: no "More boards" link in the simulator bar for CodeX')
+const boards = await context.newPage()
+await boards.setViewportSize({ width: 1280, height: 900 })
+boards.on('pageerror', (e) => problems.push(`boards page error: ${e.message}`))
+boards.on('console', (m) => { if (m.type() === 'error') problems.push(`boards console error: ${m.text()}`) })
+await boards.goto(new globalThis.URL('boards.html?boards=codex,codeair', URL).href, { waitUntil: 'networkidle' })
+for (const b of await boards.$$('.bd-run')) await b.click()
+await boards.waitForFunction(() => window.boards.every((b) => b.sim.state === 'running'), null, { timeout: 20000 })
+await boards.waitForTimeout(500)
+await boards.click('.bd-card:first-child .cx-A', { delay: 150 })
+await boards.waitForFunction(() => {
+  const p = window.boards[1].sim.lastFrame?.devices[0].pixels[0]
+  return p && p[1] > 0 && p[0] === 0
+}, null, { timeout: 5000 }).catch(() => problems.push('boards: the CodeAIR did not hear the CodeX remote'))
+await page.waitForFunction(() => window.__sim.out.includes('app heard A'), null, { timeout: 5000 })
+  .catch(() => problems.push('boards: the app, in another tab, did not hear the remote'))
+await boards.waitForTimeout(300)
+await boards.screenshot({ path: `${SHOT_DIR}/ocb-sim-boards.png` })
+console.log('sim-ui: boards page: a CodeX remote reached a CodeAIR and the app in another tab')
+await boards.close()
 await browser.close()
 server?.kill()
 

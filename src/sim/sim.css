@@ -28,6 +28,8 @@
 .sim-board-btn.is-down { background: var(--gold-soft); border-color: var(--gold-dark); transform: translateY(1px); }
 .sim-speed { font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 2px 4px; background: var(--paper); }
 .sim-reset { margin-left: auto; }
+.sim-boards { text-decoration: none; margin-left: auto; }
+.sim-boards + .sim-reset { margin-left: 0; }
 
 .btn-sim { background: var(--lilac); box-shadow: 0 3px 0 #8f7fd1; }
 .btn-sim:active:not(:disabled) { box-shadow: 0 0 0 #8f7fd1; }

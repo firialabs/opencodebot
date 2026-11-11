@@ -13,14 +13,15 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
 | `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
-| `src/sim/python/radio/` | the radio module CodeX and CodeAIR share |
+| `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
 | `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs |
 | `src/sim/bridge/` | each device's simulated board: its pins, ADC, PWM and bus chips, over the device's model; what each costs in device time |
 | `src/sim/view/` | the pictures: Three.js for the room (`view.js`) with CodeBot and CodeAIR in it (`codebot-figure.js`, `codeair-figure.js`), a flat face for CodeX (`codex-face.js`) |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
 | `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
-| `src/sim/headless.js` | run a program in Node, no browser: for tests and the cloud |
+| `src/sim/headless.js` | run a program in Node, no browser: for tests and the cloud; `runHeadlessGroup` runs several boards at once, radios linked |
+| `boards.html`, `src/sim/boards/` | the boards page: several simulated boards, each with its own program, and the radio examples they start with |
 | `sim/runtime/` | the MicroPython variant (`variant/`), the port patch and `build.sh` |
 | `sim/tools/` | turn the source GLBs into what the browser and the world load |
 | `sim/assets/` | the source models and rooms (CC BY-NC 4.0, see its LICENSE) |
@@ -79,9 +80,11 @@ npm run test:sim       # headless programs (tests/sim.mjs), then the simulator i
 
 `tests/sim.mjs` runs real programs against the world in Node, far faster than
 real time, and checks timing, driving, walls, sensors, determinism, errors,
-stopping, pausing and the REPL. `tests/sim-ui.mjs` starts the simulator in the
-built app in headless Chromium, runs every CodeBot block's Python, the starter
-project with the Run button, and the REPL. If Playwright's own browser is
+stopping, pausing, the REPL and the radio between boards. `tests/sim-ui.mjs`
+starts the simulator in the built app in headless Chromium, runs every block's
+Python on its device, the starter project with the Run button and the REPL,
+flies CodeAIR, and has a CodeX remote on the boards page reach a CodeAIR there
+and the app's CodeX in another tab. If Playwright's own browser is
 missing, point `CHROME_PATH` at an installed Chromium.
 
 To run a program yourself, headless:
@@ -91,6 +94,25 @@ import { runHeadless } from './src/sim/headless.js'
 const r = await runHeadless({ source, env: 'gym', seconds: 10, seed: 1 })
 // r.output, r.error, r.trace (pose every 50 ms), r.simSeconds, r.wallMs
 ```
+
+Several boards at once, their radios linked, on one timeline (the same run every time):
+
+```js
+import { runHeadlessGroup } from './src/sim/headless.js'
+const { results } = await runHeadlessGroup({ seconds: 5, devices: [
+  { kind: 'codex', source: remote, inputs: [{ t: 1, fn: (w, d) => d.press(4, true) }] },
+  { kind: 'codeair', source: listener },
+] })
+// results[i] as runHeadless returns
+```
+
+## The boards page
+
+`boards.html` (the "📡 More boards" link in the simulator bar, for CodeX and CodeAIR) shows
+several simulated boards, each with its own Python, picture and terminal. Every board runs
+in its own worker, and the radios of all of them hear each other, and the app's board in
+another tab of the same browser. `?boards=codex,codeair` starts with those boards; otherwise
+the page remembers its boards and programs in this browser.
 
 ## Adding a device
 
