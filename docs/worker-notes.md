@@ -31,7 +31,15 @@ Running notes from the app worker, for whoever picks up next.
    labels on icon buttons, contrast check on block colours with white text.
 5. Privacy: confirm no network calls beyond the page itself (fonts are bundled;
    check the PWA and anything else), and say so in the About dialog.
-6. Jill and Joules feedback doc (Google Doc) not read yet.
+6. From the Jill and Joules feedback doc (read Nov 11):
+   - "No way to clear a program and start over": New project exists but sits
+     in the hidden ⋯ menu. Put a visible New / Start over button in the top bar.
+   - "Couldn't rename files": projects have no name. Add a project name field
+     that also names the downloaded file.
+   - Python view is read-only (same as item 2).
+   - github.io may be blocked by school filters; the doc suggests a custom
+     domain (blocks.firialabs.com). A manager or David decision, not code.
+   - Launch as a labeled beta with 5 to 6 starter lessons per device.
 
 ### Next step
 Start on item 3 (strings in one place), since 2 and 4 both add strings.
