@@ -3,6 +3,12 @@
 The official Firia Labs artwork this project uses, kept here unmodified so the
 derived icons can be traced back to a source.
 
+**Trademarked.** The Firia Labs logo, wordmark and the Cody mascot in this
+folder, and the icons derived from them in `public/icons/`, are trademarks of
+Firia Labs. They are not covered by the project's MIT licence or by CC BY-NC
+4.0. A fork must replace them with its own artwork. See
+[../TRADEMARKS.md](../TRADEMARKS.md).
+
 | File | What it is |
 |---|---|
 | `firia-logo.svg` | The full Firia Labs lockup: bot head, "FIRIA" in `#4EB748`, "LABS" on the gold banner. Not shipped in the app — it lives here as the source for the head mark below. |
