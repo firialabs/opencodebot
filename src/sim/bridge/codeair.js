@@ -50,6 +50,7 @@ export function codeairBridge(air) {
 
   return (engine) => {
     const c = (us) => engine.charge(us)
+    air.radio.reset(engine.world.timeUs)  // a fresh VM: the radio module starts over
     if (engine.o.files?.['flight_catalog.py']) cf.loadCatalog(engine.o.files['flight_catalog.py'])
     cf.onConsole = (text) => { if (consoleOut) engine.write(new TextEncoder().encode(text.replace(/\n/g, '\r\n'))) }
     consoleOut = false
@@ -118,9 +119,10 @@ export function codeairBridge(air) {
       crtp_console_read() { const s = cf.console; cf.console = ''; return s },
       crtp_console_stdout(on) { consoleOut = !!on },
 
-      // the radio: nothing else in the room to hear it, yet
-      radio_send() { c(2000) },
-      radio_receive() { c(COST_US.gpio); return null },
+      // the radio (world/radio.js): the module's settings, a send, the next message heard
+      radio_set(on, channel) { c(COST_US.gpio); air.radio.set(on, channel, engine.world.timeUs) },
+      radio_send(message) { c(2000); air.radio.send(message, engine.world.timeUs) },
+      radio_receive() { c(COST_US.gpio); return air.radio.receive(engine.world.timeUs) },
     }
   }
 }

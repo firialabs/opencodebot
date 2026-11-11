@@ -59,6 +59,7 @@ export function codexBridge(cx) {
 
   return (engine) => {
     const c = (us) => engine.charge(us)
+    cx.radio.reset(engine.world.timeUs)   // a fresh VM: the radio module starts over
     const g = cx.gfx
     const draw = (n) => c(COST_US.gfxCall + n * COST_US.gfxPixel)
     return {
@@ -141,9 +142,10 @@ export function codexBridge(cx) {
       mixer_level(m, n, level) { cx.mixers[m - 1000][n].level = level },
       audio_volume(v) { cx.volume = v },
 
-      // the radio: nothing else in the room to hear it, yet
-      radio_send() { c(2000) },
-      radio_receive() { c(COST_US.gpio); return null },
+      // the radio (world/radio.js): the module's settings, a send, the next message heard
+      radio_set(on, channel) { c(COST_US.gpio); cx.radio.set(on, channel, engine.world.timeUs) },
+      radio_send(message) { c(2000); cx.radio.send(message, engine.world.timeUs) },
+      radio_receive() { c(COST_US.gpio); return cx.radio.receive(engine.world.timeUs) },
     }
   }
 }

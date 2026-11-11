@@ -13,6 +13,7 @@ import { World } from '../world/world.js'
 import { Environment } from '../world/environment.js'
 import { createDevice } from '../devices.js'
 import { KINDS as BOARDS } from '../kinds.js'
+import { BroadcastAir } from './broadcast-air.js'
 
 const wasmUrl = new URL('./mp/micropython.wasm', import.meta.url).href
 // The Python modules: the folders under python/ that the kind lists.
@@ -29,6 +30,8 @@ function pythonFiles(kind) {
 }
 
 let world, device, engine, env, spawn
+// The radio's link to the other boards (CodeX and CodeAIR have a radio).
+const air = new BroadcastAir(() => world?.timeUs ?? 0)
 let lastFrame = 0
 
 const post = (msg, transfer) => self.postMessage(msg, transfer ?? [])
@@ -50,6 +53,7 @@ async function loadEnv(id, base) {
 function build(kind, seed) {
   world = new World(env, { seed })
   device = world.add(createDevice(kind, env, world.rng.fork(), spawn))
+  if (device.radio) air.add(device.radio)
   engine = new Engine({
     loadMicroPython, wasmUrl, world, files: pythonFiles(kind),
     bridge: device.bridge,

@@ -4,7 +4,8 @@
 // yet), and an empty room otherwise.
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
-import { runHeadless } from '../src/sim/headless.js'
+import { runHeadless, runHeadlessGroup } from '../src/sim/headless.js'
+import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR } from '../src/sim/boards/examples.js'
 import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
 import { Environment } from '../src/sim/world/environment.js'
@@ -296,6 +297,76 @@ print(get_param('motorPowerSet.m1'), version())`, {
   assert.equal(r.device.leds[7], 200)            // LED 0 is the driver's output 7
   assert.equal(tone, 880)
   assert.equal(r.device.tone, 0)
+})
+
+console.log('radio')
+
+const PING = `import radio, time
+radio.on()
+radio.config(channel=5)
+for i in range(3):
+    radio.send('ping %d' % i)
+    while True:
+        heard = radio.receive_full()
+        if heard:
+            print(heard)
+            break
+        time.sleep(0.01)
+`
+const PONG = `import radio, time
+radio.on()
+radio.config(channel=5)
+n = 0
+while n < 3:
+    m = radio.receive()
+    if m:
+        radio.send(m.replace('ping', 'pong'))
+        n += 1
+    time.sleep(0.005)
+print('done', time.ticks_ms())
+`
+
+await test('a CodeX and a CodeAIR talk, the same way every time', async () => {
+  const run = () => runHeadlessGroup({ seconds: 5, devices: [{ kind: 'codex', source: PING }, { kind: 'codeair', source: PONG }] })
+  const a = await run()
+  const [x, air] = a.results
+  assert.equal(x.error, undefined, x.output)
+  assert.equal(air.error, undefined, air.output)
+  assert.ok(x.ok && air.ok, 'both programs end on their own')
+  const lines = x.output.trim().split('\n')
+  assert.deepEqual(lines.map((l) => /'(pong \d)'/.exec(l)?.[1]), ['pong 0', 'pong 1', 'pong 2'])
+  const rssi = Number(/, (-\d+),/.exec(lines[0])[1])
+  assert.ok(rssi < -30 && rssi > -60, `rssi ${rssi}`)
+  const b = await run()
+  assert.equal(b.results[0].output, x.output)
+  assert.equal(b.results[1].output, air.output)
+})
+
+await test('only the same channel, only while on, and never itself', async () => {
+  const listen = (setup) => `import radio, time\nradio.on()\n${setup}\ntime.sleep(0.5)\nn = 0\nwhile radio.receive():\n    n += 1\nprint(n)\n`
+  const { results } = await runHeadlessGroup({ seconds: 2, devices: [
+    { kind: 'codex', source: 'import radio, time\nradio.on()\nradio.config(channel=7)\nfor i in range(4):\n    radio.send(i)\n    time.sleep(0.05)\ntime.sleep(0.3)\nprint(radio.receive())' },
+    { kind: 'codex', source: listen('radio.config(channel=7)') },
+    { kind: 'codex', source: listen('radio.config(channel=3)') },
+    { kind: 'codeair', source: listen('radio.config(channel=7)\nradio.off()\ntime.sleep(0.1)\nradio.on()') },
+  ] })
+  assert.deepEqual(results.map((r) => r.output.trim()), ['None', '4', '0', '2'])
+})
+
+await test('the boards page examples: a CodeX remote lights the listeners', async () => {
+  const press = (n, t) => [{ t, fn: (w, d) => d.press(n, true) }, { t: t + 0.2, fn: (w, d) => d.press(n, false) }]
+  let greenAt1
+  const { results } = await runHeadlessGroup({ seconds: 2, devices: [
+    { kind: 'codex', source: REMOTE_CODEX, inputs: [...press(4, 0.5), ...press(5, 1.2)] },
+    { kind: 'codex', source: LISTENER_CODEX, inputs: [{ t: 1, fn: (w, d) => { greenAt1 = d.snapshot().pixels[0] } }] },
+    { kind: 'codeair', source: LISTENER_CODEAIR },
+  ] })
+  for (const r of results) assert.ok(!r.error, r.output)
+  assert.ok(greenAt1[1] > 0 && greenAt1[0] === 0, `after A: ${greenAt1}`)
+  for (const r of results.slice(1)) {
+    const p = r.device.snapshot().pixels[0]
+    assert.ok(p[0] > 0 && p[1] === 0, `after B: ${p}`)
+  }
 })
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)) }

@@ -15,6 +15,7 @@
 import { sincos, wrapAngle, clamp } from './fmath.js'
 import { Environment } from './environment.js'
 import { Crazyflie } from './crazyflie.js'
+import { Radio } from './radio.js'
 
 // Every number is an estimate until it is measured on a CodeAIR (see
 // sim/DESIGN.md, "Calibration").
@@ -54,6 +55,7 @@ export class CodeAIR {
     this.rng = rng
     this.p = params
     this.cf = new Crazyflie(this)
+    this.radio = new Radio(rng)
     // A stopped program gets this long (simulated) to finish what its
     // KeyboardInterrupt sets off: `with recorder:` lands, at 0.2 m/s from up
     // to 2 m.

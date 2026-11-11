@@ -4,6 +4,7 @@
 import { Screen } from './screen.js'
 import { Gfx } from './gfx.js'
 import { sincos } from './fmath.js'
+import { Radio } from './radio.js'
 
 export class CodeX {
   constructor(env, rng, { id = 'codex' } = {}) {
@@ -26,6 +27,7 @@ export class CodeX {
     this.voices = []               // { freq, wave, gate, glide }
     this.mixers = []               // [ { sample, level } per voice ]
     this.i2s = { source: -1, mixer: -1 }
+    this.radio = new Radio(rng)
   }
 
   step() {}

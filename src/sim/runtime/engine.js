@@ -28,6 +28,11 @@ export class Engine {
   //   onOutput(bytes)  program output (Uint8Array)
   //   onFrame()        called at each suspension, at most every FRAME_MS wall
   //   onState(state)   'running' | 'paused' | 'idle'
+  //   lockstep, member  a Lockstep (lockstep.js) and this world's place on it:
+  //                    several engines on one timeline (Node). Their VMs share
+  //                    one JS realm, so each must come from its own copy of
+  //                    micropython.mjs, and the engine swaps the globals the
+  //                    port keeps its proxies in (REALM) as VMs take turns.
   constructor(opts) {
     this.o = opts
     this.world = opts.world
@@ -60,11 +65,31 @@ export class Engine {
     if (this._interruptDue() || this.paused || this.stepPending) return true
     if (this.now() - this._lastYieldWall >= FRAME_MS) return true
     if (isFinite(this.speed) && this.world.timeUs - this._lastYieldSim >= FRAME_MS * 1000 * this.speed) return true
+    if (this.o.lockstep && this.world.timeUs >= this.o.lockstep.horizonUs) return true
     return false
   }
 
-  // Suspended: pace, report, take messages.
+  // Suspended: other VMs in this realm may run until it resumes.
   async _yield() {
+    if (!this.o.lockstep) return this._turn()
+    this._leaveRealm()
+    try {
+      return await this._turn()
+    } finally {
+      this._enterRealm()
+    }
+  }
+
+  _leaveRealm() {
+    if (this.mp) this.mp.realm = Object.fromEntries(REALM.map((k) => [k, globalThis[k]]))
+  }
+
+  _enterRealm() {
+    if (this.mp?.realm) Object.assign(globalThis, this.mp.realm)
+  }
+
+  // Pace, report, take messages.
+  async _turn() {
     this._flushOutput()
     if (this._interruptDue()) return this._interrupt()
     if (this.stepPending) { this.stepPending = false; this.paused = true }
@@ -93,6 +118,7 @@ export class Engine {
     } else {
       await macrotask()
     }
+    if (this.o.lockstep) await this.o.lockstep.wait(this.o.member)
     if (this._interruptDue()) return this._interrupt()
     this._lastYieldWall = this.now()
     this._lastYieldSim = this.world.timeUs
@@ -103,7 +129,8 @@ export class Engine {
     // In frame-sized pieces, so the picture keeps moving through a long sleep.
     let left = us
     do {
-      const piece = isFinite(this.speed) ? Math.min(left, FRAME_MS * 1000 * this.speed) : left
+      let piece = isFinite(this.speed) ? Math.min(left, FRAME_MS * 1000 * this.speed) : left
+      if (this.o.lockstep) piece = Math.min(piece, Math.max(0, this.o.lockstep.horizonUs - this.world.timeUs))
       this.charge(piece)
       left -= piece
       this._raised = false
@@ -181,6 +208,7 @@ export class Engine {
       heapsize: 512 * 1024,
     })
     const M = mp._module
+    if (this.o.lockstep && globalThis.Module !== M) throw new Error('another VM ran while this one loaded')
     // A VM that has been replaced (a stopped program that would not stop, a
     // REPL command cut off by Run) must never touch the world again: at its
     // next suspension it stops for good, and the garbage collector has it.
@@ -212,6 +240,7 @@ export class Engine {
       guarded[k] = (...a) => (live() ? f(...a) : 0)
     }
     mp.registerJsModule('_sim', guarded)
+    if (this.o.lockstep) mp.realm = Object.fromEntries(REALM.map((k) => [k, globalThis[k]]))
     return mp
   }
 
@@ -227,6 +256,7 @@ export class Engine {
     this.replVM = null
     this._replPending = 0
     this.mp = await this._newVM()
+    this._enterRealm()
     this.mp.FS.writeFile('/main.py', source)
     this.mp.runPython(`import random\nrandom.seed(${(seed ?? 0) >>> 0})\ndel random`)
     this._rebase()
@@ -332,6 +362,10 @@ export class Engine {
     this.resume()
   }
 }
+
+// The globals MicroPython's web port keeps its JS proxies in.
+const REALM = ['Module', 'proxy_js_ref', 'proxy_js_ref_next', 'proxy_js_ref_map', 'proxy_js_map',
+  'proxy_js_existing', 'pyProxyFinalizationRegistry']
 
 // Run /main.py as __main__, as the device runs its program file.
 const RUN_MAIN = `
