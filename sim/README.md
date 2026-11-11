@@ -11,7 +11,7 @@ simulated time. Why it is built this way is in [DESIGN.md](DESIGN.md).
 | `src/sim/runtime/engine.js` | MicroPython on simulated time: charging, pacing, pause, step, stop, the REPL |
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
-| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
+| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms, floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
 | `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
 | `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs |
@@ -95,6 +95,9 @@ const r = await runHeadless({ source, env: 'gym', seconds: 10, seed: 1 })
 // r.output, r.error, r.trace (pose every 50 ms), r.simSeconds, r.wallMs
 ```
 
+On a line course (`oval`, `eight`, `gap`, `tee`; `world/courses.js`), the robot
+starting on it: `runHeadless({ source, course: 'oval', env: 'gym' })`.
+
 Several boards at once, their radios linked, on one timeline (the same run every time):
 
 ```js
@@ -122,6 +125,14 @@ the page remembers its boards and programs in this browser.
 4. A figure in `src/sim/view/`, and an entry in `src/sim/devices.js` and
    `src/sim/kinds.js`.
 5. Tests in `tests/sim.mjs`.
+
+## Adding a line course
+
+Add it to `COURSES` in `src/sim/world/courses.js`: a name, the mat (a rectangle in
+metres around the room's origin), the tape as polylines, and a spawn on the line
+(`spawnAlong` puts the line sensors over the tape). The simulator's course picker
+and `runHeadless({ course })` list it from there. Add a follower test to
+`tests/sim.mjs`.
 
 ## Adding a room
 

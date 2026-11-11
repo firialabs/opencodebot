@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import { runHeadless, runHeadlessGroup } from '../src/sim/headless.js'
 import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR } from '../src/sim/boards/examples.js'
+import { COURSES } from '../src/sim/world/courses.js'
 import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
 import { Environment } from '../src/sim/world/environment.js'
@@ -202,6 +203,54 @@ print(seen)`,
 } else {
   console.log('  skip  gym tests (no built gym: node sim/tools/build-env.mjs gym)')
 }
+
+console.log('line courses')
+
+// A follower as a student builds it from the blocks.
+const FOLLOW = `from botcore import *
+motors.enable(True)
+while True:
+    s = ls.check()
+    if s[2] or (s[1] and s[3]):
+        motors.run(LEFT, 40)
+        motors.run(RIGHT, 40)
+    elif s[1] or s[0]:
+        motors.run(LEFT, 10)
+        motors.run(RIGHT, 45)
+    elif s[3] or s[4]:
+        motors.run(LEFT, 45)
+        motors.run(RIGHT, 10)
+    else:
+        motors.run(LEFT, 30)
+        motors.run(RIGHT, 30)
+`
+// The share of a run the line sensors' middle spends off the tape.
+function offTape(r) {
+  const floor = r.world.env.floor
+  const off = r.trace.filter((p) => floor.reflectance(p.x + 0.116 * Math.cos(p.heading), p.y + 0.116 * Math.sin(p.heading), 0.03) > 0.6)
+  return off.length / r.trace.length
+}
+for (const course of ['oval', 'eight', 'gap']) {
+  await test(`a follower goes round the ${COURSES[course].name.toLowerCase()} and keeps to it`, async () => {
+    const r = await runHeadless({ source: FOLLOW, course, env: haveGym ? 'gym' : 'empty', seconds: 20, traceEveryMs: 100 })
+    assert.ok(!r.error, r.output)
+    const dist = r.trace.reduce((a, p, i) => (i ? a + Math.hypot(p.x - r.trace[i - 1].x, p.y - r.trace[i - 1].y) : 0), 0)
+    assert.ok(dist > 4, `went ${dist.toFixed(1)} m`)
+    assert.ok(offTape(r) < 0.03, `off the tape ${(offTape(r) * 100).toFixed(0)}% of the time`)
+  })
+}
+
+await test('on the T it starts on the stem (a 19 mm tape under three sensors), and the crossbar reads on all five', async () => {
+  const r = await runHeadless({
+    course: 'tee', env: 'empty', seconds: 15,
+    source: `from botcore import *\nimport time\nprint(ls.check())\nmotors.enable(True)\nmotors.run(LEFT, 50)\nmotors.run(RIGHT, 50)\nwhile not all(ls.check()):\n    time.sleep(0.005)\nmotors.enable(False)\nprint('bar')`,
+  })
+  assert.equal(r.error, undefined, r.output)
+  const [first, last] = r.output.trim().split('\n')
+  assert.equal(first, '(False, True, True, True, False)')
+  assert.equal(last, 'bar')
+  assert.ok(Math.abs(r.device.y + 0.116 - 0.5) < 0.03, `stopped with its sensors at y ${(r.device.y + 0.116).toFixed(3)}`)
+})
 
 console.log('CodeAIR')
 

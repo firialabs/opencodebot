@@ -26,6 +26,7 @@
 .sim-chip.is-active { background: var(--sky-soft); border-color: var(--sky); }
 .sim-board-btn { border-radius: var(--r-sm); font-family: var(--font-mono); font-size: 12px; user-select: none; }
 .sim-board-btn.is-down { background: var(--gold-soft); border-color: var(--gold-dark); transform: translateY(1px); }
+.sim-course { font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 2px 4px; background: var(--paper); }
 .sim-speed { font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 2px 4px; background: var(--paper); }
 .sim-reset { margin-left: auto; }
 .sim-boards { text-decoration: none; margin-left: auto; }

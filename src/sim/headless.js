@@ -12,6 +12,7 @@ import { createDevice } from './devices.js'
 import { Engine } from './runtime/engine.js'
 import { KINDS as BOARDS } from './kinds.js'
 import { Lockstep, LockstepAir } from './runtime/lockstep.js'
+import { layCourse } from './world/courses.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '../..')
@@ -52,8 +53,9 @@ export function pythonFiles(kind = 'codebot') {
   return files
 }
 
-// opts: source, kind ('codebot'), env (id or Environment), seconds (simulated
-// deadline), seed, spawn {x, y, heading}, setup(world, device) before the
+// opts: source, kind ('codebot'), env (id or Environment), course (a line
+// course id from world/courses.js, laid on the floor; the robot starts on it),
+// seconds (simulated deadline), seed, spawn {x, y, heading}, setup(world, device) before the
 // run, inputs [{ t: seconds, fn(world, device) }], traceEveryMs.
 export async function runHeadless(opts) {
   const run = await prepare(opts, opts.seconds)
@@ -88,7 +90,8 @@ async function prepare(opts, seconds = 10, lockstep = null) {
   if ((opts.kind ?? 'codebot') === 'codex' && !opts.env) opts = { ...opts, env: 'empty' }
   const env = opts.env instanceof Environment ? opts.env : await loadEnvironment(opts.env)
   const world = new World(env, { seed: opts.seed ?? 1 })
-  const spawn = opts.spawn ?? env.spawns[0]
+  const onCourse = layCourse(env, opts.course)
+  const spawn = opts.spawn ?? onCourse ?? env.spawns[0]
   const device = world.add(createDevice(opts.kind ?? 'codebot', env, world.rng.fork(), spawn))
   opts.setup?.(world, device)
 

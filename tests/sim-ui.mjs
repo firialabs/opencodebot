@@ -114,6 +114,41 @@ await page.waitForFunction(() => /42/.test(window.__sim.out), null, { timeout: 5
 
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim.png` })
 
+// A line course from the picker, and a follower on it, at 4x.
+await page.selectOption('.sim-course', 'oval')
+await page.waitForFunction(() => {
+  const d = window.openCodeBot.device.sim.lastFrame?.devices[0]
+  return d && Math.abs(d.x + 0.3) < 0.01 && Math.abs(d.y + 0.5) < 0.01
+}, null, { timeout: 5000 }).catch(() => problems.push('course: the robot did not move to the oval\'s start'))
+await page.evaluate(() => { window.openCodeBot.device.sim.setSpeed(4); window.__sim.errors = [] })
+await page.evaluate(() => window.openCodeBot.device.run(`from botcore import *
+motors.enable(True)
+while True:
+    s = ls.check()
+    if s[2] or (s[1] and s[3]):
+        motors.run(LEFT, 40)
+        motors.run(RIGHT, 40)
+    elif s[1] or s[0]:
+        motors.run(LEFT, 10)
+        motors.run(RIGHT, 45)
+    elif s[3] or s[4]:
+        motors.run(LEFT, 45)
+        motors.run(RIGHT, 10)
+`))
+await page.evaluate(() => window.openCodeBot.device.sim.setCamera('top'))
+await page.waitForTimeout(3000)
+const onOval = await page.evaluate(() => {
+  const d = window.openCodeBot.device.sim.lastFrame.devices[0]
+  // the oval: straights at y = +-0.5 for |x| <= 0.6, half circles of 0.5 m beyond
+  const ax = Math.max(0, Math.abs(d.x) - 0.6)
+  return { at: [d.x, d.y], off: Math.abs(Math.hypot(ax, d.y) - 0.5) }
+})
+await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-course.png` })
+await page.evaluate(() => window.openCodeBot.device.stop())
+await page.evaluate(() => window.openCodeBot.device.sim.setCourse(null))
+if (onOval.off > 0.08) problems.push(`course: the follower left the oval (at ${onOval.at}, ${onOval.off.toFixed(2)} m off)`)
+else console.log('sim-ui: a follower kept to the oval course')
+
 // CodeX: switch boards, run every CodeX block, draw, and press a button
 // with the keyboard.
 await page.click('#btn-sim')                                   // stop simulating CodeBot

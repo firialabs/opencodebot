@@ -346,8 +346,13 @@ Built, on branch `sim` (local commits; pushing waits for David):
   on and off, RSSI and timestamp from `receive_full`; the boards page, with a CodeX remote
   and listeners to start from (`src/sim/boards/examples.js`); headless groups in lockstep.
 
-Not yet: line-level stepping in the editor; tape courses on the floor (the floor supports
-them; nothing lays them yet); infrared, so `xfly` (which pairs by IR before it flies by
+- Line courses on the floor (`world/courses.js`): black 19 mm tape on a white mat, laid on
+  any room's floor: an oval, a figure eight (its lines crossing square), the oval with a
+  12 cm gap, and a T. Chosen from the simulator bar for CodeBot (or `course` headless); the
+  robot starts on the line with its sensors over the tape. A follower built from the
+  "line sensor sees a line" blocks goes round the three loops.
+
+Not yet: line-level stepping in the editor; infrared, so `xfly` (which pairs by IR before it flies by
 radio) cannot pair yet; calibration.
 
 Found by running CodeAIR's own Python (firia-circuitpython `codeair` at `752129a9f`), both
@@ -399,6 +404,8 @@ the devices' VMs (an inline loop), `range(10.0)` elsewhere raises. The CodeAIR f
 model is in metres, front +z, left +x. The CodeAIR finding in "Where it stands" is with the
 manager; the simulator keeps the device's code unchanged.
 
+Line courses are done (oval, figure eight, gap, T; "Where it stands").
+
 **Next, in this order (the manager's order, 2026-11-11).**
 1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
    `docs/device-targets.md`, `src/device/device-target.js`), rebase `sim` onto origin/main
@@ -408,11 +415,10 @@ manager; the simulator keeps the device's code unchanged.
    Node 24 CI change alongside theirs (Playwright install with retries). Not merged on
    origin/main at `3c30484` (checked 2026-11-11). The boards page builds on SimDevice
    directly, so it moves with it.
-2. Tape line courses on the floor (the floor reflectance map supports them).
-3. Line-level stepping in the editor.
-4. Infrared between boards, so CodeAIR's `xfly.py` can pair with a CodeX remote (it pairs
+2. Line-level stepping in the editor.
+3. Infrared between boards, so CodeAIR's `xfly.py` can pair with a CodeX remote (it pairs
    by IR, `infrared.py` over `pulseio`, then flies by radio); `xfly`, `infrared` and
    `selftest` are not yet among the simulator's CodeAIR modules. CodeSpace's CodeX side is
    in `botsim-ref/public/lesson-content/objective-files/CodeXair_code`.
-5. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
+4. Calibration on real devices (the lists in "Calibration" and the radio list in "Where it
    stands").

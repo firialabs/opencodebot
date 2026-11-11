@@ -10,6 +10,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CodeBotFigure } from './codebot-figure.js'
 import { CodeAIRFigure } from './codeair-figure.js'
+import { courseMesh } from './course-mesh.js'
 
 const FIGURES = { codebot: CodeBotFigure, codeair: CodeAIRFigure }
 
@@ -62,6 +63,13 @@ export class SimView {
       if (o.isMesh && o.material?.map) o.material.map.anisotropy = 4
     })
     this.scene.add(this.room)
+  }
+
+  // The line course on the floor (its shape from world/courses.js), or none.
+  setCourse(shape) {
+    this.course?.removeFromParent()
+    this.course = shape ? courseMesh(shape) : null
+    if (this.course) this.scene.add(this.course)
   }
 
   async addDevice(snap) {

@@ -1,6 +1,7 @@
 // The simulator's panel: the 3D view and its controls (camera, pause, step,
 // speed, the board's buttons). It builds its own DOM inside `host`.
 import './sim.css'
+import { COURSES } from './world/courses.js'
 
 const CAMERAS = [['chase', '🎥 Follow'], ['orbit', '🔄 Orbit'], ['top', '🗺️ Top']]
 const SPEEDS = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']]
@@ -18,6 +19,9 @@ export class SimPanel {
       </div>
       <div class="sim-bar" hidden>
         <span class="sim-group sim-cameras" data-for="codebot codeair"></span>
+        <span class="sim-group" data-for="codebot">
+          <label title="A line course of black tape on the floor">〰️ <select class="sim-course" aria-label="Line course"></select></label>
+        </span>
         <span class="sim-group" data-for="codex">
           <label title="Tilt left and right">↔ <input type="range" class="sim-tilt-x" min="-90" max="90" value="0"></label>
           <label title="Tilt toward and away">↕ <input type="range" class="sim-tilt-y" min="-90" max="90" value="0"></label>
@@ -51,6 +55,11 @@ export class SimPanel {
       q('.sim-cameras').appendChild(b)
     }
     this._camera('chase')
+
+    const course = (this.courseSelect = q('.sim-course'))
+    course.add(new Option('No course', ''))
+    for (const [id, c] of Object.entries(COURSES)) course.add(new Option(c.name, id))
+    course.addEventListener('change', () => sim.setCourse(course.value))
 
     const speed = q('.sim-speed')
     for (const [v, label] of SPEEDS) speed.add(new Option(label, v, v === 1, v === 1))
@@ -93,6 +102,7 @@ export class SimPanel {
     this.stage.dataset.off = String(!on)
     this.bar.hidden = !on
     for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = !el.dataset.for.split(' ').includes(this.sim.targetId)
+    this.courseSelect.disabled = this.sim.state === 'running'
     if (!on || this.sim.state !== 'running') {
       this.paused = false
       this.bar.querySelector('.sim-pause').textContent = '⏸'

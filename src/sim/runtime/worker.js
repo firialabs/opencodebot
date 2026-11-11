@@ -1,11 +1,13 @@
 // The simulator's worker: the world and MicroPython together, on simulated
 // time. The page sends commands and gets frames, output and state back.
 //
-// in:  init { kind, env, assetsBase, seed }
+// in:  init { kind, env, assetsBase, seed, course }
+//      course { course }   (lay a line course, world/courses.js; null takes it up)
 //      run { source, seed } | stop | pause | resume | step
 //      speed { value } | input { what: 'button', n, down } | reset
 //      stdin { text }   (keys typed at the terminal: the REPL between programs)
-// out: ready { snapshot } | frame { snapshot } | output { bytes }
+// out: ready { snapshot, course } | course { course } (its shape, to draw)
+//      frame { snapshot } | output { bytes }
 //      state { state } | done { result } | error { message }
 import { loadMicroPython } from './mp/micropython.mjs'
 import { Engine } from './engine.js'
@@ -14,6 +16,7 @@ import { Environment } from '../world/environment.js'
 import { createDevice } from '../devices.js'
 import { KINDS as BOARDS } from '../kinds.js'
 import { BroadcastAir } from './broadcast-air.js'
+import { layCourse, courseShape } from '../world/courses.js'
 
 const wasmUrl = new URL('./mp/micropython.wasm', import.meta.url).href
 // The Python modules: the folders under python/ that the kind lists.
@@ -29,7 +32,7 @@ function pythonFiles(kind) {
   return files
 }
 
-let world, device, engine, env, spawn
+let world, device, engine, env, spawn, course = null
 // The radio's link to the other boards (CodeX and CodeAIR have a radio).
 const air = new BroadcastAir(() => world?.timeUs ?? 0)
 let lastFrame = 0
@@ -101,10 +104,21 @@ self.onmessage = async (e) => {
     switch (m.t) {
       case 'init':
         env = await loadEnv(m.env, m.assetsBase)
-        spawn = env.spawns[0]
+        course = m.course ?? null
+        spawn = layCourse(env, course) ?? env.spawns[0]
         build(m.kind, m.seed ?? 1)
         idle(true)
-        post({ t: 'ready', snapshot: world.snapshot() })
+        post({ t: 'ready', snapshot: world.snapshot(), course: courseShape(course) })
+        break
+      case 'course':
+        // A new course puts the robot back at its start.
+        if (engine.running) return
+        course = m.course ?? null
+        spawn = layCourse(env, course) ?? env.spawns[0]
+        build(device.kind, m.seed ?? 1)
+        screenVersion = -1
+        post({ t: 'course', course: courseShape(course) })
+        frame(true)
         break
       case 'run': {
         if (engine.running) return

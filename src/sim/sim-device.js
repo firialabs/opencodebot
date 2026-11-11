@@ -20,6 +20,7 @@ export class SimDevice extends EventTarget {
     this.view = null
     this.viewHost = null
     this.cameraMode = 'chase'
+    this.course = null             // a line course on the floor (world/courses.js)
     this.supported = 'WebAssembly' in globalThis && typeof Worker !== 'undefined'
   }
 
@@ -57,7 +58,7 @@ export class SimDevice extends EventTarget {
     this.targetId = targetId
     const kind = KINDS[targetId]
     const ready = new Promise((resolve) => (this._ready = resolve))
-    this.worker.postMessage({ t: 'init', kind: targetId, env: kind.env, assetsBase })
+    this.worker.postMessage({ t: 'init', kind: targetId, env: kind.env, assetsBase, course: this.course })
     this.speaker = new Speaker()
 
     if (this.viewHost) {
@@ -73,6 +74,7 @@ export class SimDevice extends EventTarget {
     }
     const snap = await ready
     for (const d of snap.devices) await this.view?.addDevice(d)
+    this.view?.setCourse?.(this._course)
     this.view?.push(snap)
 
     this.firmware = { version: 'simulator', date: '' }
@@ -123,6 +125,12 @@ export class SimDevice extends EventTarget {
   tilt(x, y) { this._post({ t: 'input', what: 'tilt', x, y }) }
   setLight(lux) { this._post({ t: 'input', what: 'light', lux }) }
   reset() { this._post({ t: 'reset' }) }
+  // Lay a line course (an id from world/courses.js, or null for none); the
+  // robot starts again on it.
+  setCourse(id) {
+    this.course = id || null
+    this._post({ t: 'course', course: this.course })
+  }
   setCamera(mode) {
     this.cameraMode = mode
     this.view?.setCamera(mode)
@@ -142,7 +150,8 @@ export class SimDevice extends EventTarget {
 
   _onMessage(m) {
     switch (m.t) {
-      case 'ready': this._ready?.(m.snapshot); break
+      case 'ready': this._course = m.course; this._ready?.(m.snapshot); break
+      case 'course': this.view?.setCourse?.(m.course); break
       case 'frame': {
         this.view?.push(m.snapshot)
         this.lastFrame = m.snapshot

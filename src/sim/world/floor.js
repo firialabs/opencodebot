@@ -1,5 +1,5 @@
 // The floor as the line sensors see it: reflectance from 0 (black) to 1
-// (white), from the room's floor map plus any tape laid on it.
+// (white), from the room's floor map plus any mats and tape laid on it.
 //
 // The map is the room's floor seen from above (built by
 // sim/tools/build-env.mjs). Tape is vector: a line course is a polyline with a
@@ -10,7 +10,15 @@ export class Floor {
   constructor(map, plain = 0.5) {
     this.map = map
     this.plain = plain
+    this.mats = []
     this.tapes = []
+  }
+
+  // Lay a mat (a sheet under a course): a rectangle in metres, reflectance 0..1.
+  addMat(minX, minY, maxX, maxY, reflectance = 0.85) {
+    const mat = { box: [minX, minY, maxX, maxY], reflectance }
+    this.mats.push(mat)
+    return mat
   }
 
   // Lay tape: points [[x, y], ...] in metres, width in metres, reflectance 0..1.
@@ -28,7 +36,9 @@ export class Floor {
     return tape
   }
 
-  clearTape() {
+  // Take up every mat and tape.
+  clear() {
+    this.mats.length = 0
     this.tapes.length = 0
   }
 
@@ -51,6 +61,11 @@ export class Floor {
   // Mean reflectance over a sensor's spot of the given radius.
   reflectance(x, y, radius) {
     let r = this.base(x, y)
+    for (const m of this.mats) {
+      const [x0, y0, x1, y1] = m.box
+      const cover = span(x - radius, x + radius, x0, x1) * span(y - radius, y + radius, y0, y1)
+      r += (m.reflectance - r) * cover
+    }
     for (const t of this.tapes) {
       if (x < t.box[0] - radius || x > t.box[2] + radius || y < t.box[1] - radius || y > t.box[3] + radius) continue
       let cover = 0
@@ -62,6 +77,12 @@ export class Floor {
     }
     return r
   }
+}
+
+// Fraction of [a, b] that lies within [lo, hi].
+function span(a, b, lo, hi) {
+  const l = Math.max(a, lo), h = Math.min(b, hi)
+  return h > l ? (h - l) / (b - a) : 0
 }
 
 function distToSegment(px, py, [ax, ay], [bx, by]) {
