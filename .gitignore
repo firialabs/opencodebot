@@ -5,3 +5,7 @@ dev-dist/
 *.log
 tests/screenshots/
 .vite/
+
+# Simulator assets: not published until agreed
+sim/assets/
+sim/build/

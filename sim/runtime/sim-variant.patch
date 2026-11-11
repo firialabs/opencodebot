@@ -1,0 +1,168 @@
+diff --git a/ports/webassembly/library.js b/ports/webassembly/library.js
+index 6fcd9f2..0b84f14 100644
+--- a/ports/webassembly/library.js
++++ b/ports/webassembly/library.js
+@@ -28,7 +28,8 @@ mergeInto(LibraryManager.library, {
+     // This string will be emitted directly into the output file by Emscripten.
+     mp_js_ticks_ms__postset: "var MP_JS_EPOCH = Date.now()",
+ 
+-    mp_js_ticks_ms: () => Date.now() - MP_JS_EPOCH,
++    mp_js_ticks_ms: () =>
++        Module.simTicksMs ? Module.simTicksMs() : Date.now() - MP_JS_EPOCH,
+ 
+     mp_js_hook: () => {
+         if (ENVIRONMENT_IS_NODE) {
+diff --git a/ports/webassembly/mphalport.c b/ports/webassembly/mphalport.c
+index 3935068..d9c0ff5 100644
+--- a/ports/webassembly/mphalport.c
++++ b/ports/webassembly/mphalport.c
+@@ -39,12 +39,20 @@ mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
+     return write(1, str, len);
+ }
+ 
++#if MICROPY_SIM
++void sim_delay_ms(mp_uint_t ms);
++void mp_hal_delay_ms(mp_uint_t ms) {
++    sim_delay_ms(ms);
++}
++#else
+ void mp_hal_delay_ms(mp_uint_t ms) {
+     uint32_t start = mp_hal_ticks_ms();
+     while (mp_hal_ticks_ms() - start < ms) {
+     }
+ }
+ 
++#endif
++
+ void mp_hal_delay_us(mp_uint_t us) {
+     uint32_t start = mp_hal_ticks_us();
+     while (mp_hal_ticks_us() - start < us) {
+diff --git a/ports/webassembly/variants/sim/manifest.py b/ports/webassembly/variants/sim/manifest.py
+new file mode 100644
+index 0000000..efecf9e
+--- /dev/null
++++ b/ports/webassembly/variants/sim/manifest.py
+@@ -0,0 +1,2 @@
++include("$(PORT_DIR)/variants/manifest.py")
++module("botcore.py", base_path="$(PORT_DIR)/variants/sim/modules")
+diff --git a/ports/webassembly/variants/sim/modules/botcore.py b/ports/webassembly/variants/sim/modules/botcore.py
+new file mode 100644
+index 0000000..1876824
+--- /dev/null
++++ b/ports/webassembly/variants/sim/modules/botcore.py
+@@ -0,0 +1,18 @@
++# Stand-in for the CB3 botcore: sensors and motors live in the JS world sim.
++import js
++_w = js.world
++
++class _Motors:
++    def run(self, which, pct):
++        _w.setMotor(which, pct)
++    def enable(self, on):
++        _w.enableMotors(bool(on))
++
++class _LS:
++    def read(self, n):
++        return _w.lineSensor(n)
++
++motors = _Motors()
++ls = _LS()
++LEFT = 0
++RIGHT = 1
+diff --git a/ports/webassembly/variants/sim/mpconfigvariant.h b/ports/webassembly/variants/sim/mpconfigvariant.h
+new file mode 100644
+index 0000000..5363e3c
+--- /dev/null
++++ b/ports/webassembly/variants/sim/mpconfigvariant.h
+@@ -0,0 +1,12 @@
++#define MICROPY_CONFIG_ROM_LEVEL                (MICROPY_CONFIG_ROM_LEVEL_FULL_FEATURES)
++#define MICROPY_GC_SPLIT_HEAP                   (1)
++#define MICROPY_GC_SPLIT_HEAP_AUTO              (1)
++#define MICROPY_PY_WEAKREF                      (1)
++#define MICROPY_JSPI (1)
++#define MICROPY_SIM (1)
++
++// Count backward branches and returns in C; call out every sim_hook_period.
++extern unsigned int sim_hook_count, sim_hook_period;
++void sim_vm_hook(void);
++#define MICROPY_VM_HOOK_LOOP if (++sim_hook_count >= sim_hook_period) { sim_vm_hook(); }
++#define MICROPY_VM_HOOK_RETURN MICROPY_VM_HOOK_LOOP
+diff --git a/ports/webassembly/variants/sim/mpconfigvariant.mk b/ports/webassembly/variants/sim/mpconfigvariant.mk
+new file mode 100644
+index 0000000..f1e02d3
+--- /dev/null
++++ b/ports/webassembly/variants/sim/mpconfigvariant.mk
+@@ -0,0 +1,10 @@
++# Robot simulator variant: the browser (JSPI) variant plus a VM hook that
++# charges simulated time and can suspend to the JS event loop, a sleep that
++# advances simulated time, and frozen device modules.
++FROZEN_MANIFEST ?= variants/sim/manifest.py
++SUPPORT_LONGJMP = wasm
++JSFLAGS += -s JSPI
++JSFLAGS += -s JSPI_EXPORTS=mp_js_do_exec_async,proxy_c_to_js_resume,mp_js_repl_process_char_async
++JSFLAGS += -s ALLOW_MEMORY_GROWTH
++EXPORTED_FUNCTIONS_EXTRA += ,_sim_set_hook_period
++SRC_C += variants/sim/simhook.c
+diff --git a/ports/webassembly/variants/sim/simhook.c b/ports/webassembly/variants/sim/simhook.c
+new file mode 100644
+index 0000000..983dd29
+--- /dev/null
++++ b/ports/webassembly/variants/sim/simhook.c
+@@ -0,0 +1,57 @@
++// Simulator hooks: simulated time for tight loops and for sleep, with a
++// JSPI suspension to the JS event loop so the worker can take messages
++// (pause, step, stop) while Python is running.
++#include <emscripten.h>
++#include "py/runtime.h"
++#include "py/mphal.h"
++
++bool mp_js_can_suspend(void);
++void mp_js_suspension_begin(void);
++void mp_js_suspension_end(void);
++
++unsigned int sim_hook_count = 0;
++unsigned int sim_hook_period = 0xffffffffu; // off until JS sets it
++
++void sim_set_hook_period(unsigned int n) {
++    sim_hook_period = n ? n : 0xffffffffu;
++    sim_hook_count = 0;
++}
++
++// Charge "n" branches of simulated time; nonzero asks to yield.
++EM_JS(int, sim_js_charge, (unsigned int n), {
++    return Module.simCharge ? Module.simCharge(n) : 0;
++});
++
++// Yield to the event loop (and wait there while paused).
++EM_ASYNC_JS(void, sim_js_yield, (void), {
++    if (Module.simYield) { await Module.simYield(); }
++});
++
++// Advance simulated time by ms, then pace against the wall clock.
++EM_ASYNC_JS(void, sim_js_sleep, (unsigned int ms), {
++    if (Module.simSleep) { await Module.simSleep(ms); }
++});
++
++
++void sim_vm_hook(void) {
++    unsigned int n = sim_hook_count;
++    sim_hook_count = 0;
++    if (sim_js_charge(n) && mp_js_can_suspend()) {
++        mp_js_suspension_begin();
++        sim_js_yield();
++        mp_js_suspension_end();
++    }
++}
++
++void sim_delay_ms(mp_uint_t ms) {
++    if (mp_js_can_suspend()) {
++        mp_js_suspension_begin();
++        sim_js_sleep(ms);
++        mp_js_suspension_end();
++    } else {
++        // No suspender (e.g. a synchronous runPython): just advance time.
++        sim_js_charge(0);
++    }
++    // A stop requested while suspended is a pending KeyboardInterrupt.
++    mp_handle_pending(true);
++}
