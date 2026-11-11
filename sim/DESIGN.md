@@ -368,6 +368,12 @@ inline loop that accepts a float, so `flightdb`'s `range(int(t) / 10)` works on 
 raise; the simulator keeps the device's code unchanged.
 
 **Next, in this order.**
+0. When PR #2 (branch `feat/device-targets`, the device target interface:
+   `docs/device-targets.md`, `src/device/device-target.js`) is merged to origin/main,
+   rebase `sim` onto it and move SimDevice onto that interface (`registerDeviceKind('sim',
+   ...)`, `?device=sim`; template `src/device/loopback-device.js`, test `tests/device.mjs`).
+   Keep this branch's Node 24 CI change alongside theirs (Playwright install with retries).
+   Not merged at 16d06d1. `tests/sim-ui.mjs` serves on its own port, 4183.
 1. Radio between simulated devices: a CodeX and a CodeAIR in one page (CodeAIR's `xfly.py`
    pairs with a CodeX as a remote), or two of one kind. `python/radio/radio.py` is shared;
    the bridges' `radio_send`/`radio_receive` are the seam; the world holds devices already.
