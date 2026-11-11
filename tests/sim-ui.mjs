@@ -6,7 +6,9 @@
 import { spawn } from 'node:child_process'
 import { chromium } from 'playwright'
 
-const URL = process.env.OCB_URL || 'http://localhost:4173/'
+// Its own port, so it never meets another test's (or someone's) server.
+const PORT = '4183'
+const URL = process.env.OCB_URL || `http://localhost:${PORT}/`
 const SHOT_DIR = process.env.OCB_SHOTS || 'tests/screenshots'
 
 async function reachable(url) {
@@ -14,7 +16,9 @@ async function reachable(url) {
 }
 async function ensureServer() {
   if (await reachable(URL)) return null
-  const server = spawn('npx', ['vite', 'preview', '--port', '4173', '--strictPort'], { stdio: 'ignore' })
+  // its own process group, so stopping it stops vite and not only npx
+  const proc = spawn('npx', ['vite', 'preview', '--port', PORT, '--strictPort'], { stdio: 'ignore', detached: true })
+  const server = { kill: () => { try { process.kill(-proc.pid) } catch { /* gone */ } } }
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 250))
     if (await reachable(URL)) return server
@@ -27,6 +31,7 @@ if (!(await reachable(new globalThis.URL('sim-assets/env/gym/world.json', URL).h
   // fall through: ensureServer below reports it
 }
 const server = await ensureServer()
+process.on('exit', () => server?.kill())          // even when a step throws
 if (!(await reachable(new globalThis.URL('sim-assets/env/gym/world.json', URL).href))) {
   console.log('sim-ui: skipped (no built simulator assets: npm run sim:assets, then npm run build)')
   server?.kill()
