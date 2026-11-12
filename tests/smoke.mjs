@@ -145,6 +145,10 @@ for (const device of DEVICES) {
       codebot_prox_led: 'leds.prox_num(',
       codebot_pwr_led: 'leds.pwr(',
       codebot_button_was: 'buttons.was_pressed(',
+      codebot_usb_led: 'leds.usb(',
+      codebot_prox_range: 'prox.range()[',
+      codebot_on_usb: 'system.pwr_is_usb()',
+      codebot_temp: 'system.temp_F()',
     }
     out.missing = []
     for (const [type, call] of Object.entries(expect)) {

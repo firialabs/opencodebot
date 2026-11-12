@@ -253,6 +253,21 @@ defineBlocks([
       return `leds.pwr(${block.getFieldValue('ON')})\n`
     },
   },
+  {
+    json: {
+      type: 'codebot_usb_led',
+      message0: '💡 turn USB LED %1',
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] }],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'The light next to the USB socket.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.usb(${block.getFieldValue('ON')})\n`
+    },
+  },
 
   // ------------------------------------------------------------ sensors
   {
@@ -299,6 +314,20 @@ defineBlocks([
     python: (block) => {
       bot()
       return [`prox.detect()[${block.getFieldValue('SIDE')}]`, Order.MEMBER]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_prox_range',
+      message0: '📡 proximity reading on the %1',
+      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] }],
+      output: 'Number',
+      style: 'sensors_blocks',
+      tooltip: 'A number from 0 to 100 from the proximity sensor on that side.',
+    },
+    python: (block) => {
+      bot()
+      return [`prox.range()[${block.getFieldValue('SIDE')}]`, Order.MEMBER]
     },
   },
   {
@@ -368,6 +397,33 @@ defineBlocks([
     python: () => {
       bot()
       return ['system.pwr_volts()', Order.FUNCTION_CALL]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_on_usb',
+      message0: '🔌 powered by USB',
+      output: 'Boolean',
+      style: 'sensors_blocks',
+      tooltip: 'True when the power switch is set to USB rather than batteries.',
+    },
+    python: () => {
+      bot()
+      return ['system.pwr_is_usb()', Order.FUNCTION_CALL]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_temp',
+      message0: '🌡️ temperature in %1',
+      args0: [{ type: 'field_dropdown', name: 'UNIT', options: [['°F', 'temp_F'], ['°C', 'temp_C']] }],
+      output: 'Number',
+      style: 'sensors_blocks',
+      tooltip: 'How warm the robot is.',
+    },
+    python: (block) => {
+      bot()
+      return [`system.${block.getFieldValue('UNIT')}()`, Order.FUNCTION_CALL]
     },
   },
 
