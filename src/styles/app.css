@@ -489,6 +489,32 @@ kbd {
 .modal ul { padding-left: 20px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
+/* The example picker: a board switch, then a numbered list, easiest first. */
+.ex-boards { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
+.ex-board {
+  font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  padding: 5px 14px; border-radius: 999px;
+  border: 2px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.ex-board:hover { border-color: var(--green); }
+.ex-board[aria-pressed='true'] { border-color: var(--green-deep); background: var(--green-soft); }
+.ex-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.ex-item {
+  display: flex; gap: 12px; align-items: center; width: 100%; text-align: left;
+  font: inherit; color: var(--ink); cursor: pointer;
+  padding: 8px 12px; border-radius: var(--r-sm);
+  border: 2px solid var(--line); background: var(--surface);
+}
+.ex-item:hover { border-color: var(--green); background: var(--green-mist); }
+.ex-num {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 800; font-size: 13px;
+  background: var(--green-soft); color: var(--ink);
+}
+.ex-text { display: flex; flex-direction: column; }
+.ex-title { font-weight: 700; }
+.ex-goal { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+
 /* ------------------------------------------------------------- responsive */
 @media (max-width: 880px) {
   #app { grid-template-rows: auto 1fr auto; }

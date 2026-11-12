@@ -8,6 +8,7 @@ import { BlockWorkspace, STARTER_PROJECTS, DEFAULT_PROJECT_NAME, fileNameFor } f
 import { generatePython, generateWithLines, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
+import { examplesFor, exampleProject, EXAMPLE_DEVICES } from '../examples/index.js'
 import { t, listOf, LANGUAGES, language, languageName, setLanguage } from '../i18n/index.js'
 import { DeviceSwitch } from '../sim/device-switch.js'
 import { SimDevice } from '../sim/sim-device.js'   // registers the 'sim' kind
@@ -626,6 +627,9 @@ export class App {
       case 'new':
         this._newProject()
         break
+      case 'examples':
+        this._openExamples()
+        break
       case 'open':
         $('file-input').click()
         break
@@ -686,6 +690,74 @@ export class App {
     this.terminal.say(t('new.started'))
     $('project-name').focus()
     $('project-name').select()
+  }
+
+  // ------------------------------------------------------------- examples
+
+  /** The example picker: a board switch, then that board's examples, easiest first. */
+  _examplesHtml(device) {
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+    const boards = EXAMPLE_DEVICES.map(
+      (id) =>
+        `<button type="button" class="ex-board" data-ex-device="${id}" aria-pressed="${id === device}">${esc(getTarget(id)?.name || id)}</button>`,
+    ).join('')
+    const items = examplesFor(device)
+      .map(
+        (ex, i) =>
+          `<li><button type="button" class="ex-item" data-example="${ex.id}"><span class="ex-num" aria-hidden="true">${i + 1}</span><span class="ex-text"><span class="ex-title">${esc(ex.title)}</span><span class="ex-goal">${esc(ex.goal)}</span></span></button></li>`,
+      )
+      .join('')
+    return `<p>${esc(t('examples.intro'))}</p>
+      <div class="ex-boards" role="group" aria-label="${esc(t('examples.boards'))}">${boards}</div>
+      <ol class="ex-list" aria-label="${esc(t('examples.listLabel', { device: getTarget(device)?.name || device }))}">${items}</ol>`
+  }
+
+  /** Open a starter project, asking first if there are blocks to lose. */
+  async _openExamples() {
+    let device = this.workspace.targetId || this.pickedTarget
+    if (!EXAMPLE_DEVICES.includes(device)) device = EXAMPLE_DEVICES[0]
+    let chosen = null
+    const closed = showModal({ title: t('examples.title'), bodyHtml: this._examplesHtml(device), confirmText: t('examples.close') })
+    const dialog = $('modal')
+    const onClick = (e) => {
+      const board = e.target.closest('[data-ex-device]')
+      if (board) {
+        device = board.dataset.exDevice
+        dialog.querySelector('.modal-body').innerHTML = this._examplesHtml(device)
+        dialog.querySelector(`[data-ex-device="${device}"]`).focus()
+        return
+      }
+      const item = e.target.closest('[data-example]')
+      if (item) {
+        chosen = item.dataset.example
+        dialog.close('example')
+      }
+    }
+    dialog.addEventListener('click', onClick)
+    await closed
+    dialog.removeEventListener('click', onClick)
+    if (!chosen) return
+
+    if (!this.workspace.isEmpty) {
+      const ok = await showModal({
+        title: t('examples.replaceTitle'),
+        bodyHtml: t('examples.replaceBodyHtml'),
+        confirmText: t('examples.replace'),
+        cancelText: t('pick.keep'),
+      })
+      if (!ok) return
+    }
+    const project = exampleProject(device, chosen)
+    const goal = t(`example.${device}.${chosen}.goal`)
+    this.workspace.clear()
+    this.workspace.loadProject(project)
+    this.workspace.workspace.cleanUp()
+    this.pickedTarget = device
+    localStorage.setItem(PICKED_DEVICE, device)
+    this._renderDevicePicker()
+    this._refreshDeviceChip()
+    this.terminal.say(t('examples.opened', { name: project.name, goal }))
+    toast({ kind: 'info', title: t('opened.title'), detail: goal })
   }
 
   _saveFile() {
