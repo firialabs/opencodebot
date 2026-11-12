@@ -40,30 +40,47 @@ await test('driving straight at equal power keeps the heading', async () => {
   assert.ok(e.y > 0.3 && e.y < 1.2, `went ${e.y} m`)
 })
 
-// botsim, CodeSpace's simulated CodeBot, run headless (sim/DESIGN.md,
-// "Calibration"): what its axle midpoint did, so a lesson drives as far here.
-await test('drives as far and turns as fast as botsim', async () => {
+// The drive is a gearmotor model from the hardware (sim/DESIGN.md,
+// "Calibration"): what it claims, through the real botcore.
+await test('drives as its gearmotors would: a deadband, then faster with more power, spins too', async () => {
   const drive = async (l, r, run, coast = 0) => {
     const res = await runHeadless({
       source: `from botcore import *\nimport time\nmotors.enable(True)\nmotors.run(LEFT, ${l})\nmotors.run(RIGHT, ${r})\ntime.sleep(${run})\nmotors.run(LEFT, 0)\nmotors.run(RIGHT, 0)\ntime.sleep(${coast})`,
       seconds: run + coast + 0.5, traceEveryMs: 10,
     })
     const at = (t) => res.trace.reduce((a, p) => (Math.abs(p.t - t) < Math.abs(a.t - t) ? p : a))
-    return { at, start: res.trace[0] }
+    // heading turned between two times, unwrapped (it may turn past 180 in a trace step)
+    const turned = (t0, t1) => {
+      let sum = 0
+      const pts = res.trace.filter((p) => p.t >= t0 && p.t <= t1)
+      for (let i = 1; i < pts.length; i++) sum += ((pts[i].heading - pts[i - 1].heading + 3 * Math.PI) % (2 * Math.PI)) - Math.PI
+      return (sum * 180) / Math.PI
+    }
+    return { at, start: res.trace[0], turned }
   }
-  const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) <= tol, `${what}: ${got.toFixed(3)}, botsim ${want}`)
-  for (const [p, d2, coast] of [[10, 0.097, 0.0014], [50, 0.481, 0.043], [100, 0.960, 0.187]]) {
+  const speeds = []
+  for (const p of [10, 20, 50, 100]) {
     const { at, start } = await drive(p, p, 2, 1)
     const dist = (t) => Math.hypot(at(t).x - start.x, at(t).y - start.y)
-    near(dist(2), d2, 0.02 * d2 + 0.003, `${p}% for 2 s, metres`)
-    near(dist(3) - dist(2), coast, 0.15 * coast + 0.005, `${p}% coasting to a stop, metres`)
+    speeds.push((dist(2) - dist(1.5)) / 0.5)
+    if (p === 100) {
+      // 1:48 gearmotors on 65 mm wheels at 6 V: about 0.6 m/s, and it coasts a few hand-widths
+      assert.ok(speeds.at(-1) > 0.5 && speeds.at(-1) < 0.7, `full power, ${speeds.at(-1).toFixed(3)} m/s`)
+      const coast = dist(3) - dist(2)
+      assert.ok(coast > 0.05 && coast < 0.4, `coasted ${coast.toFixed(3)} m`)
+    }
   }
-  for (const [l, r, rate] of [[-25, 25, 119], [-50, 50, 220], [0, 50, 113], [25, 50, 60], [-100, 100, 188]]) {
-    const { at } = await drive(l, r, 2)
-    const deg = ((at(2).heading - at(1.5).heading) * 180) / Math.PI   // under 180 in half a second
-    const turned = 2 * (((deg % 360) + 540) % 360 - 180)
-    near(turned, rate, Math.max(6, 0.12 * rate), `${l}/${r} turn rate, deg/s`)
+  assert.ok(speeds[0] < 0.001, `10% is inside the deadband, yet it moved at ${speeds[0].toFixed(4)} m/s`)
+  for (let i = 1; i < speeds.length; i++) assert.ok(speeds[i] > speeds[i - 1], `speeds by power ${speeds.map((s) => s.toFixed(3))}`)
+  const spins = []
+  for (const p of [25, 50, 100]) {
+    const { turned } = await drive(-p, p, 2)
+    spins.push(turned(1.5, 2) * 2)
   }
+  for (let i = 1; i < spins.length; i++) assert.ok(spins[i] > spins[i - 1], `spin rates by power ${spins.map((s) => s.toFixed(0))} deg/s`)
+  // a pivot on one wheel turns the robot toward the stopped wheel
+  const { turned } = await drive(0, 50, 2)
+  assert.ok(turned(1.5, 2) > 20, `pivot on the left wheel turned ${turned(1.5, 2).toFixed(0)} deg in half a second`)
 })
 
 await test('motors do nothing until enabled', async () => {
@@ -299,20 +316,26 @@ while True:
         motors.run(LEFT, 30)
         motors.run(RIGHT, 30)
 `
-// The share of a run the line sensors' middle spends off the tape.
-function offTape(r) {
+// The share of a run the line sensors' middle spends off the tape. Over the
+// gap (the gap course's 120 mm break, mid top straight) there is no tape to be
+// on, so that stretch does not count: how long it takes to cross depends on
+// the speed at 30%, not on following.
+function offTape(r, course) {
   const floor = r.world.env.floor
-  const off = r.trace.filter((p) => floor.reflectance(p.x + 0.116 * Math.cos(p.heading), p.y + 0.116 * Math.sin(p.heading), 0.03) > 0.6)
-  return off.length / r.trace.length
+  const sensor = (p) => [p.x + 0.116 * Math.cos(p.heading), p.y + 0.116 * Math.sin(p.heading)]
+  const overGap = ([x, y]) => course === 'gap' && Math.abs(x) < 0.1 && Math.abs(y - 0.5) < 0.05
+  const counted = r.trace.filter((p) => !overGap(sensor(p)))
+  const off = counted.filter((p) => floor.reflectance(...sensor(p), 0.03) > 0.6)
+  return off.length / counted.length
 }
 for (const course of ['oval', 'eight', 'gap']) {
   await test(`a follower goes round the ${COURSES[course].name.toLowerCase()} and keeps to it`, async () => {
     const r = await runHeadless({ source: FOLLOW, course, env: haveGym ? 'gym' : 'empty', seconds: 20, traceEveryMs: 100 })
     assert.ok(!r.error, r.output)
     const dist = r.trace.reduce((a, p, i) => (i ? a + Math.hypot(p.x - r.trace[i - 1].x, p.y - r.trace[i - 1].y) : 0), 0)
-    // 20 s at mostly 40% (0.2 m/s), less what the turns take
+    // 20 s at mostly 40% (0.18 m/s), less what the turns take
     assert.ok(dist > 3.3, `went ${dist.toFixed(1)} m`)
-    assert.ok(offTape(r) < 0.03, `off the tape ${(offTape(r) * 100).toFixed(0)}% of the time`)
+    assert.ok(offTape(r, course) < 0.03, `off the tape ${(offTape(r, course) * 100).toFixed(0)}% of the time`)
   })
 }
 

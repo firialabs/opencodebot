@@ -137,9 +137,13 @@ model written for it, run on a fixed 1 ms tick with integer tick counts and a se
 generator. Trigonometry in the state path uses our own polynomial functions so results match
 across browsers (V8 agrees across x86 and ARM; Firefox and Safari's `Math.sin` need not).
 
-**CodeBot.** A 2D differential drive. Motor power to target wheel speed (linear, with an
-optional deadband and battery scaling) and a first-order lag (35 ms); a wheel's slowing
-clamped to a braking limit; the turn rate cut by scrub and slip; the body as a circle or oriented box against wall segments and prop shapes,
+**CodeBot.** A 2D differential drive, modelled from the hardware: each wheel a DC
+gearmotor (its torque falls linearly with speed from stall to no load) fed duty x battery
+volts by the H-bridge, coasting at power 0; the battery sagging with the current; the
+body's mass and turning inertia with the motors' rotors seen through the gears; the
+gears' friction, the tyres' rolling resistance and the front skid's sliding as friction
+that stops motion but never reverses it, which makes the deadband; the tyres' grip; the
+body as a circle or oriented box against wall segments and prop shapes,
 pushed out along the contact normal; when it is blocked, the wheels stall and the encoders
 stop, as on the real robot. Constants from the CB3 itself: the old simulator's dimensions
 are from the CB2 model (wheel 65 mm, track about 111 mm, line sensors 61 mm ahead at 0,
@@ -280,10 +284,11 @@ once it has been chosen.
 
 - **JSPI outside Chromium.** Firefox and Safari fall back to the Asyncify build, about 5.7
   times slower but correct. Checked again before release.
-- **Calibration.** CodeBot drives and reads lines as botsim does, CodeSpace's own simulated
-  CodeBot, so lessons written against it drive the same distances. A real CB3 may differ
-  ("Calibration" lists where); the per-bytecode time cost, CodeX and CodeAIR still need a
-  bench. Until then those behave plausibly, not exactly.
+- **Calibration.** CodeBot drives and reads lines as the physical CB3 should, from its
+  hardware, not as CodeSpace's older simulated CodeBot does; a lesson tuned on that one may
+  need its powers or times adjusted. Its assumptions ("Calibration" lists them), the
+  per-bytecode time cost, CodeX and CodeAIR still need a bench. Until then those behave
+  plausibly, not exactly.
 - **The device's own Python sources.** The frozen Firia modules would run unchanged if their
   sources can ship in the simulator build; if they are not open, the shims reimplement them
   from the docs.
@@ -302,64 +307,85 @@ Chromium 151 and Node 24.
 Every number a student could notice is a named parameter, and each is an estimate until it
 is measured on a device:
 
-- **CodeBot** (`CB3` in `src/sim/world/codebot.js`): wheel speed at full power, deadband,
-  motor lag, traction; line sensor readings on white and black and their noise; the
-  proximity beam's spread (its range table is measured); encoder signal levels; the
-  accelerometer's axes and sign at rest. Sensor positions come from the CB3 model.
+- **CodeBot** (`CB3` in `src/sim/world/codebot.js`): the drive's and the line sensors'
+  assumptions, listed below; the proximity beam's spread (its range table is measured);
+  encoder signal levels; the accelerometer's axes and sign at rest. Sensor positions come
+  from the CB3 model.
 - **Device time** (`COST_US` in `src/sim/bridge/codebot.js`, `usPerBranch` in the engine):
   what a sensor read, a motor write and a bytecode cost on the device. A tight loop's
   iterations per second on a CB3 sets `usPerBranch`.
 
-A bench session with a CB3, a tape line and a ruler settles all of these. Until then
-(the real CB3 waits for the final testing rounds) CodeBot is calibrated to CodeSpace's
-own simulated CodeBot (botsim, its `src/entities/CodeBotModels.js` and
-`CodeBotModelController.js`), since CodeSpace's lessons were written and tested against
-it. What its source says, and what running it showed:
+A bench session with a CB3, a tape line, a ruler and a stopwatch settles all of these,
+in the final testing rounds. Until then CodeBot follows its hardware: what botcore does
+with the pins is known exactly, and the parts' numbers are assumed from the kind of part
+the robot carries. The physical CB3 is the reference, not CodeSpace's older simulated
+CodeBot, whose physics had quirks (a full-power spin slower than a half-power one).
 
-- **How it was measured.** botsim's own `CodeBotModels.js`, unchanged, run headless in
-  Node: Babylon 6.21 `NullEngine`, botsim's `public/ammo/ammo.js`, its physics settings
-  (`AmmoJSPlugin(0)`, a 1/60 s step in 1/240 s slices, gravity 9.8) and a classroom
-  ground (friction 0.8, restitution 0.7), with loader hooks standing in for its assets,
-  scene and peripherals. No CodeSpace account and no Firebase. The harness is not in this
-  repo (it imports CodeSpace's source); this paragraph is enough to write it again.
-  botsim steps its physics 1/60 s per rendered frame, so on a machine below 60 frames a
-  second its robot runs in slow motion against the clock: its numbers are at 60.
-- **Motors.** Target wheel speed = power / 100 x 15 rad/s (`motorMaxAngularVelocity`),
-  linear, no deadband: 0.49 m/s at 100%, 0.24 at 50%, and 10% still moves (0.05 m/s).
-  Starting, the wheels reach 63% of their speed in 35 ms (`motorTau`); no acceleration
-  limit shows. Stopping is slow: power cut (or the motors disabled, which botsim does the
-  same way) the wheels slow at about 0.65 m/s² (`brake`), so from full speed it rolls
-  19 cm in 0.7 s, from 50% 4 cm. Fitted, our model matches its distance at 2 s within
-  2 mm at 10 to 100%, and its stopping distance within 15%.
-- **Turning.** botsim's turn rate falls short of what the wheels give, and past a point
-  falls: spinning (one wheel back, one forward) at 25, 50 and 100% it turns 119, 220 and
-  188 deg/s, against 125, 250 and 500 from the wheels alone. Our model:
-  `turnEfficiency x w / (1 + (w / turnSlip)^turnSlipExp)`, w the wheels' turn rate, fits
-  the three spins within 2% and arcs (one wheel faster) within 5%. A pivot on one stopped
-  wheel at full power runs 20% fast (216 deg/s against botsim's 180).
-- **Line sensors.** A ray down from just under the board; the reading is
-  4095 x (1 - r x (1 - d / 10 cm)), r the floor's three sRGB channels averaged as stored
-  (a texture's texel, or an untextured material's colour factor unconverted) and d the
-  ray's length. The robot rests nose-down on its skid, pitched 20 degrees, and the ray
-  meets the floor at 7 mm (measured, not the 4 cm estimated before), so white reads 286 and
-  black 4095. Starting hard lifts the nose for a moment (at 100%, 22 mm: white reads
-  about 900), which this model leaves out. The room builder now makes floor maps the same
-  way (it used linear luminance). CodeSpace's simulated lessons use thresholds of 2000,
-  2300 and 3300 (and `ls.check()` with none, 1000), all between the two.
-- **Proximity.** botsim always reads 4095 (off); its lessons that read proximity override
-  it in their validators. Proximity stays on here: CodeSpace's real-robot lessons (Python
-  with Robots, Hot Pursuit) read it on a CB3, and the range table was measured on one.
-- **Encoders.** From the wheel's angle in the physics engine, 20 slots, edges counted. Ours
-  count the wheel's own turning, so a robot that slips in a turn counts what its wheels
-  did, as botsim's does.
-- **Where a real CB3 may differ**, for the final testing rounds: its speed per power and any
-  deadband (a real gearmotor stalls at low power); its stopping, likely much shorter than
-  botsim's; its turn rates, and above all whether a full-power spin really is slower than a
-  half-power one (botsim's is, likely a quirk of its physics engine, kept here because the
-  lessons were tuned on it); what its line sensors read on white at their real height; and
-  the nose lifting as it starts.
+**What is known** (from botcore, the CB3's own module, and the docs):
 
-CodeAIR and CodeX have no botsim to follow. botsim's CodeAIR is the board's 3D model and
+- **Motor drive.** `motors.run(n, power)` sets the motor's two direction pins on an I2C
+  expander and its PWM duty to |power| %, at 1 kHz; `motors.enable()` drives the bridge's
+  standby pin. At power 0 both direction pins are low: the bridge lets go and the motor
+  coasts. Between pulses at any other power the bridge shorts the motor (slow decay), so
+  on average it sees duty x battery volts and can brake as well as drive.
+- **Battery.** Four AA cells, 6 V fresh (the docs).
+- **Wheels.** 65 mm; track 111 mm; encoder discs of 20 slots a turn of the wheel.
+- **Line sensors.** An infrared emitter and a reflective sensor each, read through the
+  ADC; 0 is brightest, 4095 darkest; botcore scales the CB3's 16-bit reading by 1.215 and
+  shifts it to 12 bits, matched to a CB2 that read 4080 in the dark.
+
+**What is assumed**, each a point to confirm on a real CB3:
+
+- **The gearmotors** (`motorNoLoad`, `motorStallTorque`, `motorStallAmps`). A 1:48 hobby
+  gearmotor of the kind that takes a 65 mm wheel: 200 rpm with no load, 0.8 kg cm
+  (0.078 N m) stalled and 1.5 A stalled, all at 6 V. Confirm the part number, then its
+  datasheet; on the robot, the top speed (0.60 m/s here at 100%, fresh batteries).
+- **Gear and brush friction** (`gearFriction`, 0.006 N m at the wheel, about 8% of the
+  stall torque). With the tyres' rolling resistance (`rollingResistance`, 2% of the load)
+  and the skid's sliding it makes the deadband: here a robot on a hard floor starts to
+  creep at about 14% power driving straight and 20% spinning. Confirm the lowest power
+  that moves it, both ways.
+- **Inertia** (`wheelInertia`, `mass`, `yawInertia`). The rotor of a 130-size motor seen
+  through 48:1 (1.4e-4 kg m² a wheel), a 0.40 kg robot with batteries, 2.0e-3 kg m² about
+  the axle. Together they set how fast it gets going: 63% of full speed in about 150 ms.
+  Confirm the robot's weight, and its time to speed.
+- **The H-bridge** (`bridgeOhms`, 1 ohm through the two switches in the motor's path).
+  Confirm the driver's part number.
+- **The battery's sag** (`batteryOhms`, 0.6 ohm, 0.15 a cell). It sags with the current,
+  most at a stall; `system.pwr_volts()` reads the sagging value. Confirm with fresh and
+  tired cells, and on NiMH (4.8 V), which slows everything about a fifth.
+- **The floor** (`tyreGrip`, 0.8; `skidLoad`, 15% of the weight on the front skid;
+  `skidFriction`, 0.25; `skidAhead`, 10 cm ahead of the axle). The skid resists spinning
+  more than driving straight, which is why a spin needs more power to start. The grip caps
+  a wheel's push, so a full-power start is limited by it. Wheelspin is not modelled: a
+  wheel turns only as the robot moves, so the encoders count the robot's motion.
+- **Stopping.** Coasting at power 0 against friction alone: from full speed it rolls about
+  20 cm. Confirm by cutting power at full speed and measuring.
+- **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 4400). The
+  reading falls linearly with the floor's reflectance until the sensor saturates: white
+  paper (0.85) reads about 340, a mid-grey floor (0.5) about 1900, black tape (0.05)
+  about 3860, a drop 4080. `ls.check()`'s default threshold, 1000, falls between white and
+  black, as botcore intends. The floor map's visible reflectance (its sRGB channels
+  averaged, as `sim/tools/build-env.mjs` builds it) stands in for infrared, which can differ
+  (some black tapes are bright in infrared). The emitter at half power halves the span.
+  Confirm white, black tape, the room floors and a drop, at the sensors' real height.
+- **The line sensor's spot** (`lineSpot`, 4 mm radius). Confirm by sliding a tape edge
+  under one sensor and noting where the reading changes.
+- **Not modelled.** The nose lifting as it starts hard (a moment of a higher sensor,
+  reading paler floors darker); PWM ripple; motor-to-motor differences (a real pair drifts
+  off straight); the CoM ahead of the axle in turns.
+
+**Proximity** reads on: CodeSpace's real-robot lessons (Python with Robots, Hot Pursuit)
+read it on a CB3, and its range table was measured on one.
+
+**Lessons tuned on the older simulator.** It ran wheels at power x 15 rad/s with no
+deadband (0.49 m/s at 100%, 10% still moving), stopped by a fixed 0.65 m/s² brake, and spun
+119, 220 and 188 deg/s at 25, 50 and 100% (here: about 60, 240 and 600). A lesson that drove
+at 10 to 15% now sits in the deadband, and one timed for a spin at full power turns about
+three times as far. Its line sensors read white at 286 (a ray from 7 mm above the floor);
+its lessons' thresholds (2000, 2300, 3300) still fall between white and black here.
+
+CodeAIR and CodeX have no older simulator to follow. CodeSpace's CodeAIR is the board's 3D model and
 nothing more (no flight, sensors or physics), and its CodeX a model with buttons and no
 sensor or output wired. CodeSpace's simulated lessons for them (14 in Python with CodeX, 3
 in Lift-Off, 9 in Fly with Python, checked 2026-11-12) run no code: they are tours of the
