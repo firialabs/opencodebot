@@ -137,9 +137,9 @@ model written for it, run on a fixed 1 ms tick with integer tick counts and a se
 generator. Trigonometry in the state path uses our own polynomial functions so results match
 across browsers (V8 agrees across x86 and ARM; Firefox and Safari's `Math.sin` need not).
 
-**CodeBot.** A 2D differential drive. Motor power to target wheel speed through a deadband,
-battery scaling and a first-order lag (about 80 ms); wheel acceleration clamped to a traction
-limit (slip); the body as a circle or oriented box against wall segments and prop shapes,
+**CodeBot.** A 2D differential drive. Motor power to target wheel speed (linear, with an
+optional deadband and battery scaling) and a first-order lag (35 ms); a wheel's slowing
+clamped to a braking limit; the turn rate cut by scrub and slip; the body as a circle or oriented box against wall segments and prop shapes,
 pushed out along the contact normal; when it is blocked, the wheels stall and the encoders
 stop, as on the real robot. Constants from the CB3 itself: the old simulator's dimensions
 are from the CB2 model (wheel 65 mm, track about 111 mm, line sensors 61 mm ahead at 0,
@@ -280,9 +280,10 @@ once it has been chosen.
 
 - **JSPI outside Chromium.** Firefox and Safari fall back to the Asyncify build, about 5.7
   times slower but correct. Checked again before release.
-- **Calibration.** Drive lag, traction, the per-bytecode time cost and the sensor curves need
-  a real CB3, CodeX and CodeAIR on a bench. Until then the simulator behaves plausibly, not
-  exactly.
+- **Calibration.** CodeBot drives and reads lines as botsim does, CodeSpace's own simulated
+  CodeBot, so lessons written against it drive the same distances. A real CB3 may differ
+  ("Calibration" lists where); the per-bytecode time cost, CodeX and CodeAIR still need a
+  bench. Until then those behave plausibly, not exactly.
 - **The device's own Python sources.** The frozen Firia modules would run unchanged if their
   sources can ship in the simulator build; if they are not open, the shims reimplement them
   from the docs.
@@ -310,29 +311,52 @@ is measured on a device:
   iterations per second on a CB3 sets `usPerBranch`.
 
 A bench session with a CB3, a tape line and a ruler settles all of these. Until then
-(the manager, 2026-11-12: the real CB3 waits for the final testing rounds) the reference
-is CodeSpace's own simulated CodeBot (botsim, `src/entities/CodeBotModels.js` and
-`CodeBotModelController.js` at `~/dev/firia/botsim-ref`), since CodeSpace's lessons are
-tuned to it. What its source says, at its 1 unit = 10 cm:
+(the manager, 2026-11-12: the real CB3 waits for the final testing rounds) CodeBot is
+calibrated to CodeSpace's own simulated CodeBot (botsim, `src/entities/CodeBotModels.js`
+and `CodeBotModelController.js` at `~/dev/firia/botsim-ref`), since CodeSpace's lessons
+were written and tested against it (the manager's decision, 2026-11-12). What its source
+says, and what running it showed:
 
-- **Motors**: target wheel speed = power / 100 x 15 rad/s (`motorMaxAngularVelocity`, "an
-  experimental value"), linear, with no deadband; torque from 1.0 to 1.8 x 1.1 as power
-  rises; 65 mm wheels. So 0.49 m/s at 100%, 0.24 m/s at 50%. Ours: 22 rad/s past a 12%
-  deadband, 0.72 m/s at 100% and 0.31 m/s at 50%. Its acceleration and turning come from
-  Ammo.js (body 40, wheels 5, wheel friction 50, a skid of 0.01): measure, not read.
-- **Line sensors**: a ray straight down from just under the board, about 4 cm to the floor;
-  the reading is 4095 x (1 - r x (1 - d / 10 cm)), r the floor's mean RGB (sRGB, not
-  linear) and d the ray's length. White floor reads about 1640 and black 4095; ours reads
-  white 180 and black 3900. botcore's `ls.check()` threshold is 1000 by default, so on
-  botsim's numbers a plain `check()` would see white as a line: find which thresholds
-  CodeSpace's lessons use before choosing.
-- **Proximity**: switched off in botsim (always 4095, "re-enable when we are using prox
-  sensors in curriculum"). Our proximity table was measured on a real CodeBot for CodeSpace
-  and stays.
-- **Encoders**: from the wheel's angle in the physics engine, 20 slots, edges counted.
-
-Measuring the rest needs botsim running: it has no login-free mode at make.firialabs.com,
-and locally it wants Node 18, react-scripts 3.4.3 and the Firebase emulators.
+- **How it was measured.** botsim's own `CodeBotModels.js`, unchanged, run headless in
+  Node: Babylon 6.21 `NullEngine`, botsim's `public/ammo/ammo.js`, its physics settings
+  (`AmmoJSPlugin(0)`, a 1/60 s step in 1/240 s slices, gravity 9.8) and a classroom
+  ground (friction 0.8, restitution 0.7), with loader hooks standing in for its assets,
+  scene and peripherals. No CodeSpace account and no Firebase. The harness is not in this
+  repo (it imports CodeSpace's source); this paragraph is enough to write it again.
+  botsim steps its physics 1/60 s per rendered frame, so on a machine below 60 frames a
+  second its robot runs in slow motion against the clock: its numbers are at 60.
+- **Motors.** Target wheel speed = power / 100 x 15 rad/s (`motorMaxAngularVelocity`),
+  linear, no deadband: 0.49 m/s at 100%, 0.24 at 50%, and 10% still moves (0.05 m/s).
+  Starting, the wheels reach 63% of their speed in 35 ms (`motorTau`); no acceleration
+  limit shows. Stopping is slow: power cut (or the motors disabled, which botsim does the
+  same way) the wheels slow at about 0.65 m/s² (`brake`), so from full speed it rolls
+  19 cm in 0.7 s, from 50% 4 cm. Fitted, our model matches its distance at 2 s within
+  2 mm at 10 to 100%, and its stopping distance within 15%.
+- **Turning.** botsim's turn rate falls short of what the wheels give, and past a point
+  falls: spinning (one wheel back, one forward) at 25, 50 and 100% it turns 119, 220 and
+  188 deg/s, against 125, 250 and 500 from the wheels alone. Our model:
+  `turnEfficiency x w / (1 + (w / turnSlip)^turnSlipExp)`, w the wheels' turn rate, fits
+  the three spins within 2% and arcs (one wheel faster) within 5%. A pivot on one stopped
+  wheel at full power runs 20% fast (216 deg/s against botsim's 180).
+- **Line sensors.** A ray down from just under the board; the reading is
+  4095 x (1 - r x (1 - d / 10 cm)), r the floor's three sRGB channels averaged as stored
+  (a texture's texel, or an untextured material's colour factor unconverted) and d the
+  ray's length. The robot rests nose-down on its skid, pitched 20 degrees, and the ray
+  meets the floor at 7 mm (measured, not the 4 cm estimated before), so white reads 286 and
+  black 4095. Starting hard lifts the nose for a moment (at 100%, 22 mm: white reads
+  about 900), which this model leaves out. The room builder now makes floor maps the same
+  way (it used linear luminance). CodeSpace's simulated lessons use thresholds of 2000,
+  2300 and 3300 (and `ls.check()` with none, 1000), all between the two.
+- **Proximity.** botsim always reads 4095 (off); its lessons that read proximity override
+  it in their validators. Proximity stays on here: CodeSpace's real-robot lessons (Python
+  with Robots, Hot Pursuit) read it on a CB3, and the range table was measured on one.
+- **Encoders.** From the wheel's angle in the physics engine, 20 slots, edges counted. Ours
+  count the wheel's own turning, so a robot that slips in a turn counts what its wheels
+  did, as botsim's does.
+- **Where a real CB3 may differ**, for the final testing rounds: its speed per power and any
+  deadband (a real gearmotor stalls at low power); its stopping, likely much shorter than
+  botsim's; its turn rates; what its line sensors read on white at their real height; and
+  the nose lifting as it starts.
 
 - **CodeAIR** (`AIR` in `src/sim/world/codeair.js`, constants in `crazyflie.js`): how
   closely it tracks a velocity, height and yaw rate (the lags and gains); how far it drifts
@@ -521,14 +545,10 @@ requests or by hand: `gh workflow run ci.yml --ref sim` ran the whole suite gree
 3. (d) Done: the other rooms behind a room picker ("Where it stands", "Rooms"). The
    room picker's strings join step 2's list (`sim-panel.js`, and the room names in
    `kinds.js` ROOMS).
-4. While PR #2 waits: calibrate CodeBot against botsim, not a real CB3 (the real one waits
-   for the final testing rounds, with David). "Calibration" lists what botsim's source
-   gives. Next: decide with the manager whether to adopt botsim's motor curve (15 rad/s,
-   no deadband) and line readings (white about 1640), which changes every distance a
-   lesson drives, and find the line thresholds CodeSpace's lessons pass to `ls.check`
-   (`firialabs:codespace-coauthor` can read the lesson content, which itself stays out of
-   this repo). Measuring acceleration and turning needs botsim running: ask the manager for
-   a CodeSpace test account at make.firialabs.com (no login-free mode), or stand it up
-   locally (Node 18, react-scripts 3.4.3, the Firebase emulators).
+4. Done (2026-11-12): CodeBot calibrated to botsim, measured by running botsim's own
+   physics headless ("Calibration"); `tests/sim.mjs` "drives as far and turns as fast as
+   botsim" holds it there. Proposed next, while PR #2 waits (ask the manager): CodeAIR
+   and CodeX against botsim the same way (`CodeAIRModels.js`, `CodeXModelController.js`),
+   since CodeSpace's simulated FLY and CodeX lessons were tuned to them too.
 5. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
    in "Where it stands", and the Chromebook checks in sim/README.md "Performance").

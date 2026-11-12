@@ -9,9 +9,11 @@ import { sincos, wrapAngle, clamp } from './fmath.js'
 import { Environment } from './environment.js'
 
 // Physical parameters. Positions are from the CB3 3D model (BotBody.glb: its
-// motor shaft is the axle, 56 mm behind the model's origin); the motor and
-// sensor curves are first estimates. All are to be measured on a CB3 (see
-// sim/DESIGN.md, "Calibration").
+// motor shaft is the axle, 56 mm behind the model's origin). The drive and the
+// line sensors follow botsim, CodeSpace's simulated CodeBot, which its lessons
+// were written against: its motor curve and sensor formula read from its source,
+// its lag, braking and turning measured by running its physics (sim/DESIGN.md,
+// "Calibration"). A real CB3 is checked in the final testing rounds.
 export const CB3 = {
   wheelRadius: 0.0325,        // 65 mm wheels
   track: 0.111,               // wheel centre to wheel centre
@@ -20,18 +22,23 @@ export const CB3 = {
   height: 0.05,               // the band in which it meets obstacles
   step: 0.01,                 // a ledge this low it drives over; higher, it drives off
 
-  wheelMaxSpeed: 22,          // rad/s at 100% power, unloaded (3.5 rev/s)
-  deadband: 12,               // % power below which the wheels do not turn
-  motorTau: 0.08,             // s, first-order lag of wheel speed
-  coastTau: 0.25,             // s, wheel slow-down with the motors disabled
-  traction: 4.0,              // m/s^2, the most the floor gives a wheel
+  wheelMaxSpeed: 15,          // rad/s at 100% power, linear in power (0.49 m/s)
+  deadband: 0,                // % power below which the wheels do not turn
+  motorTau: 0.035,            // s, first-order lag of wheel speed
+  traction: 100,              // m/s^2, the most a wheel speeds up (botsim: no limit)
+  brake: 0.65,                // m/s^2, the most a wheel slows down, power cut or not
+  // Turning: the wheels scrub, and faster they slip, so a spin at full power
+  // turns slower than at half (botsim: 119, 220 and 188 deg/s at 25, 50, 100%).
+  turnEfficiency: 0.96,       // turn rate over what the wheels alone would give, turning slowly
+  turnSlip: 7.77,             // rad/s of wheel-given turn at which half of it is lost to slip
+  turnSlipExp: 3.8,           // how sharply slip sets in
   nominalVolts: 6.0,
 
   // Line sensors: 0 is the robot's left, 4 its right.
   lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.116, left]),
   lineSpot: 0.003,            // radius of the area each sensor sees
-  lineWhite: 180,             // ADC reading on white (0 is brightest)
-  lineBlack: 3900,            // ADC reading on black
+  lineWhite: 286,             // ADC reading on white (0 is brightest): 7 mm above it
+  lineBlack: 4095,            // ADC reading on black
   lineNoise: 25,
 
   // Proximity: 0 is left, 1 right; they look straight ahead.
@@ -101,15 +108,15 @@ export class CodeBot {
       if (this.enabled && Math.abs(pw) > p.deadband) {
         target = Math.sign(pw) * ((Math.abs(pw) - p.deadband) / (100 - p.deadband)) * p.wheelMaxSpeed * (this.volts / p.nominalVolts)
       }
-      const tau = this.enabled ? p.motorTau : p.coastTau
-      let dw = (target - this.wheel[i]) * (dt / tau)
-      const maxDw = (p.traction / p.wheelRadius) * dt
-      dw = clamp(dw, -maxDw, maxDw)
-      this.wheel[i] += dw
+      const w = this.wheel[i]
+      const slowing = Math.abs(target) < Math.abs(w) && Math.sign(target) !== -Math.sign(w)
+      const maxDw = ((slowing ? p.brake : p.traction) / p.wheelRadius) * dt
+      this.wheel[i] += clamp((target - w) * (dt / p.motorTau), -maxDw, maxDw)
     }
 
     let v = (p.wheelRadius * (this.wheel[0] + this.wheel[1])) / 2
     let om = (p.wheelRadius * (this.wheel[1] - this.wheel[0])) / p.track
+    om = (p.turnEfficiency * om) / (1 + Math.abs(om / p.turnSlip) ** p.turnSlipExp)
 
     // Move, then push the body out of anything it hit.
     const [s0, c0] = sincos(this.heading)

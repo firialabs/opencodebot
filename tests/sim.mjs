@@ -40,6 +40,32 @@ await test('driving straight at equal power keeps the heading', async () => {
   assert.ok(e.y > 0.3 && e.y < 1.2, `went ${e.y} m`)
 })
 
+// botsim, CodeSpace's simulated CodeBot, run headless (sim/DESIGN.md,
+// "Calibration"): what its axle midpoint did, so a lesson drives as far here.
+await test('drives as far and turns as fast as botsim', async () => {
+  const drive = async (l, r, run, coast = 0) => {
+    const res = await runHeadless({
+      source: `from botcore import *\nimport time\nmotors.enable(True)\nmotors.run(LEFT, ${l})\nmotors.run(RIGHT, ${r})\ntime.sleep(${run})\nmotors.run(LEFT, 0)\nmotors.run(RIGHT, 0)\ntime.sleep(${coast})`,
+      seconds: run + coast + 0.5, traceEveryMs: 10,
+    })
+    const at = (t) => res.trace.reduce((a, p) => (Math.abs(p.t - t) < Math.abs(a.t - t) ? p : a))
+    return { at, start: res.trace[0] }
+  }
+  const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) <= tol, `${what}: ${got.toFixed(3)}, botsim ${want}`)
+  for (const [p, d2, coast] of [[10, 0.097, 0.0014], [50, 0.481, 0.043], [100, 0.960, 0.187]]) {
+    const { at, start } = await drive(p, p, 2, 1)
+    const dist = (t) => Math.hypot(at(t).x - start.x, at(t).y - start.y)
+    near(dist(2), d2, 0.02 * d2 + 0.003, `${p}% for 2 s, metres`)
+    near(dist(3) - dist(2), coast, 0.15 * coast + 0.005, `${p}% coasting to a stop, metres`)
+  }
+  for (const [l, r, rate] of [[-25, 25, 119], [-50, 50, 220], [0, 50, 113], [25, 50, 60], [-100, 100, 188]]) {
+    const { at } = await drive(l, r, 2)
+    const deg = ((at(2).heading - at(1.5).heading) * 180) / Math.PI   // under 180 in half a second
+    const turned = 2 * (((deg % 360) + 540) % 360 - 180)
+    near(turned, rate, Math.max(6, 0.12 * rate), `${l}/${r} turn rate, deg/s`)
+  }
+})
+
 await test('motors do nothing until enabled', async () => {
   const r = await runHeadless({ source: 'from botcore import *\nimport time\nmotors.run(LEFT, 80)\nmotors.run(RIGHT, 80)\ntime.sleep(1)' })
   assert.ok(Math.abs(r.trace.at(-1).y) < 1e-9)
@@ -241,7 +267,7 @@ motors.enable(True)
 motors.run(LEFT, 60)
 motors.run(RIGHT, 60)
 seen = 0
-for i in range(400):
+for i in range(600):
     if ls.check(1500, True)[2]:
         seen += 1
     time.sleep(0.01)
@@ -284,7 +310,8 @@ for (const course of ['oval', 'eight', 'gap']) {
     const r = await runHeadless({ source: FOLLOW, course, env: haveGym ? 'gym' : 'empty', seconds: 20, traceEveryMs: 100 })
     assert.ok(!r.error, r.output)
     const dist = r.trace.reduce((a, p, i) => (i ? a + Math.hypot(p.x - r.trace[i - 1].x, p.y - r.trace[i - 1].y) : 0), 0)
-    assert.ok(dist > 4, `went ${dist.toFixed(1)} m`)
+    // 20 s at mostly 40% (0.2 m/s), less what the turns take
+    assert.ok(dist > 3.3, `went ${dist.toFixed(1)} m`)
     assert.ok(offTape(r) < 0.03, `off the tape ${(offTape(r) * 100).toFixed(0)}% of the time`)
   })
 }
@@ -456,7 +483,7 @@ for (const id of ROOM_IDS) {
       const r = await runHeadless({ source: FOLLOW, course: 'oval', env: id, seconds: 15, traceEveryMs: 100 })
       assert.ok(!r.error, r.output)
       const dist = r.trace.reduce((a, q, i) => (i ? a + Math.hypot(q.x - r.trace[i - 1].x, q.y - r.trace[i - 1].y) : 0), 0)
-      assert.ok(dist > 3, `went ${dist.toFixed(1)} m`)
+      assert.ok(dist > 2.4, `went ${dist.toFixed(1)} m`)
       assert.ok(offTape(r) < 0.03, `off the tape ${(offTape(r) * 100).toFixed(0)}% of the time`)
     })
   }

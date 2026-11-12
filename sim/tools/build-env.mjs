@@ -192,10 +192,11 @@ async function rasteriseFloor(node, f, outBuf, depth, below) {
   const mat = prim.getMaterial()
   const tex = mat.getBaseColorTexture()
   const factor = mat.getBaseColorFactor()
-  // A material with no texture is a 1x1 texture of its colour factor.
+  // A material with no texture is a 1x1 texture of its colour factor, taken as
+  // it stands (botsim reads Babylon's albedoColor, the glTF factor, unconverted).
   const img = tex
     ? await sharp(Buffer.from(tex.getImage())).removeAlpha().raw().toBuffer({ resolveWithObject: true })
-    : { data: factor.slice(0, 3).map((c) => Math.round(255 * linToSrgb(c))), info: { width: 1, height: 1 } }
+    : { data: factor.slice(0, 3).map((c) => Math.round(255 * c)), info: { width: 1, height: 1 } }
   const { width: tw, height: th } = img.info
   const pos = prim.getAttribute('POSITION')
   const uv = prim.getAttribute('TEXCOORD_0')
@@ -240,21 +241,13 @@ async function rasteriseFloor(node, f, outBuf, depth, below) {
         const tx = Math.min(tw - 1, Math.max(0, Math.floor((s - Math.floor(s)) * tw)))
         const ty = Math.min(th - 1, Math.max(0, Math.floor((v - Math.floor(v)) * th)))
         const o = (ty * tw + tx) * 3
-        // Rec. 709 luminance of the sRGB texel, linearised, back to 8 bits
-        const lin = 0.2126 * srgb(img.data[o]) + 0.7152 * srgb(img.data[o + 1]) + 0.0722 * srgb(img.data[o + 2])
-        outBuf[y * f.width + x] = Math.round(255 * lin)
+        // The texel's three channels averaged, as stored (sRGB): what botsim's
+        // line sensors take for reflectance, and so what CodeSpace's lessons expect
+        outBuf[y * f.width + x] = Math.round((img.data[o] + img.data[o + 1] + img.data[o + 2]) / 3)
       }
     }
   }
 }
 
-function linToSrgb(v) {
-  return v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055
-}
-
-function srgb(c) {
-  const v = c / 255
-  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-}
 function r4(v) { return Math.round(v * 1e4) / 1e4 }
 function roundAll(o) { return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'number' ? r4(v) : v])) }
