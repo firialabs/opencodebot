@@ -195,6 +195,15 @@ await audit('device menu open')
 await page.keyboard.press('Escape')
 
 await page.click('#btn-menu')
+await page.click('[data-action="examples"]')
+await audit('example picker')
+check(
+  await page.evaluate(() => document.querySelector('#modal [data-ex-device][aria-pressed="true"]')?.textContent === 'CodeBot'),
+  'the example picker says which board it shows (aria-pressed)',
+)
+await page.keyboard.press('Escape')
+
+await page.click('#btn-menu')
 await page.click('[data-action="help"]')
 await audit('Help dialog')
 check(

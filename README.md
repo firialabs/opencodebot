@@ -29,6 +29,7 @@ waiting for them.
 | 💬 **A real terminal** | A full REPL to the device — tab completion, arrow-key history and colour all work, because bytes pass straight through. |
 | ✈️ **Works offline** | Once the page has loaded it keeps working with no internet at all. Nothing is uploaded anywhere. |
 | 💾 **Nothing to lose** | Your blocks are saved in the browser as you go, and can be saved to a file. |
+| 🧭 **Starter projects** | Five or six short example programs for each board, easiest first, each with a goal. Open one from the ⋯ menu and change it. |
 
 ## No device? Simulate one
 
@@ -91,6 +92,9 @@ npm run preview  # serve dist/ locally
   workers and its service worker, and fails on any that goes anywhere but the
   site the app came from. About promises nothing leaves the browser; this
   keeps that true.
+- **`tests/examples.mjs`**: opens every starter project from the ⋯ menu, in
+  English and Spanish, checks it is a tidy block program for its board with a
+  goal, and runs its Python in the simulator.
 
 ### Hosting on GitHub Pages
 
