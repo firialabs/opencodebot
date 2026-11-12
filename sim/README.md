@@ -57,8 +57,9 @@ simulated Crazyflie (`world/crazyflie.js`) that decodes the same packets, with
 the tables of contents from the device's own `flight_catalog.py`. The MicroPython build stores no docstrings, as the devices'
 CircuitPython does not, because Firia's modules test for `__doc__`.
 
-CodeX's font is its own, read from its firmware image by
-`sim/tools/extract-codex-font.mjs`.
+CodeX's font is the one in its firmware, read from its firmware image by
+`sim/tools/extract-codex-font.mjs`: Adafruit GFX's classic 5x7 font, under
+Adafruit's BSD licence (`THIRD_PARTY_NOTICES.md`).
 
 To update them, copy the files from a newer commit and change the table.
 CodeAIR's `cflib` is the exception: it is not in this repository (below).

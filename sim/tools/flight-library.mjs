@@ -38,12 +38,18 @@ export function fetchedFlight() {
     return null
   }
   if (source.url !== cfg.url || source.commit !== cfg.commit) return null
-  const files = {}
-  const dir = path.join(FLIGHT_DIR, 'cflib')
-  for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.py')) files[`cflib/${f}`] = fs.readFileSync(path.join(dir, f), 'utf8')
+  // A fetch cut short (cflib/ or the licence missing) is as good as none.
+  try {
+    const files = {}
+    const dir = path.join(FLIGHT_DIR, 'cflib')
+    for (const f of fs.readdirSync(dir)) {
+      if (f.endsWith('.py')) files[`cflib/${f}`] = fs.readFileSync(path.join(dir, f), 'utf8')
+    }
+    if (!('cflib/__init__.py' in files)) return null
+    return { files, license: fs.readFileSync(path.join(FLIGHT_DIR, 'COPYING'), 'utf8'), source }
+  } catch {
+    return null
   }
-  return { files, license: fs.readFileSync(path.join(FLIGHT_DIR, 'COPYING'), 'utf8'), source }
 }
 
 class FetchError extends Error {}
