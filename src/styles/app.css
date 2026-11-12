@@ -560,3 +560,14 @@ kbd {
 .blocklyFlyoutBackground { fill: var(--surface) !important; fill-opacity: 1 !important; }
 .blocklyText { font-family: var(--font-display) !important; font-weight: 500 !important; }
 .blocklyWidgetDiv .blocklyMenu { border-radius: var(--r-sm); font-family: var(--font-body); }
+
+/* --------------------------------------------------------- reduced motion */
+/* For anyone who has asked their system for less movement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

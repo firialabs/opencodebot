@@ -37,6 +37,17 @@ page.on('pageerror', (e) => problems.push(`page error: ${e.message}`))
 
 /** Run axe on the page as it is now; report each violation as a failure. */
 async function audit(label) {
+  // Check what people see once things settle, not a button halfway through
+  // a colour change or a toast still fading in. Endless animations (the
+  // busy dot's pulse) are left alone.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {})),
+    ),
+  )
   if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: AXE })
   const violations = await page.evaluate(async () => {
     const result = await window.axe.run(
@@ -141,6 +152,19 @@ await page.keyboard.press('Enter') // add it
 await page.waitForTimeout(300)
 const blocksAfter = await page.evaluate(() => window.openCodeBot.workspace.workspace.getAllBlocks(false).length)
 check(blocksAfter > blocksBefore, 'a block can be added with the keyboard alone')
+
+// Reduced motion is respected.
+await page.emulateMedia({ reducedMotion: 'reduce' })
+const toastMs = await page.evaluate(() => {
+  const probe = document.createElement('div')
+  probe.className = 'toast'
+  document.getElementById('toast-stack').append(probe)
+  const ms = parseFloat(getComputedStyle(probe).animationDuration) * 1000
+  probe.remove()
+  return ms
+})
+check(toastMs < 1, `animations are switched off for reduced motion (${toastMs}ms)`)
+await page.emulateMedia({ reducedMotion: 'no-preference' })
 
 // An empty project, with its "drag blocks here" hint showing.
 await page.click('#btn-new')
