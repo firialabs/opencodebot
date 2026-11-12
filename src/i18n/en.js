@@ -63,6 +63,7 @@ export default {
   'adopted.connectedDetail': 'Your blocks are ready to run.',
   'run.emptyTitle': 'Nothing to run yet',
   'run.emptyDetail': 'Drag some blocks in first!',
+  'run.emptyTextDetail': 'Type some Python first!',
   'run.wrongTitle': 'Those blocks are for another device',
   'run.wrongDetail': 'Your project uses {names} blocks, but a {device} is plugged in.',
   'error.atLine': '(Python line {line})',
@@ -72,8 +73,26 @@ export default {
   'pick.switchBodyHtml': '<p>Your project uses {names} blocks, which a {device} cannot run.</p><p>Start a fresh project, or keep these blocks and switch anyway?</p>',
   'pick.startFresh': 'Start fresh',
   'pick.keep': 'Keep my blocks',
+  // Blocks or typed Python (the Python tab)
+  'text.barBlocks': 'These are the Python lines your blocks make.',
+  'text.barText': 'You are writing Python. Run sends this code.',
+  'text.toText': '✏️ Edit as Python',
+  'text.toBlocks': '🧩 Back to blocks',
+  'text.editorLabel': 'Python program',
+  'text.editorHelp': 'Tab indents. Press Escape, then Tab, to leave the editor.',
+  'text.coverTitle': "🐍 You're writing Python now",
+  'text.coverBody': 'Your program lives in the Python tab. Run sends the code you typed.',
+  'text.startedTitle': "You're writing Python now",
+  'text.startedDetail': 'Run sends the code you type. Your blocks are kept for when you go back.',
+  'text.backTitle': 'Go back to blocks?',
+  'text.backBodyHtml': '<p>The Python you typed cannot be turned back into blocks, so your typed changes will be lost.</p><p>To keep them, press <b>Keep my Python</b>, then Download Python from the ⋯ menu.</p>',
+  'text.backConfirm': 'Back to blocks',
+  'text.keep': 'Keep my Python',
+
   'new.title': 'Start a new project?',
   'new.bodyHtml': '<p>Your current blocks will be cleared. This cannot be undone.</p><p>To keep them, press <b>Keep my blocks</b>, then Save project from the ⋯ menu.</p>',
+  'new.bodyTextHtml': '<p>Your current program will be cleared. This cannot be undone.</p><p>To keep it, press <b>Keep my program</b>, then Save project from the ⋯ menu.</p>',
+  'new.keepText': 'Keep my program',
   'new.confirm': 'Yes, start over',
   'new.started': 'New project. Have fun!',
   'pySaved.title': 'Python saved',
@@ -115,7 +134,9 @@ export default {
     <ul>
       <li><strong>Talk to device</strong> is a live Python prompt on the device. Type in it!
         Press <kbd>Tab</kbd> to complete a name and <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop a program.</li>
-      <li><strong>Python</strong> shows exactly the code your blocks make.</li>
+      <li><strong>Python</strong> shows exactly the code your blocks make. Press
+        <strong>✏️ Edit as Python</strong> to type your own; <strong>🧩 Back to blocks</strong>
+        returns to your blocks (typed changes do not turn back into blocks).</li>
       <li><strong>🆕 New</strong> starts over. Click the project name next to it to rename your project.</li>
     </ul>
     <h3>Shortcuts</h3>

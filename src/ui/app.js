@@ -26,6 +26,7 @@ export class App {
     this._bindDevice()
     this._bindChrome()
     this._bindWorkspace()
+    this._bindTextMode()
 
     if (!this.workspace.restore() && this.pickedTarget) {
       this.workspace.loadProject(STARTER_PROJECTS[this.pickedTarget] || { blocks: {} })
@@ -126,12 +127,17 @@ export class App {
   }
 
   async _run() {
-    if (this.workspace.isEmpty) {
-      toast({ kind: 'warn', title: t('run.emptyTitle'), detail: t('run.emptyDetail') })
+    const textMode = this.workspace.mode === 'text'
+    if (textMode ? !this.workspace.pythonText.trim() : this.workspace.isEmpty) {
+      toast({
+        kind: 'warn',
+        title: t('run.emptyTitle'),
+        detail: t(textMode ? 'run.emptyTextDetail' : 'run.emptyDetail'),
+      })
       return
     }
     const target = this.device.targetId
-    const used = devicesUsed(this.workspace.workspace)
+    const used = textMode ? new Set() : devicesUsed(this.workspace.workspace)
     const wrong = [...used].filter((id) => id !== target)
     if (target && wrong.length) {
       toast({
@@ -218,7 +224,7 @@ export class App {
       } else if (meta && e.key.toLowerCase() === 's') {
         e.preventDefault()
         this._saveFile()
-      } else if (e.key === 'Escape' && this.device.state === State.RUNNING) {
+      } else if (e.key === 'Escape' && this.device.state === State.RUNNING && e.target.id !== 'python-editor') {
         this._stop()
       }
     })
@@ -319,7 +325,12 @@ export class App {
 
     // Blocks for the old board would just sit there unrunnable, so offer to
     // start over — but never throw away work without asking.
-    const strays = [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
+    // In text mode Run sends the typed Python, so blocks for another board
+    // are no reason to start over.
+    const strays =
+      this.workspace.mode === 'text'
+        ? []
+        : [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
     let startFresh = this.workspace.isEmpty
     if (strays.length) {
       const device = getTarget(targetId)?.name
@@ -386,7 +397,7 @@ export class App {
   _bindWorkspace() {
     let timer
     this.workspace.addEventListener('change', () => {
-      $('blocks-hint').hidden = !this.workspace.isEmpty
+      $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
       clearTimeout(timer)
       timer = setTimeout(() => {
         this._refreshPython()
@@ -395,14 +406,76 @@ export class App {
     })
   }
 
+  /** The program Run sends: typed Python in text mode, else the blocks'. */
   _currentPython() {
+    if (this.workspace.mode === 'text') return this.workspace.pythonText
+    return this._blocksPython()
+  }
+
+  _blocksPython() {
     return generatePython(this.workspace.workspace, this.workspace.targetId)
   }
 
   _refreshPython() {
-    const code = this._currentPython()
-    $('python-view').innerHTML = `<code>${highlightPython(code)}</code>`
-    $('blocks-hint').hidden = !this.workspace.isEmpty
+    if (this.workspace.mode !== 'text') {
+      $('python-view').innerHTML = `<code>${highlightPython(this._blocksPython())}</code>`
+    }
+    $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
+  }
+
+  // ------------------------------------------------------- blocks or text
+
+  _bindTextMode() {
+    const editor = $('python-editor')
+    $('btn-mode').addEventListener('click', () =>
+      this.workspace.mode === 'text' ? this._toBlocks() : this._toText(),
+    )
+    $('btn-back-to-blocks').addEventListener('click', () => this._toBlocks())
+    editor.addEventListener('input', () => this.workspace.setPythonText(editor.value))
+    editor.addEventListener('keydown', (e) => indentKeys(e, editor))
+    this.workspace.addEventListener('mode', () => this._showMode())
+  }
+
+  _toText() {
+    this.workspace.setMode('text', this._blocksPython())
+    $('python-editor').focus()
+    toast({
+      kind: 'info',
+      title: t('text.startedTitle'),
+      detail: t('text.startedDetail'),
+    })
+  }
+
+  async _toBlocks() {
+    // Typed changes cannot be turned back into blocks, so ask before
+    // throwing them away. Untouched code needs no question.
+    const changed = this.workspace.pythonText.trim() !== this._blocksPython().trim()
+    if (changed) {
+      const ok = await showModal({
+        title: t('text.backTitle'),
+        bodyHtml: t('text.backBodyHtml'),
+        confirmText: t('text.backConfirm'),
+        cancelText: t('text.keep'),
+      })
+      if (!ok) return
+    }
+    this.workspace.setMode('blocks')
+  }
+
+  /** Make the screen match the mode. */
+  _showMode() {
+    const text = this.workspace.mode === 'text'
+    const editor = $('python-editor')
+    if (text && editor.value !== this.workspace.pythonText) editor.value = this.workspace.pythonText
+    editor.hidden = !text
+    $('python-view').hidden = text
+    $('text-mode-cover').hidden = !text
+    $('blocks-pane').classList.toggle('is-text-mode', text)
+    $('btn-mode').textContent = t(text ? 'text.toBlocks' : 'text.toText')
+    $('python-bar-msg').textContent = t(text ? 'text.barText' : 'text.barBlocks')
+    // In text mode the program lives in the Python tab, so show it.
+    if (text) this._selectTab('python')
+    this._refreshPython()
   }
 
   // -------------------------------------------------------------- menu
@@ -442,11 +515,12 @@ export class App {
   /** Start over, asking first if there is anything to lose. */
   async _newProject() {
     if (!this.workspace.isEmpty) {
+      const text = this.workspace.mode === 'text'
       const ok = await showModal({
         title: t('new.title'),
-        bodyHtml: t('new.bodyHtml'),
+        bodyHtml: t(text ? 'new.bodyTextHtml' : 'new.bodyHtml'),
         confirmText: t('new.confirm'),
-        cancelText: t('pick.keep'),
+        cancelText: t(text ? 'new.keepText' : 'pick.keep'),
       })
       if (!ok) return
     }
@@ -511,4 +585,32 @@ const KNOWN_ERRORS = ['NameError', 'SyntaxError', 'TypeError', 'ValueError', 'Ze
 
 function friendlyErrorTitle(name) {
   return KNOWN_ERRORS.includes(name) ? t(`pyerr.${name}`) : t('pyerr.other', { name })
+}
+
+/** Tab and Shift+Tab indent by four spaces; Escape lets the next Tab leave. */
+function indentKeys(e, editor) {
+  if (e.key === 'Escape') {
+    editor.dataset.tabLeaves = '1'
+    return
+  }
+  if (e.key !== 'Tab') {
+    delete editor.dataset.tabLeaves
+    return
+  }
+  if (editor.dataset.tabLeaves) {
+    delete editor.dataset.tabLeaves
+    return // let the browser move focus
+  }
+  e.preventDefault()
+  const { selectionStart: start, selectionEnd: end, value } = editor
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1
+  if (e.shiftKey) {
+    const lead = value.slice(lineStart, lineStart + 4).match(/^ */)[0].length
+    if (!lead) return
+    editor.setRangeText('', lineStart, lineStart + lead, 'preserve')
+    editor.setSelectionRange(Math.max(lineStart, start - lead), Math.max(lineStart, end - lead))
+  } else {
+    editor.setRangeText('    ', start, end, 'end')
+  }
+  editor.dispatchEvent(new Event('input'))
 }
