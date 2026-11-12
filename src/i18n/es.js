@@ -127,7 +127,7 @@ export default {
       <li><strong>Arrastra algunos bloques</strong> y luego presiona <strong>Ejecutar</strong>.</li>
     </ol>
     <p><strong>¿No tienes un dispositivo a mano?</strong> Presiona <strong>🎮 Simular</strong>
-    para ejecutar tu programa en un CodeBot o un CodeX simulado. Para empezar con un programa
+    para ejecutar tu programa en un dispositivo simulado, sin cable. Para empezar con un programa
     ya hecho, abre el menú <strong>⋯</strong> y elige <strong>Empezar con un ejemplo</strong>.</p>
     <p>Nada de lo que hagas aquí sale de tu computadora, y una vez que esta página
     se carga, sigue funcionando sin internet.</p>`,
@@ -140,7 +140,7 @@ export default {
     </ul>
     <h3>¿No tienes dispositivo?</h3>
     <ul>
-      <li>Presiona <strong>🎮 Simular</strong> para ejecutar tu programa en un CodeBot o un CodeX
+      <li>Presiona <strong>🎮 Simular</strong> para ejecutar tu programa en un dispositivo
         simulado y luego <strong>Ejecutar</strong>. Presiona <strong>Detener simulador</strong> para
         volver a un dispositivo real.</li>
       <li>Para un programa ya hecho, abre el menú <strong>⋯</strong> y elige

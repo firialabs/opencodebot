@@ -129,7 +129,7 @@ export default {
       <li><strong>Drag some blocks</strong>, then press <strong>Run</strong>.</li>
     </ol>
     <p><strong>No device with you?</strong> Press <strong>🎮 Simulate</strong> to run
-    your program on a simulated CodeBot or CodeX. For a ready-made program to start
+    your program on a simulated device, no cable needed. For a ready-made program to start
     from, open the <strong>⋯</strong> menu and choose <strong>Start from an example</strong>.</p>
     <p>Nothing you make here leaves your computer, and once this page has
     loaded it keeps working without internet.</p>`,
@@ -142,7 +142,7 @@ export default {
     </ul>
     <h3>No device?</h3>
     <ul>
-      <li>Press <strong>🎮 Simulate</strong> to run your program on a simulated CodeBot or CodeX,
+      <li>Press <strong>🎮 Simulate</strong> to run your program on a simulated device,
         then <strong>Run</strong>. Press <strong>Stop simulator</strong> to go back to a real device.</li>
       <li>For a ready-made program, open the <strong>⋯</strong> menu and choose
         <strong>Start from an example</strong>.</li>
