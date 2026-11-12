@@ -1,5 +1,17 @@
+import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// The site carries code under other licences (THIRD_PARTY_NOTICES.md), so it
+// serves the notices, and the GPL's text for the cflib modules, at licenses/.
+const licenses = {
+  name: 'licenses',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'licenses/THIRD_PARTY_NOTICES.md', source: fs.readFileSync('THIRD_PARTY_NOTICES.md') })
+    this.emitFile({ type: 'asset', fileName: 'licenses/GPL-2.0.txt', source: fs.readFileSync('src/sim/python/codeair/cflib/COPYING') })
+    this.emitFile({ type: 'asset', fileName: 'licenses/LICENSE.txt', source: fs.readFileSync('LICENSE') })
+  },
+}
 
 // Relative base so the built app can be dropped in any sub-path of an
 // HTTPS host (Web Serial requires a secure context; file:// will not work).
@@ -14,6 +26,7 @@ export default defineConfig({
   // The simulator's worker is a module (MicroPython's loader uses top-level await).
   worker: { format: 'es' },
   plugins: [
+    licenses,
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.svg', 'blockly-media/*'],

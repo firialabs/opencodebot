@@ -148,3 +148,4 @@ This project uses three kinds of terms:
 | **Code** (everything not listed below) | MIT. See [LICENSE](LICENSE). |
 | **Artwork, 3D models and environments** (the simulator's assets live in `sim/assets/`, with their own `LICENSE`) | [Creative Commons Attribution-NonCommercial 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (CC BY-NC 4.0) |
 | **Firia Labs names, logos and the mascot** (including everything in `brand/` and the `firia-bot` icons in `public/icons/`) | Trademarks of Firia Labs. Neither licence above covers them. See [TRADEMARKS.md](TRADEMARKS.md). |
+| **Others' code** the repository or the site carries: MicroPython (MIT), and part of Bitcraze's Crazyflie library in `src/sim/python/codeair/cflib/` (**GPL-2.0-or-later**, not MIT) | See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The built site serves the notices and licence texts at `licenses/`. |

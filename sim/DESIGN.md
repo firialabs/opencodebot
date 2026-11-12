@@ -257,7 +257,7 @@ through the whole UI with no hardware.
 ## 7. Assets
 
 The device and room GLBs come from CodeSpace's simulator and are committed in `sim/assets/`
-under CC BY-NC 4.0 (its LICENSE; David, 2026-11-11). The derived files (merged meshes, world
+under CC BY-NC 4.0 (its LICENSE). The derived files (merged meshes, world
 JSON, reflectance maps) are generated into `public/sim-assets/` by `npm run sim:assets` and
 not committed. Four rooms: the gymnasium, a classroom, the cafeteria and the auditorium. The
 service worker keeps the gymnasium for offline use from the first visit, and each other room
@@ -311,11 +311,10 @@ is measured on a device:
   iterations per second on a CB3 sets `usPerBranch`.
 
 A bench session with a CB3, a tape line and a ruler settles all of these. Until then
-(the manager, 2026-11-12: the real CB3 waits for the final testing rounds) CodeBot is
-calibrated to CodeSpace's own simulated CodeBot (botsim, `src/entities/CodeBotModels.js`
-and `CodeBotModelController.js` at `~/dev/firia/botsim-ref`), since CodeSpace's lessons
-were written and tested against it (the manager's decision, 2026-11-12). What its source
-says, and what running it showed:
+(the real CB3 waits for the final testing rounds) CodeBot is calibrated to CodeSpace's
+own simulated CodeBot (botsim, its `src/entities/CodeBotModels.js` and
+`CodeBotModelController.js`), since CodeSpace's lessons were written and tested against
+it. What its source says, and what running it showed:
 
 - **How it was measured.** botsim's own `CodeBotModels.js`, unchanged, run headless in
   Node: Babylon 6.21 `NullEngine`, botsim's `public/ammo/ammo.js`, its physics settings
@@ -393,8 +392,8 @@ Built, on branch `sim` (pushed to firialabs/opencodebot):
 
 - The CB3's own Python (botcore, botservices and their drivers, from Firia's CircuitPython
   fork) runs unchanged on a thin CircuitPython layer over MicroPython and a simulated board
-  at the pin and bus level (David's direction, 2026-11-11: MicroPython in the browser, not
-  CircuitPython; port only the CircuitPython pieces the device code and programs use).
+  at the pin and bus level (MicroPython in the browser, not CircuitPython; port only the
+  CircuitPython pieces the device code and programs use).
 
 - CodeX: its own codex.py, colors, codec, soundlib and songplayer, sprites and tile grids,
   on the same layer and a simulated board (IO expander, KXTJ3, LTR-303, the button ISR,
@@ -458,7 +457,7 @@ Built, on branch `sim` (pushed to firialabs/opencodebot):
 
 Not yet: calibration.
 
-Found by running CodeAIR's own Python (firia-circuitpython `codeair` at `752129a9f`), both
+Found by running CodeAIR's own Python (Firia's CircuitPython, `codeair` at `752129a9f`), both
 reproduced by the simulator because the device's VM behaves the same way, to confirm on a
 real CodeAIR: `fly_high` cannot fly. `cflib/high_level_commander.py` never imports `crtp`,
 so every command raises `NameError`; and `takeoff` and `land` pack with struct code `?`,
@@ -476,87 +475,3 @@ here, `LATENCY_US`); how many messages the receive queue holds and which it drop
 (32 here, the newest dropped); whether `off()` empties it; the longest message (none
 enforced here; ESP-NOW carries 250 bytes); RSSI between boards on one desk (about -42 dBm
 here, with a little noise); whether `send` with the radio off raises (silent here).
-
-## HANDOFF (2026-11-12, from the rooms, accessibility and first push session)
-
-**State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
-pushed to origin and tracking `origin/sim` (2026-11-12, David: push and keep pushing as
-the work goes). The SSH key on p52-lab is a read-only deploy key, so origin's push URL is
-HTTPS, through `gh` (logged in as david-firia; its credential helper is in the global git
-config): a plain `git push` works. CodeBot, CodeX and CodeAIR run in the app and headless,
-in four rooms, with radio and infrared between boards, line courses, stepping by line, a
-keyboard and screen-reader path, and a performance budget ("Where it stands"). All tests pass: `npm test` (the simulator's suites are in it, and so in CI) and
-`npm run perf`. The manager has approved the design; assets are CC BY-NC 4.0 and may be
-published; the devices' own Python may ship; CodeSpace's lesson content (its curriculum,
-such as its CodeX remote for xfly) may not. Commits are authored as David
-(`git -c user.name=... -c user.email=...`: this checkout has no identity configured).
-
-**Working setup on p52-lab.** Emscripten in `~/.cache/emsdk`; MicroPython checkout in
-`sim/build/micropython` (ignored); `sim/runtime/build.sh` rebuilds the VM (a few minutes)
-and applies `port.patch` and `py.patch`. Firia's CircuitPython fork cloned (blobless) at
-`~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref`.
-Playwright's own browser does not match the repo's pinned version here: every browser test
-reads `OCB_CHROMIUM=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
-`npm test` whole: start your own `npx vite preview --port 4193 --strictPort` and set
-`OCB_URL=http://localhost:4193/` (smoke and device default to 4173, not ours) and
-`OCB_SUBPATH_PORT=4194`; stop the preview after with `fuser -k 4193/tcp`.
-`tests/sim-ui.mjs` uses 4183, `tests/perf.mjs` 4184. After a merge from main, `npm ci`
-(main adds dependencies). This checkout has no git identity: commit with
-`-c user.name=... -c user.email=...`, or for a merge or rebase export `GIT_AUTHOR_*` and
-`GIT_COMMITTER_*`. `npm run build` regenerates the models and rooms with the current
-tools (use `npx vite build` alone to keep hand-built ones). Never `pkill -f` a pattern that
-appears in the same command line (it kills the shell). Shell heredocs that mix quotes can
-trip the harness's removal check: write files with Edit and Write.
-
-**Things learned.** MicroPython's web port keeps its JS proxy tables on `globalThis`, so
-two VMs in one realm corrupt each other; the browser gives each board a worker, and the
-headless group swaps the globals (section 1). MicroPython's settrace reports a line only
-when its number changes; `py.patch` adds a jump back. Playwright's `browser.newPage()`
-makes a new context each time, which isolates `BroadcastChannel`: open tabs that should
-hear each other from one `browser.newContext()`. The service worker answers a navigation
-whose query string it does not ignore with `index.html`, so a page that takes a parameter
-needs it in `ignoreURLParametersMatching` (vite.config.js). CAD models with per-face normals
-cannot be simplified until the normals go (build-models.mjs `flat`). Chromium's CPU
-throttling and SwiftShader make a pessimistic Chromebook; software GL is the bottleneck,
-not the simulation (simulated time keeps up at 4x).
-
-**This session learned.** CodeSpace's rooms carry impostors that no picture shows (the
-auditorium's 2 cm rail from the stage over the seats): look at a room in the simulator,
-not only at its numbers. A falling robot's body still overlaps the ledge it left, and
-pushing it out of every box sends it a metre through the stage's stepped apron: land it
-clear along its way. `npm run perf` frame rates swing with the machine's load (another
-session compiling took CodeAIR from 24 to 14): compare against the previous commit back to
-back before believing a miss. GitHub's runner measures 14 frames a second for both boards
-(the report step, allowed to fail); the budget is set on p52-lab. CI runs only on pull
-requests or by hand: `gh workflow run ci.yml --ref sim` ran the whole suite green
-(2026-11-12).
-
-**Next, in this order (the manager's order, 2026-11-12).**
-0. Push after every commit (`git push`; see State).
-1. Done (2026-11-12): main (PRs 1 to 4) merged into `sim` (a merge, not a rebase: the 29
-   commits each conflicted on `package.json`). SimDevice is a DeviceTarget of kind `sim`;
-   DeviceSwitch, itself one, pairs the page's kind with it; `?device=sim` opens in the
-   simulator; `tests/device.mjs` covers it. PRs from `sim` to main go to the manager, who
-   reviews and merges (`gh pr merge` is allowed on p52-lab, David 2026-11-12).
-2. (c) The simulator's own UI meets the app's accessibility and translation foundations:
-   a keyboard for every control, labels for screen readers, every string in the app's
-   string table. Main has no string table yet (checked 2026-11-12 at `ba763b4`); the app
-   worker's `docs/worker-notes.md` names it as their next step ("i18n: one strings
-   module"). Who builds it is the manager's call: one module, not two. The
-   simulator's strings are in `sim-panel.js`, `sim-device.js` (status messages and
-   notices), `view/codex-face.js`, `boards.html`, `boards/boards.js` and
-   `boards/examples.js` (the examples' comments are Python, and stay English unless the
-   table says otherwise), and now `describe.js` (the screen reader's sentences) and
-   `kinds.js` ROOMS. The keyboard, focus, labels and the text alternative are done
-   (manager's go, 2026-11-11, before the rebase); what is left is moving their strings
-   into the table, and the sentences in `describe.js` need the table's plurals and
-   number formats.
-3. (d) Done: the other rooms behind a room picker ("Where it stands", "Rooms"). The
-   room picker's strings join step 2's list (`sim-panel.js`, and the room names in
-   `kinds.js` ROOMS).
-4. Done (2026-11-12): CodeBot calibrated to botsim, measured by running botsim's own
-   physics headless ("Calibration"); `tests/sim.mjs` "drives as far and turns as fast as
-   botsim" holds it there. CodeAIR and CodeX have nothing in botsim to calibrate against
-   ("Calibration"): their reference is the real board, in item 5.
-5. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
-   in "Where it stands", and the Chromebook checks in sim/README.md "Performance").

@@ -31,7 +31,7 @@ teacher uses it, in [TEACHERS.md](TEACHERS.md).
 
 The simulator runs each device's own frozen Python modules, unchanged, so a
 program meets the same `botcore` (and its bugs and timing) as on the device.
-They come from Firia's CircuitPython fork, `git@bitbucket.org:firia/firia-circuitpython.git`:
+They come from Firia's CircuitPython fork (the boards' firmware):
 
 | Device | Branch | Commit | Path |
 |---|---|---|---|
@@ -131,7 +131,7 @@ the page remembers its boards and programs in this browser.
 
 `npm run perf` (after a build) checks the budget for a low-end school
 Chromebook, roughly: the page's CPU throttled 4x and software GL, which is
-slower than any real GPU. CI runs it as a report. On p52-lab (2026-11-11):
+slower than any real GPU. CI runs it as a report. On a development laptop (2026-11-11):
 
 | | Budget | CodeBot | CodeAIR |
 |---|---|---|---|
