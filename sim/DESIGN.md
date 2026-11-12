@@ -495,12 +495,15 @@ such as its CodeX remote for xfly) may not. Commits are authored as David
 `sim/build/micropython` (ignored); `sim/runtime/build.sh` rebuilds the VM (a few minutes)
 and applies `port.patch` and `py.patch`. Firia's CircuitPython fork cloned (blobless) at
 `~/dev/firia/firia-circuitpython`; CodeSpace's simulator at `~/dev/firia/botsim-ref`.
-Playwright's own browser does not match the repo's pinned version here: use
-`CHROME_PATH=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
-`tests/smoke.mjs` and `tests/subpath.mjs` ignore `CHROME_PATH` and smoke uses port 4173
-(not ours): run copies with `executablePath` added, smoke against your own `vite preview`
-port through `OCB_URL`, subpath with `OCB_SUBPATH_PORT`. `tests/sim-ui.mjs` uses 4183,
-`tests/perf.mjs` 4184. `npm run build` regenerates the models and rooms with the current
+Playwright's own browser does not match the repo's pinned version here: every browser test
+reads `OCB_CHROMIUM=$HOME/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome`.
+`npm test` whole: start your own `npx vite preview --port 4193 --strictPort` and set
+`OCB_URL=http://localhost:4193/` (smoke and device default to 4173, not ours) and
+`OCB_SUBPATH_PORT=4194`; stop the preview after with `fuser -k 4193/tcp`.
+`tests/sim-ui.mjs` uses 4183, `tests/perf.mjs` 4184. After a merge from main, `npm ci`
+(main adds dependencies). This checkout has no git identity: commit with
+`-c user.name=... -c user.email=...`, or for a merge or rebase export `GIT_AUTHOR_*` and
+`GIT_COMMITTER_*`. `npm run build` regenerates the models and rooms with the current
 tools (use `npx vite build` alone to keep hand-built ones). Never `pkill -f` a pattern that
 appears in the same command line (it kills the shell). Shell heredocs that mix quotes can
 trip the harness's removal check: write files with Edit and Write.
@@ -530,19 +533,16 @@ requests or by hand: `gh workflow run ci.yml --ref sim` ran the whole suite gree
 
 **Next, in this order (the manager's order, 2026-11-12).**
 0. Push after every commit (`git push`; see State).
-1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
-   `docs/device-targets.md`, `src/device/device-target.js`), and before anything else:
-   rebase `sim` onto origin/main and move SimDevice onto that interface
-   (`registerDeviceKind('sim', ...)`, `?device=sim`; template
-   `src/device/loopback-device.js`, test `tests/device.mjs`); the seam is
-   `src/sim/device-switch.js`. Web Serial only, no WebUSB. `.github/workflows/ci.yml` will
-   conflict: keep theirs (Playwright install with retries) and this branch's Node 24, job
-   `timeout-minutes`, screenshot artifact and perf report step. The boards page builds on
-   SimDevice directly, so it moves with it. Not merged on origin/main at `3c30484`.
+1. Done (2026-11-12): main (PRs 1 to 4) merged into `sim` (a merge, not a rebase: the 29
+   commits each conflicted on `package.json`). SimDevice is a DeviceTarget of kind `sim`;
+   DeviceSwitch, itself one, pairs the page's kind with it; `?device=sim` opens in the
+   simulator; `tests/device.mjs` covers it. PRs from `sim` to main go to the manager, who
+   reviews and merges (`gh pr merge` is allowed on p52-lab, David 2026-11-12).
 2. (c) The simulator's own UI meets the app's accessibility and translation foundations:
    a keyboard for every control, labels for screen readers, every string in the app's
-   string table. No string table exists yet on any pushed branch (checked 2026-11-11, after
-   `d1ffeec`); read what the app worker merged once PR #2 lands and follow it. The
+   string table. Main has no string table yet (checked 2026-11-12 at `ba763b4`); the app
+   worker's `docs/worker-notes.md` names it as their next step ("i18n: one strings
+   module"). Who builds it is the manager's call: one module, not two. The
    simulator's strings are in `sim-panel.js`, `sim-device.js` (status messages and
    notices), `view/codex-face.js`, `boards.html`, `boards/boards.js` and
    `boards/examples.js` (the examples' comments are Python, and stay English unless the
