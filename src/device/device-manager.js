@@ -3,6 +3,9 @@
  * one it is, load a program onto it, and keep the UI honest about what is
  * happening. Everything the UI needs arrives as an event.
  *
+ * This is the 'serial' DeviceTarget (see device-target.js and
+ * docs/device-targets.md).
+ *
  * Events: 'state', 'device', 'data', 'notice', 'progress', 'program-error'
  */
 import { SerialLink } from './serial-link.js'
@@ -10,13 +13,9 @@ import { ConsoleFilter } from './console-filter.js'
 import { Repl, ReplAborted, CTRL_C, CTRL_D } from './repl.js'
 import { getTarget, targetIdForPort, TARGETS } from './targets.js'
 
-export const State = {
-  OFFLINE: 'offline',
-  CONNECTING: 'connecting',
-  READY: 'ready',
-  LOADING: 'loading',
-  RUNNING: 'running',
-}
+import { State, registerDeviceKind } from './device-target.js'
+
+export { State }
 
 /** Boards whose firmware halts main.py at a debug prompt until told to go. */
 const DEBUGGER_TARGETS = new Set(['codex', 'codebot'])
@@ -37,6 +36,7 @@ const decodeLatin1 = (bytes) => {
 export class DeviceManager extends EventTarget {
   constructor() {
     super()
+    this.kind = 'serial'
     this.link = new SerialLink()
     this.repl = new Repl(this.link)
     this.filter = new ConsoleFilter((bytes) => this.link.send(bytes))
@@ -91,6 +91,11 @@ export class DeviceManager extends EventTarget {
       this._notice('error', 'Could not open that device', friendlyOpenError(err))
       return false
     }
+  }
+
+  /** Quietly reopen a board that is plugged in and already paired. */
+  async autoConnect() {
+    return this.link.openPaired()
   }
 
   async disconnect() {
@@ -304,6 +309,27 @@ export class DeviceManager extends EventTarget {
     }
   }
 
+  /** Write a file to the board without running it. */
+  async writeFile(name, contents) {
+    if (!this.isConnected || this.busy) return false
+    this.busy = true
+    this.repl.resume()
+    try {
+      if (!(await this.repl.interrupt())) throw new DeviceUnresponsive()
+      await this.repl.writeFile(name, contents, (fraction) => {
+        this.dispatchEvent(new CustomEvent('progress', { detail: fraction }))
+      })
+      this._setState(State.READY, `Saved ${name}.`)
+      return true
+    } catch (err) {
+      console.error(err)
+      this._notice('error', `Could not save ${name}`, err.message || 'Please try again.')
+      return false
+    } finally {
+      this.busy = false
+    }
+  }
+
   /**
    * Leave nothing moving. Only CodeBot has anything to park, and this is only
    * ever sent at a REPL prompt, where it is a harmless one-liner.
@@ -371,3 +397,5 @@ function friendlyOpenError(err) {
 }
 
 export { targetIdForPort }
+
+registerDeviceKind('serial', () => new DeviceManager(), { label: 'USB cable' })

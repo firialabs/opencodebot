@@ -1,5 +1,8 @@
 /** Wires the workspace, the board and the chrome around them together. */
-import { DeviceManager, State } from '../device/device-manager.js'
+import { State, createDevice, deviceKindFromUrl } from '../device/device-target.js'
+// Each import registers a kind of device. Add a simulator the same way.
+import '../device/device-manager.js'
+import '../device/loopback-device.js'
 import { SUPPORTED_TARGETS, getTarget } from '../device/targets.js'
 import { BlockWorkspace, STARTER_PROJECTS } from '../workspace/workspace.js'
 import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js'
@@ -14,7 +17,7 @@ const $ = (id) => document.getElementById(id)
 
 export class App {
   constructor() {
-    this.device = new DeviceManager()
+    this.device = createDevice(deviceKindFromUrl())
     this.pickedTarget = localStorage.getItem(PICKED_DEVICE) || null
 
     this.workspace = new BlockWorkspace($('blockly-root'), this.pickedTarget)
@@ -36,7 +39,7 @@ export class App {
     this._maybeWelcome()
 
     // A board that is already plugged in and paired can just come back.
-    this.device.link.openPaired?.().catch(() => {})
+    this.device.autoConnect?.().catch(() => {})
   }
 
   _greet() {
