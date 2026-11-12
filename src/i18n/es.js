@@ -301,7 +301,6 @@ export default {
   'simPanel.speedValue': '{speed}×',
   'simPanel.buttons': 'Los botones de la placa (mantén presionado Espacio o Enter)',
   'simPanel.buttonTitle': 'Botón {n} de la placa',
-  'simPanel.button': 'Botón {n}',
   'simPanel.buttonFace': 'BTN {n}',
   'simPanel.moreBoardsTitle': 'Más placas simuladas, en una pestaña nueva: sus radios escuchan a esta',
   'simPanel.moreBoards': '📡 Más placas',
