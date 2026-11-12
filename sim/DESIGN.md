@@ -355,8 +355,17 @@ says, and what running it showed:
   did, as botsim's does.
 - **Where a real CB3 may differ**, for the final testing rounds: its speed per power and any
   deadband (a real gearmotor stalls at low power); its stopping, likely much shorter than
-  botsim's; its turn rates; what its line sensors read on white at their real height; and
+  botsim's; its turn rates, and above all whether a full-power spin really is slower than a
+  half-power one (botsim's is, likely a quirk of its physics engine, kept here because the
+  lessons were tuned on it); what its line sensors read on white at their real height; and
   the nose lifting as it starts.
+
+CodeAIR and CodeX have no botsim to follow. botsim's CodeAIR is the board's 3D model and
+nothing more (no flight, sensors or physics), and its CodeX a model with buttons and no
+sensor or output wired. CodeSpace's simulated lessons for them (14 in Python with CodeX, 3
+in Lift-Off, 9 in Fly with Python, checked 2026-11-12) run no code: they are tours of the
+model. Every lesson that programs them runs on the real board, so the real board is their
+reference, and the lists below wait for the bench.
 
 - **CodeAIR** (`AIR` in `src/sim/world/codeair.js`, constants in `crazyflie.js`): how
   closely it tracks a velocity, height and yaw rate (the lags and gains); how far it drifts
@@ -547,8 +556,7 @@ requests or by hand: `gh workflow run ci.yml --ref sim` ran the whole suite gree
    `kinds.js` ROOMS).
 4. Done (2026-11-12): CodeBot calibrated to botsim, measured by running botsim's own
    physics headless ("Calibration"); `tests/sim.mjs` "drives as far and turns as fast as
-   botsim" holds it there. Proposed next, while PR #2 waits (ask the manager): CodeAIR
-   and CodeX against botsim the same way (`CodeAIRModels.js`, `CodeXModelController.js`),
-   since CodeSpace's simulated FLY and CodeX lessons were tuned to them too.
+   botsim" holds it there. CodeAIR and CodeX have nothing in botsim to calibrate against
+   ("Calibration"): their reference is the real board, in item 5.
 5. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
    in "Where it stands", and the Chromebook checks in sim/README.md "Performance").
