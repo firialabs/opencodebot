@@ -5,12 +5,14 @@
  * USB CDC serial port that Web Serial can open are listed as supported.
  */
 
+import { t } from '../i18n/index.js'
+
 export const TARGETS = {
   codebot: {
     id: 'codebot',
     name: 'CodeBot',
-    fullName: 'CodeBot CB3',
-    tagline: 'Rolling robot: motors, line sensors, proximity',
+    fullName: t('device.codebot.fullName'),
+    tagline: t('device.codebot.tagline'),
     icon: 'dev-codebot.svg',
     accent: '#4eb748',
     supported: true,
@@ -23,8 +25,8 @@ export const TARGETS = {
   codex: {
     id: 'codex',
     name: 'CodeX',
-    fullName: 'CodeX handheld',
-    tagline: 'Handheld: color screen, sound, buttons, sensors',
+    fullName: t('device.codex.fullName'),
+    tagline: t('device.codex.tagline'),
     icon: 'dev-codex.svg',
     accent: '#63c8f2',
     supported: true,
@@ -36,8 +38,8 @@ export const TARGETS = {
   codeair: {
     id: 'codeair',
     name: 'CodeAIR',
-    fullName: 'CodeAIR drone',
-    tagline: 'Flying drone: take off, fly, light up the sky',
+    fullName: t('device.codeair.fullName'),
+    tagline: t('device.codeair.tagline'),
     icon: 'dev-codeair.svg',
     accent: '#b49be0',
     supported: true,
@@ -51,8 +53,8 @@ export const TARGETS = {
   codebot_cb2: {
     id: 'codebot_cb2',
     name: 'CodeBot (CB2)',
-    fullName: 'CodeBot CB2 (older model)',
-    tagline: 'Older CodeBot — not supported by OpenCodeBot yet',
+    fullName: t('device.codebot_cb2.fullName'),
+    tagline: t('device.codebot_cb2.tagline'),
     icon: 'dev-codebot.svg',
     accent: '#a9abaf',
     supported: false,

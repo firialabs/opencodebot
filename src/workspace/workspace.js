@@ -4,9 +4,10 @@
  */
 import * as Blockly from 'blockly/core'
 import { toolboxFor, cuteTheme } from '../blocks/index.js'
+import { t } from '../i18n/index.js'
 
 const STORAGE_KEY = 'opencodebot.project.v1'
-export const DEFAULT_PROJECT_NAME = 'My project'
+export const DEFAULT_PROJECT_NAME = t('project.default')
 
 /** Tidy a project name: one line, no runs of spaces, never empty. */
 export function cleanProjectName(name) {
@@ -120,7 +121,7 @@ export class BlockWorkspace extends EventTarget {
   }
 
   loadProject(project) {
-    if (!project?.blocks) throw new Error('That file does not look like an OpenCodeBot project.')
+    if (!project?.blocks) throw new Error(t('openFailed.notProject'))
     if (project.device) this.setTarget(project.device)
     // Starter programs carry no name; keep whatever the student called it.
     if (project.name) this.name = cleanProjectName(project.name)
@@ -170,7 +171,7 @@ export const STARTER_PROJECTS = {
               DO: {
                 block: {
                   type: 'codex_show',
-                  inputs: { THING: { shadow: { type: 'text', fields: { TEXT: 'Hi there!' } } } },
+                  inputs: { THING: { shadow: { type: 'text', fields: { TEXT: t('starter.hello') } } } },
                   next: {
                     block: {
                       type: 'codex_pixels_fill',
