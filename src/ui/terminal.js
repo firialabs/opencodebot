@@ -21,7 +21,7 @@ const THEME = {
   magenta: '#e9a0d0',
   cyan: '#6fd7cd',
   white: '#f3f1ea',
-  brightBlack: '#6d6f75',
+  brightBlack: '#94959a', // 4.6:1 on the terminal background
   brightRed: '#ff9b8b',
   brightGreen: '#a4e3a0',
   brightYellow: '#ffe57a',

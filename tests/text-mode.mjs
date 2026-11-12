@@ -139,9 +139,11 @@ const keeps = (p) =>
   await p.click('#btn-new')
   const asked = await p.evaluate(() => document.getElementById('modal')?.open)
   check(asked, 'New asks when only typed Python is there')
+  const keepLabel = asked ? await p.textContent('#modal button[value="cancel"]') : ''
+  check(keepLabel === 'Keep my program', `New's keep button says "Keep my program" (${keepLabel})`)
   if (asked) await p.click('#modal button[value="cancel"]')
   await p.waitForTimeout(100)
-  check(await keeps(p), '"Keep my blocks" on New keeps the typed Python')
+  check(await keeps(p), '"Keep my program" on New keeps the typed Python')
   await p.close()
 }
 {
