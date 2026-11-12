@@ -26,6 +26,7 @@ export class App {
     this._bindDevice()
     this._bindChrome()
     this._bindWorkspace()
+    this._bindTextMode()
 
     if (!this.workspace.restore() && this.pickedTarget) {
       this.workspace.loadProject(STARTER_PROJECTS[this.pickedTarget] || { blocks: {} })
@@ -129,12 +130,17 @@ export class App {
   }
 
   async _run() {
-    if (this.workspace.isEmpty) {
-      toast({ kind: 'warn', title: 'Nothing to run yet', detail: 'Drag some blocks in first!' })
+    const textMode = this.workspace.mode === 'text'
+    if (textMode ? !this.workspace.pythonText.trim() : this.workspace.isEmpty) {
+      toast({
+        kind: 'warn',
+        title: 'Nothing to run yet',
+        detail: textMode ? 'Type some Python first!' : 'Drag some blocks in first!',
+      })
       return
     }
     const target = this.device.targetId
-    const used = devicesUsed(this.workspace.workspace)
+    const used = textMode ? new Set() : devicesUsed(this.workspace.workspace)
     const wrong = [...used].filter((id) => id !== target)
     if (target && wrong.length) {
       toast({
@@ -221,7 +227,7 @@ export class App {
       } else if (meta && e.key.toLowerCase() === 's') {
         e.preventDefault()
         this._saveFile()
-      } else if (e.key === 'Escape' && this.device.state === State.RUNNING) {
+      } else if (e.key === 'Escape' && this.device.state === State.RUNNING && e.target.id !== 'python-editor') {
         this._stop()
       }
     })
@@ -406,14 +412,80 @@ export class App {
     })
   }
 
+  /** The program Run sends: typed Python in text mode, else the blocks'. */
   _currentPython() {
+    if (this.workspace.mode === 'text') return this.workspace.pythonText
+    return this._blocksPython()
+  }
+
+  _blocksPython() {
     return generatePython(this.workspace.workspace, this.workspace.targetId)
   }
 
   _refreshPython() {
-    const code = this._currentPython()
-    $('python-view').innerHTML = `<code>${highlightPython(code)}</code>`
-    $('blocks-hint').hidden = !this.workspace.isEmpty
+    if (this.workspace.mode !== 'text') {
+      $('python-view').innerHTML = `<code>${highlightPython(this._blocksPython())}</code>`
+    }
+    $('blocks-hint').hidden = !this.workspace.isEmpty || this.workspace.mode === 'text'
+  }
+
+  // ------------------------------------------------------- blocks or text
+
+  _bindTextMode() {
+    const editor = $('python-editor')
+    $('btn-mode').addEventListener('click', () =>
+      this.workspace.mode === 'text' ? this._toBlocks() : this._toText(),
+    )
+    $('btn-back-to-blocks').addEventListener('click', () => this._toBlocks())
+    editor.addEventListener('input', () => this.workspace.setPythonText(editor.value))
+    editor.addEventListener('keydown', (e) => indentKeys(e, editor))
+    this.workspace.addEventListener('mode', () => this._showMode())
+  }
+
+  _toText() {
+    this.workspace.setMode('text', this._blocksPython())
+    $('python-editor').focus()
+    toast({
+      kind: 'info',
+      title: "You're writing Python now",
+      detail: 'Run sends the code you type. Your blocks are kept for when you go back.',
+    })
+  }
+
+  async _toBlocks() {
+    // Typed changes cannot be turned back into blocks, so ask before
+    // throwing them away. Untouched code needs no question.
+    const changed = this.workspace.pythonText.trim() !== this._blocksPython().trim()
+    if (changed) {
+      const ok = await showModal({
+        title: 'Go back to blocks?',
+        bodyHtml:
+          '<p>The Python you typed cannot be turned back into blocks, so your typed changes will be lost.</p>' +
+          '<p>To keep them, press <b>Keep my Python</b>, then Download Python from the ⋯ menu.</p>',
+        confirmText: 'Back to blocks',
+        cancelText: 'Keep my Python',
+      })
+      if (!ok) return
+    }
+    this.workspace.setMode('blocks')
+  }
+
+  /** Make the screen match the mode. */
+  _showMode() {
+    const text = this.workspace.mode === 'text'
+    const editor = $('python-editor')
+    if (text && editor.value !== this.workspace.pythonText) editor.value = this.workspace.pythonText
+    editor.hidden = !text
+    $('python-view').hidden = text
+    $('text-mode-cover').hidden = !text
+    $('blocks-pane').classList.toggle('is-text-mode', text)
+    $('btn-mode').textContent = text ? '🧩 Back to blocks' : '✏️ Edit as Python'
+    $('python-bar-msg').textContent = text
+      ? 'You are writing Python. Run sends this code.'
+      : 'These are the Python lines your blocks make.'
+    // In text mode the program lives in the Python tab, so show it.
+    if (text) this._selectTab('python')
+    this._refreshPython()
   }
 
   // -------------------------------------------------------------- menu
@@ -531,4 +603,32 @@ function friendlyErrorTitle(name) {
       OSError: 'The device had trouble with that',
     }[name] || `Your program stopped: ${name}`
   )
+}
+
+/** Tab and Shift+Tab indent by four spaces; Escape lets the next Tab leave. */
+function indentKeys(e, editor) {
+  if (e.key === 'Escape') {
+    editor.dataset.tabLeaves = '1'
+    return
+  }
+  if (e.key !== 'Tab') {
+    delete editor.dataset.tabLeaves
+    return
+  }
+  if (editor.dataset.tabLeaves) {
+    delete editor.dataset.tabLeaves
+    return // let the browser move focus
+  }
+  e.preventDefault()
+  const { selectionStart: start, selectionEnd: end, value } = editor
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1
+  if (e.shiftKey) {
+    const lead = value.slice(lineStart, lineStart + 4).match(/^ */)[0].length
+    if (!lead) return
+    editor.setRangeText('', lineStart, lineStart + lead, 'preserve')
+    editor.setSelectionRange(Math.max(lineStart, start - lead), Math.max(lineStart, end - lead))
+  } else {
+    editor.setRangeText('    ', start, end, 'end')
+  }
+  editor.dispatchEvent(new Event('input'))
 }

@@ -67,6 +67,11 @@
       <main class="workarea">
         <section class="blocks-pane" id="blocks-pane">
           <div id="blockly-root" class="blockly-root"></div>
+          <div class="text-mode-cover" id="text-mode-cover" hidden>
+            <p class="text-mode-title">🐍 You're writing Python now</p>
+            <p>Your program lives in the Python tab. Run sends the code you typed.</p>
+            <button id="btn-back-to-blocks" class="btn" type="button">🧩 Back to blocks</button>
+          </div>
           <div class="blocks-hint" id="blocks-hint">
             <img src="./icons/firia-bot-head.svg" alt="" width="44" height="44" />
             <p>Drag blocks from the left to build your program!</p>
@@ -96,7 +101,14 @@
           </div>
 
           <div class="tab-panel" data-panel="python">
+            <div class="python-bar">
+              <span class="python-bar-msg" id="python-bar-msg">These are the Python lines your blocks make.</span>
+              <button id="btn-mode" class="btn btn-small" type="button">✏️ Edit as Python</button>
+            </div>
             <pre id="python-view" class="python-view"><code>&nbsp;</code></pre>
+            <textarea id="python-editor" class="python-view python-editor" spellcheck="false" autocapitalize="off"
+                      autocomplete="off" aria-label="Python program" aria-describedby="python-editor-help" hidden></textarea>
+            <p id="python-editor-help" class="sr-only">Tab indents. Press Escape, then Tab, to leave the editor.</p>
           </div>
         </section>
       </main>

@@ -333,6 +333,58 @@ kbd {
   white-space: pre;
   tab-size: 4;
 }
+.tab-panel[data-panel='python'] { display: none; flex-direction: column; }
+.tab-panel[data-panel='python'].is-active { display: flex; }
+.python-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.python-bar-msg { flex: 1 1 auto; }
+.btn-small { height: 32px; padding: 0 12px; font-size: 14px; flex: 0 0 auto; }
+.python-view { flex: 1 1 auto; min-height: 0; }
+.python-editor {
+  width: 100%;
+  border: 0;
+  resize: none;
+  outline: none;
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+.python-editor[hidden], .python-view[hidden] { display: none; }
+
+.text-mode-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 253, 247, 0.94);
+  color: var(--ink);
+}
+.text-mode-cover[hidden] { display: none; }
+/* Blockly's palette sits above the cover; park it while the program is text. */
+.is-text-mode .blocklyToolboxDiv,
+.is-text-mode .blocklyToolbox { opacity: 0.35; pointer-events: none; }
+.text-mode-cover p { margin: 0; max-width: 34ch; line-height: 1.5; }
+.text-mode-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.text-mode-cover .btn { margin-top: 12px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 .python-view .k { color: #b0409a; font-weight: 700; }
 .python-view .s { color: var(--green-deep); }
 .python-view .c { color: var(--ink-faint); font-style: italic; }
