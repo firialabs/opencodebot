@@ -327,7 +327,12 @@ export class App {
 
     // Blocks for the old board would just sit there unrunnable, so offer to
     // start over — but never throw away work without asking.
-    const strays = [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
+    // In text mode Run sends the typed Python, so blocks for another board
+    // are no reason to start over.
+    const strays =
+      this.workspace.mode === 'text'
+        ? []
+        : [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
     let startFresh = this.workspace.isEmpty
     if (strays.length) {
       const names = strays.map((id) => getTarget(id)?.name).join(' and ')
@@ -403,7 +408,7 @@ export class App {
   _bindWorkspace() {
     let timer
     this.workspace.addEventListener('change', () => {
-      $('blocks-hint').hidden = !this.workspace.isEmpty
+      $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
       clearTimeout(timer)
       timer = setTimeout(() => {
         this._refreshPython()
@@ -426,7 +431,7 @@ export class App {
     if (this.workspace.mode !== 'text') {
       $('python-view').innerHTML = `<code>${highlightPython(this._blocksPython())}</code>`
     }
-    $('blocks-hint').hidden = !this.workspace.isEmpty || this.workspace.mode === 'text'
+    $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
   }
 
   // ------------------------------------------------------- blocks or text

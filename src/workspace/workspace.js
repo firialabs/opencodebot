@@ -55,8 +55,17 @@ export class BlockWorkspace extends EventTarget {
     Blockly.svgResize(this.workspace)
   }
 
-  get isEmpty() {
+  /** No blocks on the canvas. */
+  get hasNoBlocks() {
     return this.workspace.getTopBlocks(false).length === 0
+  }
+
+  /**
+   * Nothing to lose: no blocks and no typed Python. Everything that would
+   * replace or clear the project checks this, so typed code counts as work.
+   */
+  get isEmpty() {
+    return this.hasNoBlocks && !(this.mode === 'text' && this.pythonText.trim())
   }
 
   /** Swap the toolbox when the teacher (or a plugged-in board) picks a device. */
@@ -113,7 +122,8 @@ export class BlockWorkspace extends EventTarget {
   loadProject(project) {
     if (!project?.blocks) throw new Error('That file does not look like an OpenCodeBot project.')
     if (project.device) this.setTarget(project.device)
-    this.name = cleanProjectName(project.name)
+    // Starter programs carry no name; keep whatever the student called it.
+    if (project.name) this.name = cleanProjectName(project.name)
     this.dispatchEvent(new CustomEvent('rename'))
     Blockly.serialization.workspaces.load(project.blocks, this.workspace)
     this.setMode(project.mode, typeof project.python === 'string' ? project.python : '')
