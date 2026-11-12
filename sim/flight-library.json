@@ -1,7 +1,7 @@
 {
   "about": "CodeAIR's flight library: Firia's port of Bitcraze's cflib (GPL-2.0-or-later), as the drone's firmware carries it. Not in this repository: a build with SIM_FLIGHT=1 fetches it into sim/build/flight/ (sim/tools/flight-library.mjs). See sim/README.md, 'CodeAIR flight'.",
   "url": "https://github.com/firialabs/crazyflie-lib-python.git",
-  "commit": "",
+  "commit": "5de9ea4d8865fa816c417e17dfba1dd8cd676233",
   "folder": "cflib",
   "license": "COPYING"
 }

@@ -36,7 +36,8 @@ waiting for them.
 Press **🎮 Simulate** to run your program on a simulated CodeBot (it drives,
 sees lines and walls, lights up and beeps), CodeX (its screen, buttons, lights
 and sound; the screen goes full screen for a class, with the arrow keys and A
-and B as its buttons) or, in a site built with CodeAIR flight, CodeAIR (it flies), in a gymnasium, a classroom, a
+and B as its buttons) or CodeAIR (it flies; the published site is built with
+CodeAIR flight, see [sim/README.md](sim/README.md)), in a gymnasium, a classroom, a
 cafeteria or on an auditorium's stage. The terminal is a live Python prompt.
 It runs in any modern browser, no cable needed. For teachers:
 [sim/TEACHERS.md](sim/TEACHERS.md). How it works:

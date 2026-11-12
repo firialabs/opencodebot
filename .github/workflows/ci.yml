@@ -16,6 +16,10 @@ jobs:
     # The whole suite, the simulator's included, takes a few minutes; a hung
     # browser should not hold a runner for hours.
     timeout-minutes: 20
+    # CodeAIR flight: the build fetches the flight library (sim/flight-library.json)
+    # and the tests fly it.
+    env:
+      SIM_FLIGHT: 1
     steps:
       - uses: actions/checkout@v4
 

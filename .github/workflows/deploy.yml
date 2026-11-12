@@ -40,6 +40,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # CodeAIR flight: the build fetches the flight library (sim/flight-library.json)
+    # and the tests fly it.
+    env:
+      SIM_FLIGHT: 1
     steps:
       - uses: actions/checkout@v4
 
