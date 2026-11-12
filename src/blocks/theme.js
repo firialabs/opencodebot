@@ -18,6 +18,19 @@ export const HUE = {
   functions: '#8894a8',
 }
 
+/** The style names Blockly's built-in blocks use, and the category each belongs to. */
+export const BUILT_IN = {
+  logic_blocks: 'logic',
+  loop_blocks: 'loops',
+  math_blocks: 'math',
+  text_blocks: 'text',
+  list_blocks: 'lists',
+  colour_blocks: 'lights',
+  variable_blocks: 'variables',
+  variable_dynamic_blocks: 'variables',
+  procedure_blocks: 'functions',
+}
+
 /**
  * A block plugged in as a default (a shadow, such as the colour inside a
  * lights block) is drawn in its style's second colour. Blockly would derive a
@@ -60,8 +73,11 @@ export const cuteTheme = Blockly.Theme.defineTheme('opencodebot', {
     ...Object.fromEntries(
       Object.entries(HUE).map(([name, colour]) => [`${name}_blocks`, style(colour)]),
     ),
+    // Blockly's own blocks (loops, lists, variables, functions) ask for these
+    // style names; without them they would keep the base theme's colours.
+    ...Object.fromEntries(Object.entries(BUILT_IN).map(([name, cat]) => [name, style(HUE[cat])])),
     // Rounded "cap" tops, so the blocks that begin a program look like a start.
     start_hat: style(HUE.basics, { hat: 'cap' }),
-    loop_hat: style(HUE.loops, { hat: 'cap' }),
+    loop_hat: style(HUE.basics, { hat: 'cap' }),
   },
 })

@@ -71,6 +71,7 @@ async function audit(label) {
 async function blockText(label) {
   const sel = '.blocklyToolboxCategory'
   const bad = new Set()
+  const colours = new Set()
   let words = 0
   const measure = () =>
     page.evaluate(() => {
@@ -114,12 +115,27 @@ async function blockText(label) {
     words += r.words
     for (const b of r.bad) bad.add(b)
   }
+  // Each block in a palette wears its category's colour, Blockly's own
+  // blocks included (they ask for style names of their own).
+  const offColour = () =>
+    page.evaluate(() => {
+      const toolbox = window.openCodeBot.workspace.workspace.getToolbox()
+      const item = toolbox.getSelectedItem()
+      const want = item?.getColour?.()?.toLowerCase()
+      if (!want) return []
+      const flyout = toolbox.getFlyout().getWorkspace()
+      return flyout
+        .getTopBlocks(false)
+        .filter((b) => b.getColour().toLowerCase() !== want)
+        .map((b) => `${b.type} is ${b.getColour()}, not ${item.getName()}'s ${want}`)
+    })
   add(await measure()) // the program on the canvas
   const count = (await page.$$(sel)).length
   for (let i = 0; i < count; i++) {
     await (await page.$$(sel))[i].click()
     await page.waitForTimeout(150)
     add(await measure())
+    for (const o of await offColour()) colours.add(o)
   }
   await page.keyboard.press('Escape')
   const list = [...bad]
@@ -127,6 +143,11 @@ async function blockText(label) {
   check(
     words > 20 && list.length === 0,
     `block text contrast, ${label} (${words} words, ${count} categories)${list.length ? ': ' + list.slice(0, 8).join('; ') + more : ''}`,
+  )
+  const off = [...colours]
+  check(
+    off.length === 0,
+    `every palette block has its category's colour, ${label}${off.length ? ': ' + off.slice(0, 8).join('; ') : ''}`,
   )
 }
 
