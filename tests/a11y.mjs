@@ -182,6 +182,20 @@ check(
 )
 await page.keyboard.press('Escape')
 
+// The Beta mark is real text in the heading, and About says how to report a problem.
+check(
+  await page.evaluate(() => /Beta/.test(document.querySelector('h1 .beta-badge')?.textContent || '')),
+  'the heading carries a "Beta" mark',
+)
+await page.click('#btn-menu')
+await page.click('[data-action="about"]')
+await audit('About dialog')
+check(
+  await page.evaluate(() => !!document.querySelector('#modal a[href$="/opencodebot/issues"]')),
+  'About links to GitHub issues for reporting a problem',
+)
+await page.keyboard.press('Escape')
+
 // --- Keyboard paths ---------------------------------------------------------
 check(await page.evaluate(() => document.querySelector('h1')?.textContent.trim().length > 0), 'the page has a heading')
 check(

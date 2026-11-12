@@ -4,6 +4,8 @@ export default {
   'app.name': 'OpenCodeBot',
   'app.description': 'Programación con bloques fácil para CodeBot, CodeX y CodeAIR de Firia Labs.',
   'app.tagline': 'bloques que vuelan, ruedan y brillan',
+  'app.beta': 'Beta',
+  'app.betaTitle': 'Una primera versión pública: consulta Acerca de',
   // El nombre de este idioma en su propio idioma, en el menú de idiomas.
   'lang.name': 'Español',
 
@@ -167,6 +169,11 @@ export default {
     <a href="https://docs.firialabs.com/" target="_blank" rel="noreferrer">docs.firialabs.com</a>.</p>
     <p>¿Encontraste un error o quieres un bloque que falta? Las contribuciones son muy
     bienvenidas en GitHub.</p>`,
+  'about.betaHtml': `
+    <p><strong>Beta:</strong> esta es una primera versión pública, así que algunas
+    cosas pueden cambiar o aún no funcionar. Si algo falla,
+    <a href="https://github.com/firialabs/opencodebot/issues" target="_blank" rel="noreferrer">informa
+    del problema en GitHub</a> y cuéntanos qué estabas haciendo.</p>`,
   'about.privacyHtml': `
     <h3>Tu privacidad</h3>
     <p>{app} no tiene cuentas, ni anuncios, ni rastreo. Tus programas se quedan
