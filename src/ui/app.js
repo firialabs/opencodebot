@@ -38,6 +38,7 @@ export class App {
     // A paused program's line, on its block and in the Python tab.
     this.device.sim.addEventListener('line', (e) => this._showLine(e.detail.line))
     this._bindWorkspace()
+    this._bindTextMode()
 
     if (!this.workspace.restore() && this.pickedTarget) {
       this.workspace.loadProject(STARTER_PROJECTS[this.pickedTarget] || { blocks: {} })
@@ -163,12 +164,17 @@ export class App {
 
   // stepFirst (the simulator): pause at the first line, to step by line.
   async _run(opts = {}) {
-    if (this.workspace.isEmpty) {
-      toast({ kind: 'warn', title: t('run.emptyTitle'), detail: t('run.emptyDetail') })
+    const textMode = this.workspace.mode === 'text'
+    if (textMode ? !this.workspace.pythonText.trim() : this.workspace.isEmpty) {
+      toast({
+        kind: 'warn',
+        title: t('run.emptyTitle'),
+        detail: t(textMode ? 'run.emptyTextDetail' : 'run.emptyDetail'),
+      })
       return
     }
     const target = this.device.targetId
-    const used = devicesUsed(this.workspace.workspace)
+    const used = textMode ? new Set() : devicesUsed(this.workspace.workspace)
     const wrong = [...used].filter((id) => id !== target)
     if (target && wrong.length) {
       toast({
@@ -179,18 +185,33 @@ export class App {
       return
     }
 
-    const { code, blockAt } = generateWithLines(this.workspace.workspace, this.workspace.targetId)
-    this._ran = { code, blockAt }
+    // Typed Python runs as typed, with no blocks behind its lines (line n is
+    // the editor's line n); the blocks' Python knows which block made each line.
+    const { code, blockAt } = textMode
+      ? { code: this.workspace.pythonText, blockAt: {} }
+      : generateWithLines(this.workspace.workspace, this.workspace.targetId)
+    this._ran = { code, blockAt, text: textMode }
     this.terminal.say(t('term.sending'))
     await this.device.run(code, opts)
   }
 
-  // Mark the line a paused program is at (null: none) on its block and in
-  // the Python tab, while that tab still shows the program that runs.
+  // Mark the line a paused program is at (null: none): typed Python's line in
+  // the editor, while it still holds the program that runs; else on its block
+  // and in the Python tab, while that tab still shows the program that runs.
   _showLine(line) {
     const ws = this.workspace.workspace
     const id = line && this._ran?.blockAt[line]
     ws.highlightBlock?.(id && ws.getBlockById(id) ? id : null)
+    if (this._ran?.text) {
+      const editor = $('python-editor')
+      if (!line || editor.value !== this._ran.code) return
+      const lines = editor.value.split('\n')
+      const start = lines.slice(0, line - 1).reduce((n, l) => n + l.length + 1, 0)
+      editor.setSelectionRange(start, start + (lines[line - 1]?.length ?? 0))
+      const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 18
+      editor.scrollTop = Math.max(0, (line - 3) * lineHeight)
+      return
+    }
     const view = $('python-view')
     view.querySelector('.py-line.is-current')?.classList.remove('is-current')
     if (!line || this._shownCode !== this._ran?.code) return
@@ -271,7 +292,7 @@ export class App {
       } else if (meta && e.key.toLowerCase() === 's') {
         e.preventDefault()
         this._saveFile()
-      } else if (e.key === 'Escape' && this.device.state === State.RUNNING) {
+      } else if (e.key === 'Escape' && this.device.state === State.RUNNING && e.target.id !== 'python-editor') {
         this._stop()
       }
     })
@@ -373,7 +394,12 @@ export class App {
 
     // Blocks for the old board would just sit there unrunnable, so offer to
     // start over — but never throw away work without asking.
-    const strays = [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
+    // In text mode Run sends the typed Python, so blocks for another board
+    // are no reason to start over.
+    const strays =
+      this.workspace.mode === 'text'
+        ? []
+        : [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
     let startFresh = this.workspace.isEmpty
     if (strays.length) {
       const device = getTarget(targetId)?.name
@@ -442,7 +468,7 @@ export class App {
   _bindWorkspace() {
     let timer
     this.workspace.addEventListener('change', () => {
-      $('blocks-hint').hidden = !this.workspace.isEmpty
+      $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
       clearTimeout(timer)
       timer = setTimeout(() => {
         this._refreshPython()
@@ -451,18 +477,81 @@ export class App {
     })
   }
 
+  /** The program Run sends: typed Python in text mode, else the blocks'. */
   _currentPython() {
+    if (this.workspace.mode === 'text') return this.workspace.pythonText
+    return this._blocksPython()
+  }
+
+  _blocksPython() {
     return generatePython(this.workspace.workspace, this.workspace.targetId)
   }
 
   _refreshPython() {
-    const code = this._currentPython()
-    this._shownCode = code
-    // One span a line (the highlighter's spans never cross a line), so a
-    // paused program's line can be marked.
-    const lines = highlightPython(code).split('\n')
-    $('python-view').innerHTML = `<code>${lines.map((l, i) => `<span class="py-line" data-n="${i + 1}">${l}</span>`).join('\n')}</code>`
-    $('blocks-hint').hidden = !this.workspace.isEmpty
+    if (this.workspace.mode !== 'text') {
+      const code = this._blocksPython()
+      this._shownCode = code
+      // One span a line (the highlighter's spans never cross a line), so a
+      // paused program's line can be marked.
+      const lines = highlightPython(code).split('\n')
+      $('python-view').innerHTML = `<code>${lines.map((l, i) => `<span class="py-line" data-n="${i + 1}">${l}</span>`).join('\n')}</code>`
+    }
+    $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
+  }
+
+  // ------------------------------------------------------- blocks or text
+
+  _bindTextMode() {
+    const editor = $('python-editor')
+    $('btn-mode').addEventListener('click', () =>
+      this.workspace.mode === 'text' ? this._toBlocks() : this._toText(),
+    )
+    $('btn-back-to-blocks').addEventListener('click', () => this._toBlocks())
+    editor.addEventListener('input', () => this.workspace.setPythonText(editor.value))
+    editor.addEventListener('keydown', (e) => indentKeys(e, editor))
+    this.workspace.addEventListener('mode', () => this._showMode())
+  }
+
+  _toText() {
+    this.workspace.setMode('text', this._blocksPython())
+    $('python-editor').focus()
+    toast({
+      kind: 'info',
+      title: t('text.startedTitle'),
+      detail: t('text.startedDetail'),
+    })
+  }
+
+  async _toBlocks() {
+    // Typed changes cannot be turned back into blocks, so ask before
+    // throwing them away. Untouched code needs no question.
+    const changed = this.workspace.pythonText.trim() !== this._blocksPython().trim()
+    if (changed) {
+      const ok = await showModal({
+        title: t('text.backTitle'),
+        bodyHtml: t('text.backBodyHtml'),
+        confirmText: t('text.backConfirm'),
+        cancelText: t('text.keep'),
+      })
+      if (!ok) return
+    }
+    this.workspace.setMode('blocks')
+  }
+
+  /** Make the screen match the mode. */
+  _showMode() {
+    const text = this.workspace.mode === 'text'
+    const editor = $('python-editor')
+    if (text && editor.value !== this.workspace.pythonText) editor.value = this.workspace.pythonText
+    editor.hidden = !text
+    $('python-view').hidden = text
+    $('text-mode-cover').hidden = !text
+    $('blocks-pane').classList.toggle('is-text-mode', text)
+    $('btn-mode').textContent = t(text ? 'text.toBlocks' : 'text.toText')
+    $('python-bar-msg').textContent = t(text ? 'text.barText' : 'text.barBlocks')
+    // In text mode the program lives in the Python tab, so show it.
+    if (text) this._selectTab('python')
+    this._refreshPython()
   }
 
   // -------------------------------------------------------------- menu
@@ -502,11 +591,12 @@ export class App {
   /** Start over, asking first if there is anything to lose. */
   async _newProject() {
     if (!this.workspace.isEmpty) {
+      const text = this.workspace.mode === 'text'
       const ok = await showModal({
         title: t('new.title'),
-        bodyHtml: t('new.bodyHtml'),
+        bodyHtml: t(text ? 'new.bodyTextHtml' : 'new.bodyHtml'),
         confirmText: t('new.confirm'),
-        cancelText: t('pick.keep'),
+        cancelText: t(text ? 'new.keepText' : 'pick.keep'),
       })
       if (!ok) return
     }
@@ -571,4 +661,32 @@ const KNOWN_ERRORS = ['NameError', 'SyntaxError', 'TypeError', 'ValueError', 'Ze
 
 function friendlyErrorTitle(name) {
   return KNOWN_ERRORS.includes(name) ? t(`pyerr.${name}`) : t('pyerr.other', { name })
+}
+
+/** Tab and Shift+Tab indent by four spaces; Escape lets the next Tab leave. */
+function indentKeys(e, editor) {
+  if (e.key === 'Escape') {
+    editor.dataset.tabLeaves = '1'
+    return
+  }
+  if (e.key !== 'Tab') {
+    delete editor.dataset.tabLeaves
+    return
+  }
+  if (editor.dataset.tabLeaves) {
+    delete editor.dataset.tabLeaves
+    return // let the browser move focus
+  }
+  e.preventDefault()
+  const { selectionStart: start, selectionEnd: end, value } = editor
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1
+  if (e.shiftKey) {
+    const lead = value.slice(lineStart, lineStart + 4).match(/^ */)[0].length
+    if (!lead) return
+    editor.setRangeText('', lineStart, lineStart + lead, 'preserve')
+    editor.setSelectionRange(Math.max(lineStart, start - lead), Math.max(lineStart, end - lead))
+  } else {
+    editor.setRangeText('    ', start, end, 'end')
+  }
+  editor.dispatchEvent(new Event('input'))
 }

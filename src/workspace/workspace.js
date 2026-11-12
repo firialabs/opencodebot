@@ -29,6 +29,10 @@ export class BlockWorkspace extends EventTarget {
     super()
     this.targetId = targetId
     this.name = DEFAULT_PROJECT_NAME
+    /** 'blocks', or 'text' once the student starts typing Python. */
+    this.mode = 'blocks'
+    /** The typed program, used only in text mode. */
+    this.pythonText = ''
     this.workspace = Blockly.inject(container, {
       toolbox: toolboxFor(targetId),
       theme: cuteTheme,
@@ -52,8 +56,17 @@ export class BlockWorkspace extends EventTarget {
     Blockly.svgResize(this.workspace)
   }
 
-  get isEmpty() {
+  /** No blocks on the canvas. */
+  get hasNoBlocks() {
     return this.workspace.getTopBlocks(false).length === 0
+  }
+
+  /**
+   * Nothing to lose: no blocks and no typed Python. Everything that would
+   * replace or clear the project checks this, so typed code counts as work.
+   */
+  get isEmpty() {
+    return this.hasNoBlocks && !(this.mode === 'text' && this.pythonText.trim())
   }
 
   /** Swap the toolbox when the teacher (or a plugged-in board) picks a device. */
@@ -66,6 +79,24 @@ export class BlockWorkspace extends EventTarget {
 
   clear() {
     this.workspace.clear()
+    this.setMode('blocks')
+    this.dispatchEvent(new CustomEvent('change'))
+  }
+
+  /** Switch between blocks and typed Python. `text` seeds text mode. */
+  setMode(mode, text = this.pythonText) {
+    const next = mode === 'text' ? 'text' : 'blocks'
+    const nextText = next === 'text' ? text : ''
+    if (next === this.mode && nextText === this.pythonText) return
+    this.mode = next
+    this.pythonText = nextText
+    this.dispatchEvent(new CustomEvent('mode'))
+    this.dispatchEvent(new CustomEvent('change'))
+  }
+
+  setPythonText(text) {
+    if (this.mode !== 'text' || text === this.pythonText) return
+    this.pythonText = text
     this.dispatchEvent(new CustomEvent('change'))
   }
 
@@ -85,15 +116,18 @@ export class BlockWorkspace extends EventTarget {
       name: this.name,
       device: this.targetId,
       blocks: Blockly.serialization.workspaces.save(this.workspace),
+      ...(this.mode === 'text' ? { mode: 'text', python: this.pythonText } : {}),
     }
   }
 
   loadProject(project) {
     if (!project?.blocks) throw new Error(t('openFailed.notProject'))
     if (project.device) this.setTarget(project.device)
-    this.name = cleanProjectName(project.name)
+    // Starter programs carry no name; keep whatever the student called it.
+    if (project.name) this.name = cleanProjectName(project.name)
     this.dispatchEvent(new CustomEvent('rename'))
     Blockly.serialization.workspaces.load(project.blocks, this.workspace)
+    this.setMode(project.mode, typeof project.python === 'string' ? project.python : '')
     this.dispatchEvent(new CustomEvent('change'))
   }
 
