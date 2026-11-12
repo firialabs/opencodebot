@@ -49,7 +49,8 @@ kbd {
   background: linear-gradient(180deg, #ffffff 0%, var(--paper-2) 100%);
   border-bottom: 2px solid var(--line);
   position: relative;
-  z-index: 40;
+  /* Above Blockly's toolbox (z-index 70), which the menus open over on a narrow screen. */
+  z-index: 80;
 }
 
 .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
@@ -540,6 +541,12 @@ kbd {
   .brand-tag { display: none; }
   .project-name { width: 11ch; }
   .topbar-actions { width: 100%; flex-wrap: wrap; }
+  /* The ⋯ button can wrap to the left edge, so the menu hangs from the top bar's right edge instead of the button's. */
+  .menu-wrap { position: static; }
+  /* The device chip wraps too: its menu spans the top bar's width, under it. */
+  .topbar-center { position: static; }
+  .device-menu { top: calc(100% - 4px); left: 10px; right: 10px; min-width: 0; max-height: calc(100dvh - 120px); overflow-y: auto; }
+  .app-menu { top: calc(100% - 4px); right: 10px; max-height: calc(100dvh - 120px); overflow-y: auto; }
   .btn { padding: 0 14px; }
   .workarea {
     grid-template-columns: 1fr;
