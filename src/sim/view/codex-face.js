@@ -6,9 +6,10 @@
 // Keys: arrows for the D-pad, A or Z for A, B or X for B, while the face (or
 // the full screen) has focus, so typing in the editor never presses a button.
 import { holdButton } from '../hold-button.js'
+import { tHtml } from '../../i18n/index.js'
 
 const BUTTONS = ['U', 'R', 'D', 'L', 'A', 'B']          // BTN_U .. BTN_B = 0 .. 5
-const PAD = { U: 'Up', L: 'Left', R: 'Right', D: 'Down' }
+const PAD = { U: 'codex.up', L: 'codex.left', R: 'codex.right', D: 'codex.down' }
 const KEYS = {
   ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3,
   a: 4, A: 4, z: 4, Z: 4, b: 5, B: 5, x: 5, X: 5,
@@ -23,19 +24,19 @@ export class CodeXFace {
     this.el.innerHTML = `
       <div class="cx-body">
         <div class="cx-pixels" aria-hidden="true">${'<span class="cx-pixel"></span>'.repeat(4)}</div>
-        <div class="cx-screen-frame"><canvas class="cx-screen" width="240" height="240" role="img" aria-label="CodeX's screen"></canvas></div>
+        <div class="cx-screen-frame"><canvas class="cx-screen" width="240" height="240" role="img" aria-label="${tHtml('codex.screen')}"></canvas></div>
         <div class="cx-controls">
-          <div class="cx-dpad" role="group" aria-label="Direction pad">
-            ${['U', 'L', 'R', 'D'].map((b) => `<button type="button" class="cx-btn cx-${b}" data-b="${BUTTONS.indexOf(b)}" aria-label="${PAD[b]}"></button>`).join('')}
+          <div class="cx-dpad" role="group" aria-label="${tHtml('codex.pad')}">
+            ${['U', 'L', 'R', 'D'].map((b) => `<button type="button" class="cx-btn cx-${b}" data-b="${BUTTONS.indexOf(b)}" aria-label="${tHtml(PAD[b])}"></button>`).join('')}
           </div>
           <div class="cx-ab">
-            <button type="button" class="cx-btn cx-B" data-b="5" aria-label="Button B">B</button>
-            <button type="button" class="cx-btn cx-A" data-b="4" aria-label="Button A">A</button>
+            <button type="button" class="cx-btn cx-B" data-b="5" aria-label="${tHtml('codex.buttonB')}">B</button>
+            <button type="button" class="cx-btn cx-A" data-b="4" aria-label="${tHtml('codex.buttonA')}">A</button>
           </div>
         </div>
         <div class="cx-leds" aria-hidden="true">${[0, 1, 2, 3, 4, 5].map((i) => `<span class="cx-led" data-led="${i}"></span>`).join('')}</div>
-        <button type="button" class="cx-full" title="Full screen (Esc to leave)" aria-keyshortcuts="F">⛶ Full screen</button>
-        <div class="cx-hint" aria-hidden="true">Keys: arrows, A, B, F</div>
+        <button type="button" class="cx-full" title="${tHtml('codex.fullTitle')}" aria-keyshortcuts="F">${tHtml('codex.full')}</button>
+        <div class="cx-hint" aria-hidden="true">${tHtml('codex.keys')}</div>
       </div>`
     host.appendChild(this.el)
     this.canvas = this.el.querySelector('.cx-screen')

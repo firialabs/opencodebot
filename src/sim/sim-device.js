@@ -3,6 +3,7 @@
 // takes the board to simulate, and its own event 'line' gives the program's
 // line while paused ({ line }, null when it runs on).
 import { State, registerDeviceKind } from '../device/device-target.js'
+import { t, language } from '../i18n/index.js'
 import { getTarget } from '../device/targets.js'
 import { KINDS, ROOMS } from './kinds.js'
 import { Describer } from './describe.js'
@@ -47,16 +48,16 @@ export class SimDevice extends EventTarget {
   async connect(targetId = 'codebot') {
     if (this.worker) return true
     if (!SimDevice.canSimulate(targetId)) {
-      this._notice('warn', `${getTarget(targetId)?.name ?? 'That device'} can't be simulated yet`, 'The simulator has CodeBot, CodeX and CodeAIR so far.')
+      this._notice('warn', t('sim.cannotTitle', { device: getTarget(targetId)?.name ?? t('sim.thatDevice') }), t('sim.noneYetDetail'))
       return false
     }
-    this._setState(State.CONNECTING, 'Starting the simulator…')
+    this._setState(State.CONNECTING, t('sim.starting'))
     const assetsBase = new URL('sim-assets/', document.baseURI).href
     this.worker = new Worker(new URL('./runtime/worker.js', import.meta.url), { type: 'module' })
     this.worker.onmessage = (e) => this._onMessage(e.data)
     this.worker.onerror = (e) => {
       console.error(e)
-      this._notice('error', 'The simulator stopped', e.message || 'Reload the page to start it again.')
+      this._notice('error', t('sim.stoppedTitle'), e.message || t('sim.stoppedDetail'))
     }
     this.targetId = targetId
     const kind = KINDS[targetId]
@@ -83,9 +84,9 @@ export class SimDevice extends EventTarget {
     }
     if (this.view) {
       const keys = kind.view === 'codex'
-        ? 'Arrow keys press its direction pad, A and B its buttons, F goes full screen.'
-        : 'Arrow keys turn the camera, plus and minus zoom.'
-      this.describer = new Describer(this.viewHost, this.view.focusEl, `Simulated ${this.target?.name}. ${keys}`)
+        ? t('sim.keysCodex')
+        : t('sim.keys3d')
+      this.describer = new Describer(this.viewHost, this.view.focusEl, t('sim.viewLabel', { device: this.target?.name, keys }))
     }
     const snap = await ready
     for (const d of snap.devices) await this.view?.addDevice(d)
@@ -94,8 +95,9 @@ export class SimDevice extends EventTarget {
 
     this.firmware = { version: 'simulator', date: '' }
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target: this.target } }))
-    this._emitText(`\x1b[32mSimulated ${this.target?.name}${kind.view === '3d' ? ` in the ${this._roomName()}` : ''}.\x1b[0m\r\n`)
-    this._setState(State.READY, 'Simulator ready. Press Run!')
+    const hello = kind.view === '3d' ? t('sim.helloInRoom', { device: this.target?.name, room: this._roomName() }) : t('sim.hello', { device: this.target?.name })
+    this._emitText(`\x1b[32m${hello}\x1b[0m\r\n`)
+    this._setState(State.READY, t('sim.ready'))
     return true
   }
 
@@ -111,7 +113,7 @@ export class SimDevice extends EventTarget {
     this.targetId = null
     this.busy = false
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId: null, target: null } }))
-    this._setState(State.OFFLINE, 'Simulator closed.')
+    this._setState(State.OFFLINE, t('sim.closed'))
   }
 
   // stepFirst: pause at the program's first line, to step it by line.
@@ -121,7 +123,7 @@ export class SimDevice extends EventTarget {
       await this.stop()
     }
     this._post({ t: 'run', source, stepFirst })
-    this._setState(State.RUNNING, 'Your program is running in the simulator!')
+    this._setState(State.RUNNING, t('sim.running'))
     return true
   }
 
@@ -170,7 +172,7 @@ export class SimDevice extends EventTarget {
   // The room a 3D board is in, as a sentence names it; null for CodeX.
   _roomName() {
     const kind = KINDS[this.targetId]
-    return kind?.view === '3d' ? ROOMS[this.room ?? kind.env]?.toLowerCase() : null
+    return kind?.view === '3d' ? ROOMS[this.room ?? kind.env]?.toLocaleLowerCase(language) : null
   }
 
   setCamera(mode) {
@@ -205,8 +207,8 @@ export class SimDevice extends EventTarget {
       case 'saved': this._saved?.get(m.name)?.(); this._saved?.delete(m.name); break
       case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
       case 'state':
-        if (m.state === 'paused') this._setState(State.RUNNING, m.line ? `Paused at line ${m.line}.` : 'Paused.')
-        else if (m.state === 'running') this._setState(State.RUNNING, 'Your program is running in the simulator!')
+        if (m.state === 'paused') this._setState(State.RUNNING, m.line ? t('sim.pausedAt', { line: m.line }) : t('sim.paused'))
+        else if (m.state === 'running') this._setState(State.RUNNING, t('sim.running'))
         this._line(m.state === 'paused' ? m.line : null)
         break
       case 'done': {
@@ -216,19 +218,19 @@ export class SimDevice extends EventTarget {
         this._stopped = null
         if (r.error) {
           this.dispatchEvent(new CustomEvent('program-error', { detail: r.error }))
-          this._setState(State.READY, 'Your program stopped with an error.')
+          this._setState(State.READY, t('sim.stoppedWithError'))
         } else if (r.stopped) {
-          this._emitText('\r\n\x1b[90mStopped.\x1b[0m\r\n')
-          this._setState(State.READY, 'Stopped. Ready when you are!')
+          this._emitText(`\r\n\x1b[90m${t('sim.stopped')}\x1b[0m\r\n`)
+          this._setState(State.READY, t('sim.stoppedReady'))
         } else {
-          this._emitText('\r\n\x1b[90mProgram finished.\x1b[0m\r\n')
-          this._setState(State.READY, 'Program finished.')
+          this._emitText(`\r\n\x1b[90m${t('sim.finished')}\x1b[0m\r\n`)
+          this._setState(State.READY, t('sim.finished'))
         }
         break
       }
       case 'error':
         console.error(m.message)
-        this._notice('error', 'The simulator hit a problem', m.message.split('\n')[0])
+        this._notice('error', t('sim.problemTitle'), m.message.split('\n')[0])
         break
     }
   }
@@ -297,4 +299,4 @@ class Speaker {
   }
 }
 
-registerDeviceKind('sim', () => new SimDevice(), { label: 'Simulator' })
+registerDeviceKind('sim', () => new SimDevice(), { label: t('kind.sim') })

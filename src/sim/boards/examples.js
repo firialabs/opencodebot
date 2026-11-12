@@ -122,18 +122,18 @@ from botcore import *
 leds.user(0b10101010)
 `
 
-// Each kind's examples: [id, name, program].
+// Each kind's examples: [id, its name's key in the string table, program].
 export const EXAMPLES = {
   codex: [
-    ['remote', 'Radio remote (A or B)', REMOTE_CODEX],
-    ['listener', 'Radio listener', LISTENER_CODEX],
-    ['codeair-remote', 'Remote for a CodeAIR', REMOTE_FOR_CODEAIR],
+    ['remote', 'example.remote', REMOTE_CODEX],
+    ['listener', 'example.listener', LISTENER_CODEX],
+    ['codeair-remote', 'example.codeairRemote', REMOTE_FOR_CODEAIR],
   ],
   codeair: [
-    ['listener', 'Radio listener', LISTENER_CODEAIR],
-    ['xfly', 'Factory program (pairs with a CodeX remote)', XFLY_CODEAIR],
+    ['listener', 'example.listener', LISTENER_CODEAIR],
+    ['xfly', 'example.xfly', XFLY_CODEAIR],
   ],
-  codebot: [['lights', 'Lights', LISTENER_CODEBOT]],
+  codebot: [['lights', 'example.lights', LISTENER_CODEBOT]],
 }
 
 export function example(kind, id) {

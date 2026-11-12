@@ -10,6 +10,8 @@ import '../sim.css'
 import './boards.css'
 import { SimDevice } from '../sim-device.js'
 import { holdButton } from '../hold-button.js'
+import { boardButtonsHtml } from '../sim-panel.js'
+import { t, tHtml, translatePage } from '../../i18n/index.js'
 import { TerminalPanel } from '../../ui/terminal.js'
 import { EXAMPLES, example, exampleFor } from './examples.js'
 
@@ -18,6 +20,7 @@ const STORE = 'opencodebot-boards'
 const MAX_BOARDS = 6
 
 const grid = document.getElementById('bd-grid')
+translatePage()
 const addButton = document.getElementById('bd-add')
 const boards = []
 
@@ -31,25 +34,24 @@ class Board {
       <div class="bd-head">
         <div class="bd-title-row">
           <span class="bd-name"></span>
-          <button type="button" class="bd-remove" title="Remove this board" aria-label="Remove this board">✕</button>
+          <button type="button" class="bd-remove" title="${tHtml('boards.remove')}" aria-label="${tHtml('boards.remove')}">✕</button>
         </div>
-        <select class="bd-kind" aria-label="Which board">${KINDS.map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select>
-        <select class="bd-example" aria-label="Start from an example"></select>
-        <button type="button" class="btn btn-run bd-run">▶ Run</button>
-        <button type="button" class="btn btn-stop bd-stop" disabled>■ Stop</button>
+        <select class="bd-kind" aria-label="${tHtml('boards.which')}">${KINDS.map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select>
+        <select class="bd-example" aria-label="${tHtml('boards.exampleLabel')}"></select>
+        <button type="button" class="btn btn-run bd-run">${tHtml('boards.run')}</button>
+        <button type="button" class="btn btn-stop bd-stop" disabled>${tHtml('boards.stop')}</button>
       </div>
       <div class="bd-stage" data-on="false">
         <div class="sim-view"></div>
-        <div class="bd-off">Press Run to start this board.</div>
+        <div class="bd-off">${tHtml('boards.pressRun')}</div>
       </div>
       <div class="bd-bar" hidden>
-        <span class="bd-buttons" role="group" aria-label="The board's buttons (hold Space or Enter)">
-          <button type="button" class="sim-board-btn" data-n="0" title="Button 0 on the board" aria-label="Button 0">BTN 0</button>
-          <button type="button" class="sim-board-btn" data-n="1" title="Button 1 on the board" aria-label="Button 1">BTN 1</button>
+        <span class="bd-buttons" role="group" aria-label="${tHtml('simPanel.buttons')}">
+          ${boardButtonsHtml()}
         </span>
         <span class="bd-status" role="status"></span>
       </div>
-      <textarea class="bd-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="This board's program (Python)"></textarea>
+      <textarea class="bd-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="${tHtml('boards.program')}"></textarea>
       <div class="bd-term"></div>`
     const q = (s) => this.el.querySelector(s)
     this.kindSelect = q('.bd-kind')
@@ -89,14 +91,14 @@ class Board {
 
   _fillExamples() {
     const s = this.exampleSelect
-    s.replaceChildren(new Option('Examples…', ''))
-    for (const [id, name] of EXAMPLES[this.kind] ?? []) s.add(new Option(name, id))
+    s.replaceChildren(new Option(t('boards.examples'), ''))
+    for (const [id, key] of EXAMPLES[this.kind] ?? []) s.add(new Option(t(key), id))
   }
 
   // Numbered by place, so the names stay 1, 2, 3 as boards come and go.
   name(n) {
-    this.el.querySelector('.bd-name').textContent = `Board ${n}`
-    this.el.setAttribute('aria-label', `Board ${n}`)
+    this.el.querySelector('.bd-name').textContent = t('boards.name', { n })
+    this.el.setAttribute('aria-label', t('boards.name', { n }))
   }
 
   async run() {
@@ -109,7 +111,7 @@ class Board {
       this.bar.hidden = false
       this.el.querySelector('.bd-buttons').hidden = this.kind === 'codex'   // CodeX's face has its own
     }
-    this.terminal.say('Running…')
+    this.terminal.say(t('boards.running'))
     await this.sim.run(this.code.value)
   }
 

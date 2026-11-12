@@ -4,9 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#4EB748" />
-    <meta name="description" content="Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR." />
+    <!-- The title and description are repeated here, in English, for crawlers and link
+         previews that do not run the page's script; src/i18n/en.js is their source. -->
+    <meta name="description" content="Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR."
+          data-i18n-attr="content=app.description" />
     <link rel="icon" href="./icons/firia-bot-head.svg" type="image/svg+xml" />
-    <title>OpenCodeBot</title>
+    <title data-i18n="app.name">OpenCodeBot</title>
   </head>
   <body>
     <div id="app">
@@ -14,16 +17,24 @@
         <div class="brand">
           <img class="brand-mascot" src="./icons/firia-bot.svg" alt="" width="27" height="48" />
           <div class="brand-text">
-            <span class="brand-name">OpenCodeBot</span>
-            <span class="brand-tag">blocks that fly, roll &amp; glow</span>
+            <span class="brand-name" data-i18n="app.name"></span>
+            <span class="brand-tag" data-i18n="app.tagline"></span>
           </div>
+        </div>
+
+        <div class="project-bar">
+          <button id="btn-new" class="btn btn-ghost btn-new" data-i18n-attr="title=btn.newTitle">
+            <span class="btn-emoji" aria-hidden="true">🆕</span><span class="btn-text" data-i18n="btn.new"></span>
+          </button>
+          <input id="project-name" class="project-name" type="text" maxlength="60" spellcheck="false"
+                 data-i18n-attr="aria-label=project.nameLabel;title=project.nameTitle;placeholder=project.default" />
         </div>
 
         <div class="topbar-center">
           <button id="device-chip" class="device-chip" aria-haspopup="listbox" aria-expanded="false">
             <span class="device-chip-dot" data-state="off"></span>
             <img class="device-chip-icon" id="device-chip-icon" src="./icons/dev-any.svg" alt="" width="22" height="22" />
-            <span class="device-chip-label" id="device-chip-label">Pick a device</span>
+            <span class="device-chip-label" id="device-chip-label" data-i18n="chip.pick"></span>
             <span class="device-chip-caret" aria-hidden="true">▾</span>
           </button>
           <div id="device-menu" class="device-menu" role="listbox" hidden></div>
@@ -31,29 +42,29 @@
 
         <div class="topbar-actions">
           <button id="btn-connect" class="btn btn-connect">
-            <span class="btn-emoji" aria-hidden="true">🔌</span><span class="btn-text">Connect</span>
+            <span class="btn-emoji" aria-hidden="true">🔌</span><span class="btn-text" data-i18n="btn.connect"></span>
           </button>
-          <button id="btn-sim" class="btn btn-sim" title="Try your program on a simulated device">
-            <span class="btn-emoji" aria-hidden="true">🎮</span><span class="btn-text">Simulate</span>
+          <button id="btn-sim" class="btn btn-sim" data-i18n-attr="title=btn.simulateTitle">
+            <span class="btn-emoji" aria-hidden="true">🎮</span><span class="btn-text" data-i18n="btn.simulate"></span>
           </button>
           <button id="btn-run" class="btn btn-run" disabled>
-            <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text">Run</span>
+            <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text" data-i18n="btn.run"></span>
           </button>
           <button id="btn-stop" class="btn btn-stop" disabled>
-            <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text">Stop</span>
+            <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text" data-i18n="btn.stop"></span>
           </button>
           <div class="menu-wrap">
-            <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" title="More">⋯</button>
+            <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" data-i18n-attr="title=btn.more">⋯</button>
             <div id="app-menu" class="app-menu" role="menu" hidden>
-              <button role="menuitem" data-action="new">🆕 New project</button>
-              <button role="menuitem" data-action="open">📂 Open project…</button>
-              <button role="menuitem" data-action="save">💾 Save project</button>
+              <button role="menuitem" data-action="new" data-i18n="menu.new"></button>
+              <button role="menuitem" data-action="open" data-i18n="menu.open"></button>
+              <button role="menuitem" data-action="save" data-i18n="menu.save"></button>
               <hr />
-              <button role="menuitem" data-action="export-py">🐍 Download Python</button>
-              <button role="menuitem" data-action="copy-py">📋 Copy Python</button>
+              <button role="menuitem" data-action="export-py" data-i18n="menu.exportPy"></button>
+              <button role="menuitem" data-action="copy-py" data-i18n="menu.copyPy"></button>
               <hr />
-              <button role="menuitem" data-action="help">❓ Help &amp; shortcuts</button>
-              <button role="menuitem" data-action="about">💚 About OpenCodeBot</button>
+              <button role="menuitem" data-action="help" data-i18n="menu.help"></button>
+              <button role="menuitem" data-action="about" data-i18n="menu.about"></button>
             </div>
           </div>
         </div>
@@ -64,32 +75,32 @@
           <div id="blockly-root" class="blockly-root"></div>
           <div class="blocks-hint" id="blocks-hint">
             <img src="./icons/firia-bot-head.svg" alt="" width="44" height="44" />
-            <p>Drag blocks from the left to build your program!</p>
+            <p data-i18n="blocks.hint"></p>
           </div>
         </section>
 
         <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"
-             aria-label="Resize panels"></div>
+             data-i18n-attr="aria-label=splitter.label"></div>
 
         <section class="side-pane" id="side-pane">
           <div class="tabs" role="tablist">
             <button class="tab is-active" role="tab" data-tab="terminal" aria-selected="true">
-              <span aria-hidden="true">💬</span> Talk to device
+              <span aria-hidden="true">💬</span> <span data-i18n="tab.terminal"></span>
             </button>
             <button class="tab" role="tab" data-tab="sim" aria-selected="false">
-              <span aria-hidden="true">🎮</span> Simulator
+              <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
             </button>
             <button class="tab" role="tab" data-tab="python" aria-selected="false">
-              <span aria-hidden="true">🐍</span> Python
+              <span aria-hidden="true">🐍</span> <span data-i18n="tab.python"></span>
             </button>
             <div class="tabs-spacer"></div>
-            <button id="btn-clear-term" class="icon-btn" title="Clear the terminal">🧹</button>
+            <button id="btn-clear-term" class="icon-btn" data-i18n-attr="title=term.clear">🧹</button>
           </div>
 
           <div class="tab-panel is-active" data-panel="terminal">
             <div id="terminal-host" class="terminal-host"></div>
             <div class="terminal-foot" id="terminal-foot">
-              <span class="term-hint">Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.</span>
+              <span class="term-hint" data-i18n-html="term.hintHtml"></span>
             </div>
           </div>
 
@@ -104,8 +115,8 @@
       </main>
 
       <footer class="statusbar">
-        <span class="status-chip" id="status-chip" data-state="idle">Not connected</span>
-        <span class="status-msg" id="status-msg">Plug in your device with a USB cable, then press Connect.</span>
+        <span class="status-chip" id="status-chip" data-state="idle" data-i18n="status.offline"></span>
+        <span class="status-msg" id="status-msg" data-i18n="status.start"></span>
         <span class="status-spacer"></span>
         <span class="status-note" id="browser-note"></span>
       </footer>

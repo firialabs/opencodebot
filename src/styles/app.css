@@ -63,6 +63,27 @@ kbd {
 }
 .brand-tag { font-size: 11px; color: var(--ink-faint); font-weight: 600; }
 
+/* ----------------------------------------------------------- project bar */
+.project-bar { display: flex; align-items: center; gap: 4px; margin-left: 6px; min-width: 0; }
+.btn-new { font-size: 15px; padding: 0 12px; gap: 6px; font-weight: 600; color: var(--ink); }
+.project-name {
+  width: 15ch;
+  min-width: 8ch;
+  height: 36px;
+  padding: 0 10px;
+  border: 2px solid transparent;
+  border-bottom: 2px dashed var(--line-strong); /* reads as "you can type here" */
+  border-radius: var(--r-xs);
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+.project-name:hover { border-color: var(--line-strong); background: var(--surface); }
+.project-name:focus { outline: none; border-color: var(--green); background: var(--surface); }
+
 .topbar-center { position: relative; margin-left: 6px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
@@ -415,6 +436,7 @@ kbd {
   .blocks-hint { left: 16px; right: 16px; bottom: 14px; transform: none; justify-content: center; }
   .topbar { flex-wrap: wrap; padding: 8px 10px; gap: 8px; }
   .brand-tag { display: none; }
+  .project-name { width: 11ch; }
   .topbar-actions { width: 100%; flex-wrap: wrap; }
   .btn { padding: 0 14px; }
   .workarea {

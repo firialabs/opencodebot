@@ -4,6 +4,7 @@
 //
 // A course's spawn puts the CodeBot on the line, heading along it, with its
 // line sensors over the tape.
+import { t } from '../../i18n/index.js'
 
 export const TAPE_WIDTH = 0.019        // 3/4 inch electrical tape
 export const TAPE_REFLECTANCE = 0.04
@@ -86,10 +87,10 @@ function tee() {
 }
 
 export const COURSES = {
-  oval: { name: 'Oval', mat: [-1.35, -0.8, 1.35, 0.8], ...oval() },
-  eight: { name: 'Figure eight', mat: [-1.35, -0.65, 1.35, 0.65], ...figureEight() },
-  gap: { name: 'Oval with a gap', mat: [-1.35, -0.8, 1.35, 0.8], ...oval(0.12) },
-  tee: { name: 'T', mat: [-0.8, -1.1, 0.8, 0.8], ...tee() },
+  oval: { name: t('course.oval'), mat: [-1.35, -0.8, 1.35, 0.8], ...oval() },
+  eight: { name: t('course.eight'), mat: [-1.35, -0.65, 1.35, 0.65], ...figureEight() },
+  gap: { name: t('course.gap'), mat: [-1.35, -0.8, 1.35, 0.8], ...oval(0.12) },
+  tee: { name: t('course.tee'), mat: [-0.8, -1.1, 0.8, 0.8], ...tee() },
 }
 
 // A course where a room lays it (its `courseAt`: clear floor, which may be

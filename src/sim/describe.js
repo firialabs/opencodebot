@@ -7,19 +7,23 @@
 // landed), in a polite live region. Positions are never announced as they
 // change: a stream of numbers drowns everything else out.
 //
-// The strings join the app's string table after the device-interface rebase.
-const COMPASS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east']
+// Every sentence is in the app's string table (src/i18n), with its numbers
+// formatted for the language.
+import { t, fixed } from '../i18n/index.js'
+
+const COMPASS = ['east', 'northEast', 'north', 'northWest', 'west', 'southWest', 'south', 'southEast']
 const NAMES = { codebot: 'CodeBot', codex: 'CodeX', codeair: 'CodeAIR' }
 
 export function compass(heading) {
   const i = Math.round(heading / (Math.PI / 4))
-  return COMPASS[((i % 8) + 8) % 8]
+  return t(`compass.${COMPASS[((i % 8) + 8) % 8]}`)
 }
 
 const bits = (v, n) => { let c = 0; for (let i = 0; i < n; i++) if ((v >> i) & 1) c++; return c }
 const lit = (pixels) => (pixels ?? []).filter(([r, g, b]) => r + g + b > 0).length
 
-// What a board is doing between two snapshots `dt` seconds apart: its motion.
+// What a board is doing between two snapshots `dt` seconds apart: its motion,
+// one of still, moving, backing, turnLeft, turnRight.
 function motion(prev, s, dt) {
   if (!prev || !(dt > 0)) return 'still'
   const dx = s.x - prev.x, dy = s.y - prev.y
@@ -31,36 +35,42 @@ function motion(prev, s, dt) {
     const ahead = dx * Math.cos(s.heading) + dy * Math.sin(s.heading)
     return ahead >= 0 || s.kind === 'codeair' ? 'moving' : 'backing'
   }
-  if (Math.abs(turn / dt) > 0.15) return turn > 0 ? 'turning left' : 'turning right'
+  if (Math.abs(turn / dt) > 0.15) return turn > 0 ? 'turnLeft' : 'turnRight'
   return 'still'
 }
 
-// The whole board, in a sentence or three.
+// The whole board, in a sentence or three. `room` is the room's name as a
+// sentence would use it.
 export function describe(s, { room, motion: m = 'still' } = {}) {
-  const name = NAMES[s.kind] ?? s.kind
+  const device = NAMES[s.kind] ?? s.kind
   if (s.kind === 'codex') {
-    const parts = [`Simulated ${name}, held in the hand.`]
-    parts.push(`${lit(s.pixels)} of 4 NeoPixels lit, ${(s.leds ?? []).filter(Boolean).length} of 6 red LEDs on.`)
-    parts.push('What it prints shows in the terminal; its screen is a picture.')
-    return parts.join(' ')
+    return [
+      t('describe.codex', { device }),
+      t('describe.codexLights', { lit: lit(s.pixels), on: (s.leds ?? []).filter(Boolean).length }),
+      t('describe.codexScreen'),
+    ].join(' ')
   }
-  const where = room ? ` in the ${room}` : ''
-  const at = `about ${Math.abs(s.x).toFixed(1)} m ${s.x < 0 ? 'west' : 'east'} and ${Math.abs(s.y).toFixed(1)} m ${s.y < 0 ? 'south' : 'north'} of the room's middle`
+  const where = room ? t('describe.inRoom', { room }) : ''
+  const at = t('describe.at', {
+    x: fixed(Math.abs(s.x), 1), ew: t(s.x < 0 ? 'compass.west' : 'compass.east'),
+    y: fixed(Math.abs(s.y), 1), ns: t(s.y < 0 ? 'compass.south' : 'compass.north'),
+  })
+  const facing = compass(s.heading)
   const parts = []
   if (s.kind === 'codeair') {
     const above = s.above ?? s.z
-    const state = above > 0.02 ? `flying ${above.toFixed(1)} m up` : 'resting'
-    parts.push(`Simulated ${name}${where}, ${state}, ${at}, facing ${compass(s.heading)}.`)
-    parts.push(`Motors ${s.motors ? 'on' : 'off'}${m === 'moving' ? ', moving' : m.startsWith('turning') ? `, ${m}` : ''}.`)
-    parts.push(`${lit(s.pixels)} of 8 NeoPixels lit.`)
+    const state = above > 0.02 ? t('describe.flying', { height: fixed(above, 1) }) : t('describe.resting')
+    parts.push(t('describe.air', { device, where, state, at, facing }))
+    const doing = m === 'moving' ? t('describe.airMoving') : m.startsWith('turn') ? t('describe.airTurning', { doing: t(`doing.${m}`) }) : ''
+    parts.push(t('describe.motors', { motors: t(s.motors ? 'describe.motorsOn' : 'describe.motorsOff'), doing }))
+    parts.push(t('describe.airPixels', { lit: lit(s.pixels) }))
   } else {
-    const level = s.z > 0.01 ? `, on a floor ${s.z.toFixed(1)} m up` : ''
-    const doing = { still: 'standing still', moving: 'driving forward', backing: 'backing up' }[m] ?? m
-    parts.push(`Simulated ${name}${where}${level}, ${at}, facing ${compass(s.heading)}, ${doing}${s.blocked ? ', pushing against something' : ''}.`)
-    const leds = s.leds ?? {}
-    parts.push(`${bits(leds.user ?? 0, 8)} of 8 user lights on.`)
+    const level = s.z > 0.01 ? t('describe.onFloor', { height: fixed(s.z, 1) }) : ''
+    const pushing = s.blocked ? t('describe.pushing') : ''
+    parts.push(t('describe.bot', { device, where, level, at, facing, doing: t(`doing.${m}`), pushing }))
+    parts.push(t('describe.botLights', { on: bits(s.leds?.user ?? 0, 8) }))
   }
-  if (s.tone) parts.push(`Its speaker plays ${Math.round(s.tone)} hertz.`)
+  if (s.tone) parts.push(t('describe.tone', { hz: Math.round(s.tone) }))
   return parts.join(' ')
 }
 
@@ -69,14 +79,14 @@ export function change(prev, s, mPrev, m) {
   if (!prev) return null
   const said = []
   if (s.kind === 'codebot') {
-    if (s.blocked && !prev.blocked) said.push('Bumped into something.')
-    if (s.z < prev.z - 0.05) said.push('Fell off the edge.')
-    if (mPrev === 'still' && m !== 'still') said.push(m === 'backing' ? 'Backing up.' : m === 'moving' ? 'Driving.' : `${m[0].toUpperCase()}${m.slice(1)}.`)
-    if (mPrev !== 'still' && m === 'still' && !s.blocked) said.push('Stopped.')
+    if (s.blocked && !prev.blocked) said.push(t('say.bumped'))
+    if (s.z < prev.z - 0.05) said.push(t('say.fell'))
+    if (mPrev === 'still' && m !== 'still') said.push(t(m === 'moving' ? 'say.driving' : `say.${m}`))
+    if (mPrev !== 'still' && m === 'still' && !s.blocked) said.push(t('say.stopped'))
   } else if (s.kind === 'codeair') {
     const up = (x) => (x.above ?? x.z) > 0.02
-    if (up(s) && !up(prev)) said.push('Took off.')
-    if (!up(s) && up(prev)) said.push('Landed.')
+    if (up(s) && !up(prev)) said.push(t('say.tookOff'))
+    if (!up(s) && up(prev)) said.push(t('say.landed'))
   }
   return said.length ? said.join(' ') : null
 }

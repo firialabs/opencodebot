@@ -6,16 +6,16 @@
     <meta name="theme-color" content="#4EB748" />
     <meta name="description" content="Several simulated Firia Labs boards at once, each with its own program; their radios hear each other." />
     <link rel="icon" href="./icons/firia-bot-head.svg" type="image/svg+xml" />
-    <title>OpenCodeBot boards</title>
+    <title data-i18n="boards.title">OpenCodeBot boards</title>
   </head>
   <body class="bd-page">
     <header class="bd-top">
-      <a class="bd-back" href="./">← OpenCodeBot</a>
+      <a class="bd-back" href="./">← <span data-i18n="app.name"></span></a>
       <div class="bd-title">
-        <h1>Boards</h1>
-        <p>Each board runs its own program. CodeX and CodeAIR boards reach each other by radio (on the same channel) and by infrared, on this page and in other tabs of this browser.</p>
+        <h1 data-i18n="boards.heading"></h1>
+        <p data-i18n="boards.intro"></p>
       </div>
-      <button type="button" class="btn bd-add" id="bd-add">➕ Add a board</button>
+      <button type="button" class="btn bd-add" id="bd-add" data-i18n="boards.add"></button>
     </header>
     <main class="bd-grid" id="bd-grid"></main>
     <script type="module" src="./src/sim/boards/boards.js"></script>
