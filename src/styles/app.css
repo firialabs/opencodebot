@@ -563,6 +563,15 @@ kbd {
    ghosted through the whole palette. */
 .blocklyFlyoutBackground { fill: var(--surface) !important; fill-opacity: 1 !important; }
 .blocklyText { font-family: var(--font-display) !important; font-weight: 500 !important; }
+/* Words on a block are dark: white text on these bright fills is under 4.5:1
+   (WCAG 1.4.3), dark text is at least 4.5:1 on every one of them. Typed
+   fields keep Blockly's grey on their white pill. */
+.blocklyBlock .blocklyLabelField > .blocklyText,
+.blocklyBlock .blocklyDropdownField > .blocklyText { fill: var(--block-ink) !important; }
+/* The white glyphs on a block (dropdown arrows, quote marks, + and -) go dark
+   too, for 3:1 on controls and their shapes (WCAG 1.4.11). */
+.blocklyBlock .blocklyDropdownField > image,
+.blocklyBlock .blocklyImageField > image { filter: brightness(0); }
 .blocklyWidgetDiv .blocklyMenu { border-radius: var(--r-sm); font-family: var(--font-body); }
 
 /* --------------------------------------------------------- reduced motion */

@@ -62,6 +62,74 @@ async function audit(label) {
   check(violations.length === 0, `axe: ${label}${violations.length ? ' -> ' + violations.join('; ') : ''}`)
 }
 
+/**
+ * Every word on a block, in the workspace and in each category's palette:
+ * text needs 4.5:1 against what is behind it (the block, or a field's own
+ * pill), and the glyphs on a block (dropdown arrows, quotes, + and -) are
+ * drawn dark. axe cannot see into Blockly's SVG, so this measures it here.
+ */
+async function blockText(label) {
+  const sel = '.blocklyToolboxCategory'
+  const bad = new Set()
+  let words = 0
+  const measure = () =>
+    page.evaluate(() => {
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number)
+      const lum = ([r, g, b]) => {
+        const f = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+      }
+      const ratio = (a, b) => {
+        const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m)
+        return (x + 0.05) / (y + 0.05)
+      }
+      // What is drawn behind a field: its own opaque pill, else its block.
+      const behind = (field) => {
+        const pill = field.querySelector(':scope > rect')
+        if (pill) {
+          const style = getComputedStyle(pill)
+          const c = rgb(style.fill)
+          if (style.fill !== 'none' && (c[3] ?? 1) > 0 && Number(style.fillOpacity) > 0) return c
+        }
+        const block = field.closest('.blocklyBlock')
+        return rgb(getComputedStyle(block.querySelector(':scope > .blocklyPath')).fill)
+      }
+      const out = { words: 0, bad: [] }
+      for (const text of document.querySelectorAll('.blocklyBlock text.blocklyText')) {
+        if (!text.getBoundingClientRect().width || !text.textContent.trim()) continue
+        out.words++
+        const r = ratio(rgb(getComputedStyle(text).fill), behind(text.parentElement))
+        if (r < 4.5) out.bad.push(`"${text.textContent.trim()}" ${r.toFixed(2)}:1`)
+      }
+      const glyphs = '.blocklyBlock .blocklyDropdownField > image, .blocklyBlock .blocklyImageField > image'
+      for (const img of document.querySelectorAll(glyphs)) {
+        if (!img.getBoundingClientRect().width) continue
+        if (!/brightness\(0\)/.test(getComputedStyle(img).filter)) {
+          out.bad.push(`a white glyph (${img.parentElement.getAttribute('class')})`)
+        }
+      }
+      return out
+    })
+  const add = (r) => {
+    words += r.words
+    for (const b of r.bad) bad.add(b)
+  }
+  add(await measure()) // the program on the canvas
+  const count = (await page.$$(sel)).length
+  for (let i = 0; i < count; i++) {
+    await (await page.$$(sel))[i].click()
+    await page.waitForTimeout(150)
+    add(await measure())
+  }
+  await page.keyboard.press('Escape')
+  const list = [...bad]
+  const more = list.length > 8 ? ` and ${list.length - 8} more` : ''
+  check(
+    words > 20 && list.length === 0,
+    `block text contrast, ${label} (${words} words, ${count} categories)${list.length ? ': ' + list.slice(0, 8).join('; ') + more : ''}`,
+  )
+}
+
 // First visit: the welcome dialog.
 await page.goto(`${BASE}?device=loopback&board=codebot`, { waitUntil: 'networkidle' })
 await page.evaluate(() => localStorage.clear())
@@ -78,6 +146,7 @@ await page.reload({ waitUntil: 'networkidle' })
 await page.waitForFunction(() => !!window.openCodeBot)
 
 await audit('main screen')
+await blockText('CodeBot')
 
 // Connected, so Run and Stop are enabled and their contrast counts.
 await page.click('#btn-connect')
@@ -173,6 +242,26 @@ await page.click('#btn-new')
 await page.click('#modal button[value="ok"]')
 await page.waitForFunction(() => !document.getElementById('blocks-hint').hidden)
 await audit('empty project')
+
+// The other boards' palettes have their own blocks.
+for (const [id, name] of [['codex', 'CodeX'], ['codeair', 'CodeAIR']]) {
+  await page.evaluate((b) => {
+    localStorage.clear()
+    localStorage.setItem('opencodebot.welcomed.v1', '1')
+    localStorage.setItem('opencodebot.device.v1', b)
+  }, id)
+  await page.goto(`${BASE}?device=loopback&board=${id}`, { waitUntil: 'networkidle' })
+  await page.waitForFunction(() => !!window.openCodeBot)
+  check(await page.evaluate((b) => window.openCodeBot.workspace.targetId === b, id), `the palette is ${name}'s`)
+  await blockText(name)
+}
+await page.evaluate(() => {
+  localStorage.clear()
+  localStorage.setItem('opencodebot.welcomed.v1', '1')
+  localStorage.setItem('opencodebot.device.v1', 'codebot')
+})
+await page.goto(`${BASE}?device=loopback&board=codebot`, { waitUntil: 'networkidle' })
+await page.waitForFunction(() => !!window.openCodeBot)
 
 // Simulating: the simulator's view, its controls and its status in the side pane.
 await page.click('#btn-sim')

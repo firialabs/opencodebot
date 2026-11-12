@@ -18,6 +18,21 @@ export const HUE = {
   functions: '#8894a8',
 }
 
+/**
+ * A block plugged in as a default (a shadow, such as the colour inside a
+ * lights block) is drawn in its style's second colour. Blockly would derive a
+ * darker shade, under 4.5:1 with the dark block text; a light tint of the
+ * same colour keeps it readable and still distinct from the block it sits in.
+ */
+const tint = (hex, amount = 0.3) =>
+  '#' +
+  [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16))
+    .map((c) => Math.round(c + (255 - c) * amount).toString(16).padStart(2, '0'))
+    .join('')
+
+const style = (colour, extra = {}) => ({ colourPrimary: colour, colourSecondary: tint(colour), ...extra })
+
 export const cuteTheme = Blockly.Theme.defineTheme('opencodebot', {
   base: Blockly.Themes.Zelos,
   name: 'opencodebot',
@@ -43,10 +58,10 @@ export const cuteTheme = Blockly.Theme.defineTheme('opencodebot', {
   ),
   blockStyles: {
     ...Object.fromEntries(
-      Object.entries(HUE).map(([name, colour]) => [`${name}_blocks`, { colourPrimary: colour }]),
+      Object.entries(HUE).map(([name, colour]) => [`${name}_blocks`, style(colour)]),
     ),
     // Rounded "cap" tops, so the blocks that begin a program look like a start.
-    start_hat: { colourPrimary: HUE.basics, hat: 'cap' },
-    loop_hat: { colourPrimary: HUE.loops, hat: 'cap' },
+    start_hat: style(HUE.basics, { hat: 'cap' }),
+    loop_hat: style(HUE.loops, { hat: 'cap' }),
   },
 })
