@@ -15,12 +15,14 @@ import { t, tHtml, translatePage } from '../../i18n/index.js'
 import { TerminalPanel } from '../../ui/terminal.js'
 import { EXAMPLES, example, exampleFor } from './examples.js'
 
-const KINDS = [['codex', 'CodeX'], ['codeair', 'CodeAIR'], ['codebot', 'CodeBot']]
+// The boards this build can simulate (CodeAIR only with its flight library).
+const KINDS = [['codex', 'CodeX'], ['codeair', 'CodeAIR'], ['codebot', 'CodeBot']].filter(([id]) => SimDevice.canSimulate(id))
 const STORE = 'opencodebot-boards'
 const MAX_BOARDS = 6
 
 const grid = document.getElementById('bd-grid')
 translatePage()
+if (!SimDevice.canSimulate('codeair')) document.querySelector('[data-i18n="boards.intro"]').textContent = t('boards.introNoFlight')
 const addButton = document.getElementById('bd-add')
 const boards = []
 
@@ -92,7 +94,11 @@ class Board {
   _fillExamples() {
     const s = this.exampleSelect
     s.replaceChildren(new Option(t('boards.examples'), ''))
-    for (const [id, key] of EXAMPLES[this.kind] ?? []) s.add(new Option(t(key), id))
+    for (const [id, key] of EXAMPLES[this.kind] ?? []) {
+      // a remote for a CodeAIR has nothing to steer without one
+      if (id.startsWith('codeair-') && !SimDevice.canSimulate('codeair')) continue
+      s.add(new Option(t(key), id))
+    }
   }
 
   // Numbered by place, so the names stay 1, 2, 3 as boards come and go.
@@ -173,7 +179,8 @@ function save() {
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE))
-    if (Array.isArray(saved) && saved.length) return saved.slice(0, MAX_BOARDS)
+    const usable = Array.isArray(saved) ? saved.filter((b) => KINDS.some(([id]) => id === b?.kind)) : []
+    if (usable.length) return usable.slice(0, MAX_BOARDS)
   } catch { /* nothing usable saved */ }
   return null
 }

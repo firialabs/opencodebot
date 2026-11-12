@@ -48,7 +48,10 @@ const browser = await chromium.launch({
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 })
 const misses = []
-for (const kind of ['codebot', 'codeair']) {
+// CodeAIR only in a build with its flight library, which serves the GPL's text.
+const flight = fs.existsSync(path.join(DIST, 'licenses/GPL-2.0.txt'))
+if (!flight) console.log('perf: no CodeAIR flight in this build, so CodeBot only')
+for (const kind of flight ? ['codebot', 'codeair'] : ['codebot']) {
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, serviceWorkers: 'block' })
   const page = await context.newPage()
   await page.addInitScript((k) => {

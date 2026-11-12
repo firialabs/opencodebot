@@ -3,6 +3,7 @@
 import './sim.css'
 import { COURSES } from './world/courses.js'
 import { KINDS, ROOMS } from './kinds.js'
+import { SimDevice } from './sim-device.js'
 import { holdButton } from './hold-button.js'
 import { t, tHtml } from '../i18n/index.js'
 
@@ -23,7 +24,7 @@ export class SimPanel {
       <div class="sim-stage" data-off="true">
         <div class="sim-view"></div>
         <div class="sim-off">
-          <p>${tHtml('simPanel.intro')}</p>
+          <p>${SimDevice.canSimulate('codeair') ? tHtml('simPanel.intro') : tHtml('simPanel.introNoFlight')}</p>
           <button type="button" class="btn btn-run sim-start">${tHtml('simPanel.start')}</button>
         </div>
       </div>

@@ -3,7 +3,8 @@
 OpenCodeBot's own code is under the MIT licence ([LICENSE](LICENSE)), and its artwork
 and 3D models under CC BY-NC 4.0 (`sim/assets/LICENSE`). This file lists what the
 repository and the built site carry from others, under their own terms. The built site
-serves this file and the GPL text at `licenses/`.
+serves this file at `licenses/`, and the GPL's text with it when the build includes
+CodeAIR flight.
 
 ## Committed in this repository
 
@@ -42,26 +43,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### The Crazyflie Python library (cflib), part of it
-
-- **Files:** `src/sim/python/codeair/cflib/` (`commander.py`, `crtpstack.py`,
-  `high_level_commander.py`, `motion_commander.py`, `position_hl_commander.py`).
-- **Copyright:** Bitcraze AB, with modifications by Firia, Inc., as each file's header
-  says.
-- **Why it is here:** CodeAIR's own firmware carries these modules. The simulator runs
-  them unchanged, so a student's flight program behaves as it does on the drone.
-- **Licence:** GNU General Public License, version 2 or (at your option) any later
-  version. The full text is `src/sim/python/codeair/cflib/COPYING`. These files stay
-  under the GPL: the MIT licence does not cover them.
-- **Source:** these files are their own source. The originals are at
-  <https://github.com/bitcraze/crazyflie-lib-python>.
-
 ### CodeBot, CodeX and CodeAIR's own Python
 
-- **Files:** the rest of `src/sim/python/`.
+- **Files:** `src/sim/python/`.
 - **Copyright:** Firia Labs. These are the modules the boards carry in their firmware
   (`botcore`, `codex`, `codeair`, `flight` and their helpers), included so that
   programs run in the simulator as they do on a board.
+
+<!-- flight -->
+## Fetched at build time, in a build with CodeAIR flight
+
+### The Crazyflie Python library (cflib), part of it
+
+- **Not in this repository.** A build with CodeAIR flight (`SIM_FLIGHT=1`) fetches it
+  from the repository and commit that `sim/flight-library.json` names, and bundles it
+  into the built site. A build without it carries none of it.
+- **Files:** `cflib/` (`commander.py`, `crtpstack.py`, `high_level_commander.py`,
+  `motion_commander.py`, `position_hl_commander.py`), as CodeAIR's firmware carries them.
+- **Copyright:** Bitcraze AB, with modifications by Firia, Inc., as each file's header
+  says.
+- **Why:** CodeAIR's own firmware carries these modules. The simulator runs them
+  unchanged, so a student's flight program behaves as it does on the drone.
+- **Licence:** GNU General Public License, version 2 or (at your option) any later
+  version; the site serves its text at `licenses/GPL-2.0.txt`. These files stay under
+  the GPL: the MIT licence does not cover them.
+- **Source:** the repository and commit named in `sim/flight-library.json`{flight-source}.
+  Bitcraze's originals are at <https://github.com/bitcraze/crazyflie-lib-python>.
+<!-- /flight -->
 
 ## Bundled into the built site from npm
 

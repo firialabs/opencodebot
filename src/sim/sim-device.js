@@ -6,6 +6,7 @@ import { State, registerDeviceKind } from '../device/device-target.js'
 import { t, language } from '../i18n/index.js'
 import { getTarget } from '../device/targets.js'
 import { KINDS, ROOMS } from './kinds.js'
+import { FLIGHT } from 'virtual:sim-flight'
 import { Describer } from './describe.js'
 
 const enc = new TextEncoder()
@@ -36,8 +37,17 @@ export class SimDevice extends EventTarget {
     return getTarget(this.targetId)
   }
 
+  // CodeAIR needs a build with its flight library (sim/tools/flight-library.mjs).
   static canSimulate(targetId) {
-    return !!KINDS[targetId]
+    const kind = KINDS[targetId]
+    return !!kind && (!kind.needsFlight || FLIGHT)
+  }
+
+  // Why a board cannot be simulated: [title, detail].
+  static whyNot(targetId) {
+    const device = getTarget(targetId)?.name ?? t('sim.thatDevice')
+    if (KINDS[targetId]?.needsFlight) return [t('sim.flightComingTitle', { device }), t('sim.flightComingDetail')]
+    return [t('sim.cannotTitle', { device }), t(FLIGHT ? 'sim.noneYetDetail' : 'sim.noneYetDetailNoFlight')]
   }
 
   // Where the picture goes; set before connect.
@@ -48,7 +58,7 @@ export class SimDevice extends EventTarget {
   async connect(targetId = 'codebot') {
     if (this.worker) return true
     if (!SimDevice.canSimulate(targetId)) {
-      this._notice('warn', t('sim.cannotTitle', { device: getTarget(targetId)?.name ?? t('sim.thatDevice') }), t('sim.noneYetDetail'))
+      this._notice('warn', ...SimDevice.whyNot(targetId))
       return false
     }
     this._setState(State.CONNECTING, t('sim.starting'))

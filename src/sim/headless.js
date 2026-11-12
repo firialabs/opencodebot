@@ -13,6 +13,7 @@ import { Engine } from './runtime/engine.js'
 import { KINDS as BOARDS } from './kinds.js'
 import { Lockstep, LockstepAir } from './runtime/lockstep.js'
 import { layCourse } from './world/courses.js'
+import { fetchedFlight } from '../../sim/tools/flight-library.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '../..')
@@ -50,8 +51,13 @@ export function pythonFiles(kind = 'codebot') {
       if (f.endsWith('.py')) files[f.split(path.sep).join('/')] = fs.readFileSync(path.join(d, f), 'utf8')
     }
   }
+  if (BOARDS[kind].needsFlight) Object.assign(files, fetchedFlight()?.files)
   return files
 }
+
+// Whether CodeAIR can fly here: its flight library was fetched
+// (SIM_FLIGHT=1 npm run sim:flight). Tests that fly skip without it.
+export const haveFlight = () => !!fetchedFlight()
 
 // opts: source, kind ('codebot'), env (id or Environment), course (a line
 // course id from world/courses.js, laid on the floor; the robot starts on it),

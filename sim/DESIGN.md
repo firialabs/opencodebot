@@ -428,7 +428,8 @@ Built, on branch `sim` (pushed to firialabs/opencodebot):
   LEDs, NeoPixels; full screen for a class with the arrow keys and A and B; tilt and light
   sliders; sound from the voices the program connects.
 
-- CodeAIR in the gymnasium: its own codeair, flight, flightdb, recorder and cflib over a
+- CodeAIR in the gymnasium (in a build with CodeAIR flight, which fetches its cflib:
+  `sim/README.md`, "CodeAIR flight"): its own codeair, flight, flightdb, recorder and cflib over a
   virtual Crazyflie and the arcade airframe (section 2); rangers, flow, IMU, barometer,
   magnetometer and state estimate from the room; NeoPixels, blue and status LEDs (an LP5009
   at its registers), buttons, speaker, battery; the figure leans, spins its propellers and

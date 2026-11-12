@@ -6,7 +6,9 @@ import { t } from '../i18n/index.js'
 export const KINDS = {
   codebot: { env: 'gym', view: '3d', python: ['common', 'codebot'] },
   codex: { env: 'empty', view: 'codex', python: ['common', 'radio', 'codex'] },
-  codeair: { env: 'gym', view: '3d', python: ['common', 'radio', 'codeair'] },
+  // and the flight library, which only a build with CodeAIR flight carries
+  // (sim/tools/flight-library.mjs): without it CodeAIR is not offered
+  codeair: { env: 'gym', view: '3d', python: ['common', 'radio', 'codeair'], needsFlight: true },
 }
 
 // The rooms a 3D board can be in (built by sim/tools/build-env.mjs), in the

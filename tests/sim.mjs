@@ -15,13 +15,16 @@ import { Engine } from '../src/sim/runtime/engine.js'
 import { World } from '../src/sim/world/world.js'
 import { Environment } from '../src/sim/world/environment.js'
 import { createDevice } from '../src/sim/devices.js'
-import { pythonFiles } from '../src/sim/headless.js'
+import { pythonFiles, haveFlight } from '../src/sim/headless.js'
 
 const haveGym = fs.existsSync(new URL('../public/sim-assets/env/gym/world.json', import.meta.url))
 let failed = 0
 async function test(name, fn) {
   try { await fn(); console.log('  ok  ', name) } catch (e) { failed++; console.log('  FAIL', name, '\n      ', e.message) }
 }
+// A test that needs a CodeAIR that flies: its flight library is fetched only
+// for a build with CodeAIR flight (sim/tools/flight-library.mjs).
+const flightTest = haveFlight() ? test : async (name) => console.log('  skip ', name, '(no CodeAIR flight library: SIM_FLIGHT=1 npm run sim:flight)')
 
 console.log('simulator')
 
@@ -356,7 +359,7 @@ console.log('CodeAIR')
 const air = (source, opts = {}) => runHeadless({ kind: 'codeair', env: 'empty', seconds: 40, traceEveryMs: 20, ...opts, source })
 const PRE = 'from codeair import *\nfrom flight import *\nimport time\n'
 
-await test('take off, hold, and land, with its own motion commander', async () => {
+await flightTest('take off, hold, and land, with its own motion commander', async () => {
   let top = 0
   const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(2)\nprint(round(get_data(RANGERS)[2] / 1000, 1))\nfly.land()\nfly.steady(1)', {
     setup: (w, d) => w.onTick(() => { if (w.timeUs > 6e6 && w.timeUs < 7e6) top = Math.max(top, d.z) }),
@@ -369,7 +372,7 @@ await test('take off, hold, and land, with its own motion commander', async () =
   assert.ok(r.trace.find((s) => s.z > 0.01).t > 2.1)
 })
 
-await test('forward and turn go about as far as asked, with some drift', async () => {
+await flightTest('forward and turn go about as far as asked, with some drift', async () => {
   const r = await air(PRE + 'fly.take_off(0.4)\nfly.forward(1.0)\nfly.turn_left(90)\nfly.land()')
   const end = r.trace.at(-1)
   // spawned at the centre facing +y
@@ -379,7 +382,7 @@ await test('forward and turn go about as far as asked, with some drift', async (
   assert.ok(Math.abs(turned - 86.4) < 8, `turned ${turned} degrees`)
 })
 
-await test('the same seed flies the same path, bit for bit', async () => {
+await flightTest('the same seed flies the same path, bit for bit', async () => {
   const src = PRE + 'fly.take_off(0.4)\nfly.forward(0.5)\nfly.circle_left(0.3)\nfly.land()'
   const [a, b] = [await air(src), await air(src)]
   assert.deepEqual(a.trace.map((s) => [s.x, s.y, s.z]), b.trace.map((s) => [s.x, s.y, s.z]))
@@ -387,7 +390,7 @@ await test('the same seed flies the same path, bit for bit', async () => {
   assert.notDeepEqual(a.trace.map((s) => s.x), c.trace.map((s) => s.x))
 })
 
-await test('with no setpoints for 2 s the flight controller stops the motors, and it falls', async () => {
+await flightTest('with no setpoints for 2 s the flight controller stops the motors, and it falls', async () => {
   const r = await air(PRE + 'fly.take_off(0.8)\ntime.sleep(3)\nprint(fly.is_flying())')
   const t0 = r.trace.find((s) => s.z > 0.75).t
   const fell = r.trace.find((s) => s.t > t0 && !s.motors && s.z > 0.5)
@@ -396,7 +399,7 @@ await test('with no setpoints for 2 s the flight controller stops the motors, an
   assert.equal(r.output.trim(), 'True')          // the program does not know
 })
 
-await test('a stop inside `with recorder:` lands it, as on the drone', async () => {
+await flightTest('a stop inside `with recorder:` lands it, as on the drone', async () => {
   const r = await air(PRE + 'with recorder:\n    fly.take_off(0.6)\n    while True:\n        fly.steady(1)', { seconds: 8 })
   assert.equal(r.stopped, true)
   assert.ok(r.simSeconds > 9, `ended at ${r.simSeconds} s`)
@@ -409,7 +412,7 @@ await test('a stop inside `with recorder:` lands it, as on the drone', async () 
   assert.equal(r.device.pixels[0][0] > 0 && r.device.pixels[0][1] === 0, true)   // the recorder's red
 })
 
-await test('a wall stops it, and the rangers see the room', async () => {
+await flightTest('a wall stops it, and the rangers see the room', async () => {
   // the empty room's north wall is 2 m ahead
   const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(0.5)\nprint(get_data(RANGERS))\nfly.forward(3, 0.5)\nprint(get_data(RANGERS)[0])\nfly.land()')
   const [first, second] = r.output.trim().split('\n')
@@ -422,7 +425,7 @@ await test('a wall stops it, and the rangers see the room', async () => {
   assert.ok(far < 2 - 0.06 && far > 1.85, `got to ${far}`)
 })
 
-await test('its board: LEDs, NeoPixels, buttons, speaker, battery, parameters', async () => {
+await flightTest('its board: LEDs, NeoPixels, buttons, speaker, battery, parameters', async () => {
   let tone = 0
   const r = await air(PRE + `leds.set(0, 200)
 leds.set_status(9)
@@ -536,7 +539,7 @@ if (ROOM_IDS.includes('auditorium')) {
     assert.ok(bot.z < 0.01 && bot.blocked, `backing up: at ${bot.z} m, blocked ${bot.blocked}`)
   })
 
-  await test('auditorium: CodeAIR takes off from the stage, holds its height above it, and lands back on it', async () => {
+  await flightTest('auditorium: CodeAIR takes off from the stage, holds its height above it, and lands back on it', async () => {
     let top = 0
     const r = await air(PRE + 'fly.take_off(0.5)\nfly.steady(2)\nprint(round(get_data(RANGERS)[2] / 1000, 1))\nfly.land()\nfly.steady(1)', {
       env: 'auditorium',
@@ -623,7 +626,7 @@ await test('only the same channel, only while on, and never itself', async () =>
   assert.deepEqual(results.map((r) => r.output.trim()), ['None', '4', '0', '2'])
 })
 
-await test('the boards page examples: a CodeX remote lights the listeners', async () => {
+await flightTest('the boards page examples: a CodeX remote lights the listeners', async () => {
   const press = (n, t) => [{ t, fn: (w, d) => d.press(n, true) }, { t: t + 0.2, fn: (w, d) => d.press(n, false) }]
   let greenAt1
   const { results } = await runHeadlessGroup({ seconds: 2, devices: [
@@ -641,7 +644,7 @@ await test('the boards page examples: a CodeX remote lights the listeners', asyn
 
 console.log('infrared')
 
-await test('infrared: the devices\' own infrared.py, between boards and back to the sender', async () => {
+await flightTest('infrared: the devices\' own infrared.py, between boards and back to the sender', async () => {
   const { results } = await runHeadlessGroup({ seconds: 8, devices: [
     { kind: 'codex', source: 'import infrared, time\nfrom codex import *\nir = infrared.Infrared(power)\ntime.sleep(1.5)\nir.send("Hi!")\nprint(ir.receive())\nir.send("ok")\nir.flush()\nprint(ir.receive())' },
     { kind: 'codeair', source: 'import infrared, time\nfrom codeair import *\nir = infrared.Infrared()\nheard = []\nfor i in range(200):\n    heard += ir.receive_queue()\n    time.sleep(0.02)\nprint(heard)' },
@@ -649,7 +652,7 @@ await test('infrared: the devices\' own infrared.py, between boards and back to 
   assert.deepEqual(results.map((r) => r.output.trim()), ['Hi!\nNone', "['Hi!', 'ok']"])
 })
 
-await test('CodeAIR\'s factory program pairs with a CodeX remote by infrared, then flies by radio', async () => {
+await flightTest('CodeAIR\'s factory program pairs with a CodeX remote by infrared, then flies by radio', async () => {
   const press = (n, t, d = 0.3) => [{ t, fn: (w, dv) => dv.press(n, true) }, { t: t + d, fn: (w, dv) => dv.press(n, false) }]
   let top = 0
   const { results } = await runHeadlessGroup({ seconds: 16, devices: [

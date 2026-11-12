@@ -137,7 +137,8 @@ export class App {
     }
     const target = this.pickedTarget || 'codebot'
     if (!SimDevice.canSimulate(target)) {
-      toast({ kind: 'warn', title: t('sim.noneYetTitle', { device: getTarget(target)?.name }), detail: t('sim.noneYetDetail') })
+      const [title, detail] = SimDevice.whyNot(target)
+      toast({ kind: 'warn', title, detail })
       return
     }
     this._selectTab('sim')

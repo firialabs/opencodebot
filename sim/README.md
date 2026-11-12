@@ -61,17 +61,46 @@ CodeX's font is its own, read from its firmware image by
 `sim/tools/extract-codex-font.mjs`.
 
 To update them, copy the files from a newer commit and change the table.
+CodeAIR's `cflib` is the exception: it is not in this repository (below).
 
 ## Building
 
 ```bash
 npm run build          # makes the simulator's rooms and models, then the site
 npm run sim:assets     # just the rooms and models, into public/sim-assets/
+npm run sim:flight     # with SIM_FLIGHT=1: fetch CodeAIR's flight library (below)
 npm run sim:runtime    # rebuild MicroPython (needs Emscripten; see sim/runtime/build.sh)
 ```
 
 The MicroPython build only matters when `sim/runtime/` changes: its output is
 committed, so building the site needs no Emscripten. Node 24 or later (JSPI).
+
+### CodeAIR flight
+
+CodeAIR flies with its firmware's own `cflib` modules (Firia's port of
+Bitcraze's Crazyflie library, under the GPL, version 2 or later). They are not
+in this repository: a build with `SIM_FLIGHT=1` fetches them from the
+repository and commit that `sim/flight-library.json` names, into
+`sim/build/flight/` (ignored), and bundles them into the site with the GPL's
+text at `licenses/GPL-2.0.txt` and their section of the third-party notices.
+
+```bash
+SIM_FLIGHT=1 npm run build      # fetches, then builds with CodeAIR flight
+```
+
+The build stops, saying why, if the fetch fails, if the config pins no commit,
+or if `SIM_FLIGHT=1` is set and the library was not fetched. Without the flag
+the site carries none of it: the simulator offers CodeBot and CodeX, picking
+CodeAIR says flight simulation is coming, and the notices leave cflib out. The
+tests follow the build: `tests/sim.mjs` skips its flying tests when nothing
+was fetched, and `tests/sim-ui.mjs` and `tests/perf.mjs` check whichever kind
+of build they are given.
+
+To change where it comes from, change `url` and `commit` in
+`sim/flight-library.json` (a full 40-character commit). The repository must
+carry the modules flat in `cflib/` with `__init__.py`, and the licence at
+`COPYING`, as the firmware has them; Bitcraze's own library will not run here,
+as the firmware's copy is ported to CircuitPython.
 
 ## Testing
 

@@ -237,8 +237,10 @@ export default {
   'btn.stopSimulator': 'Stop simulator',
   'tab.sim': 'Simulator',
   'kind.sim': 'Simulator',
-  'sim.noneYetTitle': 'No simulated {device} yet',
   'sim.noneYetDetail': 'The simulator has CodeBot, CodeX and CodeAIR so far.',
+  'sim.noneYetDetailNoFlight': 'The simulator has CodeBot and CodeX so far.',
+  'sim.flightComingTitle': 'Flight simulation is coming',
+  'sim.flightComingDetail': 'A simulated CodeAIR is on its way. For now, fly your program on a real CodeAIR, or try CodeBot or CodeX in the simulator.',
   'sim.cannotTitle': "{device} can't be simulated yet",
   'sim.thatDevice': 'That device',
   'sim.starting': 'Starting the simulator…',
@@ -263,6 +265,7 @@ export default {
 
   // The simulator's panel
   'simPanel.intro': 'Try your program on a simulated CodeBot, CodeX or CodeAIR. No cable needed!',
+  'simPanel.introNoFlight': 'Try your program on a simulated CodeBot or CodeX. No cable needed! (CodeAIR flight simulation is coming.)',
   'simPanel.start': '🎮 Start the simulator',
   'simPanel.bar': 'Simulator',
   'simPanel.camera': 'Camera',
@@ -365,6 +368,7 @@ export default {
   'boards.title': '{app} boards',
   'boards.heading': 'Boards',
   'boards.intro': 'Each board runs its own program. CodeX and CodeAIR boards reach each other by radio (on the same channel) and by infrared, on this page and in other tabs of this browser.',
+  'boards.introNoFlight': 'Each board runs its own program. CodeX boards reach each other by radio (on the same channel) and by infrared, on this page and in other tabs of this browser. (CodeAIR flight simulation is coming.)',
   'boards.add': '➕ Add a board',
   'boards.remove': 'Remove this board',
   'boards.which': 'Which board',

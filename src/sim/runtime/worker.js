@@ -16,6 +16,7 @@ import { World } from '../world/world.js'
 import { Environment } from '../world/environment.js'
 import { createDevice } from '../devices.js'
 import { KINDS as BOARDS } from '../kinds.js'
+import { files as FLIGHT_FILES } from 'virtual:sim-flight'
 import { BroadcastAir } from './broadcast-air.js'
 import { layCourse, courseShape } from '../world/courses.js'
 
@@ -30,6 +31,8 @@ function pythonFiles(kind) {
     const top = rel.slice(0, rel.indexOf('/'))
     if (dirs.includes(top)) files[rel.slice(top.length + 1)] = src
   }
+  // CodeAIR's flight library, fetched at build time (sim/tools/flight-library.mjs)
+  if (BOARDS[kind].needsFlight) Object.assign(files, FLIGHT_FILES)
   return files
 }
 

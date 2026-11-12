@@ -1,14 +1,40 @@
 import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { flightWanted, fetchedFlight, flightConfig } from './sim/tools/flight-library.mjs'
+
+// CodeAIR flight (sim/tools/flight-library.mjs): with SIM_FLIGHT=1 the build
+// bundles the flight library fetched into sim/build/flight/, and stops if it
+// was not fetched; without, it bundles none of it and CodeAIR is not offered.
+const FLIGHT = flightWanted()
+const flightLib = FLIGHT ? fetchedFlight() : null
+const flight = () => ({
+  name: 'sim-flight',
+  buildStart() {
+    if (FLIGHT && !flightLib) {
+      const { url, commit } = flightConfig()
+      this.error(`SIM_FLIGHT=1, but CodeAIR's flight library (${url} at ${commit || 'no commit pinned'}) is not fetched: run npm run sim:flight`)
+    }
+  },
+  resolveId(id) { return id === 'virtual:sim-flight' ? '\0virtual:sim-flight' : null },
+  load(id) {
+    if (id !== '\0virtual:sim-flight') return null
+    return `export const FLIGHT = ${FLIGHT}\nexport const files = ${JSON.stringify(flightLib?.files ?? {})}\n`
+  },
+})
 
 // The site carries code under other licences (THIRD_PARTY_NOTICES.md), so it
-// serves the notices, and the GPL's text for the cflib modules, at licenses/.
+// serves the notices at licenses/, and with CodeAIR flight the GPL's text for
+// its library. Without it, the notices' flight section (between the
+// <!-- flight --> markers) is left out, as the library is.
 const licenses = {
   name: 'licenses',
   generateBundle() {
-    this.emitFile({ type: 'asset', fileName: 'licenses/THIRD_PARTY_NOTICES.md', source: fs.readFileSync('THIRD_PARTY_NOTICES.md') })
-    this.emitFile({ type: 'asset', fileName: 'licenses/GPL-2.0.txt', source: fs.readFileSync('src/sim/python/codeair/cflib/COPYING') })
+    let notices = fs.readFileSync('THIRD_PARTY_NOTICES.md', 'utf8')
+    if (FLIGHT) notices = notices.replace('{flight-source}', `, for this build <${flightLib.source.url.replace(/\.git$/, '')}/tree/${flightLib.source.commit}>`)
+    else notices = notices.replace(/<!-- flight -->[\s\S]*?<!-- \/flight -->\n*/g, '')
+    this.emitFile({ type: 'asset', fileName: 'licenses/THIRD_PARTY_NOTICES.md', source: notices })
+    if (FLIGHT) this.emitFile({ type: 'asset', fileName: 'licenses/GPL-2.0.txt', source: flightLib.license })
     this.emitFile({ type: 'asset', fileName: 'licenses/LICENSE.txt', source: fs.readFileSync('LICENSE') })
   },
 }
@@ -24,8 +50,9 @@ export default defineConfig({
     rollupOptions: { input: { main: 'index.html', boards: 'boards.html' } },
   },
   // The simulator's worker is a module (MicroPython's loader uses top-level await).
-  worker: { format: 'es' },
+  worker: { format: 'es', plugins: () => [flight()] },
   plugins: [
+    flight(),
     licenses,
     VitePWA({
       registerType: 'autoUpdate',

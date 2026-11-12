@@ -35,7 +35,7 @@ waiting for them.
 Press **🎮 Simulate** to run your program on a simulated CodeBot (it drives,
 sees lines and walls, lights up and beeps), CodeX (its screen, buttons, lights
 and sound; the screen goes full screen for a class, with the arrow keys and A
-and B as its buttons) or CodeAIR (it flies), in a gymnasium, a classroom, a
+and B as its buttons) or, in a site built with CodeAIR flight, CodeAIR (it flies), in a gymnasium, a classroom, a
 cafeteria or on an auditorium's stage. The terminal is a live Python prompt.
 It runs in any modern browser, no cable needed. For teachers:
 [sim/TEACHERS.md](sim/TEACHERS.md). How it works:
@@ -181,4 +181,4 @@ This project uses three kinds of terms:
 | **Code** (everything not listed below) | MIT. See [LICENSE](LICENSE). |
 | **Artwork, 3D models and environments** (the simulator's assets live in `sim/assets/`, with their own `LICENSE`) | [Creative Commons Attribution-NonCommercial 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (CC BY-NC 4.0) |
 | **Firia Labs names, logos and the mascot** (including everything in `brand/` and the `firia-bot` icons in `public/icons/`) | Trademarks of Firia Labs. Neither licence above covers them. See [TRADEMARKS.md](TRADEMARKS.md). |
-| **Others' code** the repository or the site carries: MicroPython (MIT), and part of Bitcraze's Crazyflie library in `src/sim/python/codeair/cflib/` (**GPL-2.0-or-later**, not MIT) | See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The built site serves the notices and licence texts at `licenses/`. |
+| **Others' code** the repository or the site carries: MicroPython (MIT); and, only in a site built with CodeAIR flight, part of Bitcraze's Crazyflie library as CodeAIR's firmware carries it, fetched at build time and not in the repository (**GPL-2.0-or-later**, not MIT; `sim/README.md`, "CodeAIR flight") | See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The built site serves the notices and licence texts at `licenses/`. |

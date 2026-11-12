@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run sim:assets && vite build",
+    "build": "npm run sim:assets && npm run sim:flight && vite build",
     "preview": "vite preview",
     "test": "node tests/protocol.mjs && node tests/i18n.mjs && node tests/smoke.mjs && node tests/device.mjs && node tests/project.mjs && node tests/text-mode.mjs && node tests/subpath.mjs && node tests/sim.mjs && node tests/sim-ui.mjs",
     "test:protocol": "node tests/protocol.mjs",
@@ -20,7 +20,8 @@
     "test:sim": "node tests/sim.mjs && node tests/sim-ui.mjs",
     "perf": "node tests/perf.mjs",
     "sim:assets": "node sim/tools/build-env.mjs gym && node sim/tools/build-env.mjs classroom && node sim/tools/build-env.mjs cafeteria && node sim/tools/build-env.mjs auditorium && node sim/tools/build-models.mjs",
-    "sim:runtime": "sim/runtime/build.sh"
+    "sim:runtime": "sim/runtime/build.sh",
+    "sim:flight": "node sim/tools/flight-library.mjs"
   },
   "dependencies": {
     "@blockly/block-plus-minus": "^13.4.0",
