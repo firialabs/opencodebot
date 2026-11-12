@@ -32,7 +32,8 @@ export default {
 
   // El área de trabajo
   'blocks.hint': '¡Arrastra bloques desde la izquierda para armar tu programa!',
-  'splitter.label': 'Cambiar el tamaño de los paneles',
+  'splitter.label': 'Cambiar el tamaño de los paneles. Usa las flechas.',
+  'tab.listLabel': 'Vistas del dispositivo y de Python',
   'tab.terminal': 'Consola',
   'tab.python': 'Python',
   'term.clear': 'Limpiar la terminal',
@@ -133,7 +134,7 @@ export default {
     </ul>
     <h3>Las dos pestañas</h3>
     <ul>
-      <li><strong>Hablar con el dispositivo</strong> es una consola de Python en vivo en el dispositivo. ¡Escribe en ella!
+      <li><strong>Consola</strong> es una consola de Python en vivo en el dispositivo. ¡Escribe en ella!
         Presiona <kbd>Tab</kbd> para completar un nombre y <kbd>Ctrl</kbd>+<kbd>C</kbd> para detener un programa.</li>
       <li><strong>Python</strong> muestra exactamente el código que forman tus bloques. Presiona
         <strong>✏️ Editar como Python</strong> para escribir el tuyo; <strong>🧩 Volver a los bloques</strong>
@@ -145,6 +146,16 @@ export default {
       <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd>: ejecutar tu programa</li>
       <li><kbd>Esc</kbd>: detener un programa en ejecución</li>
       <li><kbd>Ctrl</kbd>+<kbd>S</kbd>: guardar tu proyecto en un archivo</li>
+    </ul>
+    <h3>Usar el teclado</h3>
+    <p>Todo funciona sin ratón. <kbd>Tab</kbd> pasa de una parte de la pantalla a otra.</p>
+    <ul>
+      <li><kbd>T</kbd>: ir a la paleta de bloques. <kbd>W</kbd>: ir a tu programa.</li>
+      <li>Las flechas te mueven por todo. <kbd>Enter</kbd> o <kbd>Espacio</kbd> agrega un bloque o abre un menú.</li>
+      <li><kbd>M</kbd> toma un bloque para moverlo; las flechas lo mueven, <kbd>Enter</kbd> lo suelta, <kbd>Esc</kbd> cancela.</li>
+      <li><kbd>Supr</kbd> borra un bloque, <kbd>D</kbd> lo duplica, <kbd>Shift</kbd>+<kbd>F10</kbd> abre su menú.</li>
+      <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace, <kbd>Ctrl</kbd>+<kbd>Y</kbd> rehace.</li>
+      <li>La división entre los bloques y el panel lateral se mueve con las flechas.</li>
     </ul>`,
   'about.bodyHtml': `
     <p>{app} es un editor de bloques gratuito y de código abierto para
