@@ -1,15 +1,15 @@
 /** CodeAIR drone: flying, lights, sound, buttons, battery. */
 import { Order } from 'blockly/python'
-import { defineBlocks, value, numField, body } from './define.js'
+import { msg, defineBlocks, value, numField, body } from './define.js'
 import { need } from './context.js'
 
 const MOVES = [
-  ['forward', 'forward'],
-  ['backward', 'back'],
-  ['left', 'left'],
-  ['right', 'right'],
-  ['up', 'up'],
-  ['down', 'down'],
+  [msg('block.opt.forward'), 'forward'],
+  [msg('block.opt.backward'), 'back'],
+  [msg('block.opt.left'), 'left'],
+  [msg('block.opt.right'), 'right'],
+  [msg('block.opt.up'), 'up'],
+  [msg('block.opt.down'), 'down'],
 ]
 
 const air = () => need('codeair', 'colors')
@@ -23,14 +23,11 @@ defineBlocks([
   {
     json: {
       type: 'codeair_safe_flight',
-      message0: '🛫 flight plan',
       message1: '%1',
       args1: [{ type: 'input_statement', name: 'DO' }],
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip:
-        'Put your flying blocks in here. If anything goes wrong, CodeAIR lands itself instead of staying in the air.',
     },
     python: (block, gen) => {
       flight()
@@ -40,12 +37,10 @@ defineBlocks([
   {
     json: {
       type: 'codeair_take_off',
-      message0: '🛫 take off to %1 meters',
       args0: [{ type: 'field_number', name: 'HEIGHT', value: 0.4, min: 0.2, max: 2, precision: 0.1 }],
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Lift off and hover steadily at this height.',
     },
     python: (block) => {
       flight()
@@ -55,11 +50,9 @@ defineBlocks([
   {
     json: {
       type: 'codeair_land',
-      message0: '🛬 land',
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Come down gently and switch the motors off.',
     },
     python: () => {
       flight()
@@ -69,7 +62,6 @@ defineBlocks([
   {
     json: {
       type: 'codeair_move',
-      message0: '✈️ fly %1 %2 meters',
       args0: [
         { type: 'field_dropdown', name: 'DIR', options: MOVES },
         { type: 'field_number', name: 'DIST', value: 0.5, min: 0.1, max: 5, precision: 0.1 },
@@ -77,7 +69,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Move in a straight line, then hold still again.',
     },
     python: (block) => {
       flight()
@@ -87,15 +78,13 @@ defineBlocks([
   {
     json: {
       type: 'codeair_turn',
-      message0: '🔄 turn %1 %2 degrees',
       args0: [
-        { type: 'field_dropdown', name: 'DIR', options: [['left', 'turn_left'], ['right', 'turn_right']] },
+        { type: 'field_dropdown', name: 'DIR', options: [[msg('block.opt.left'), 'turn_left'], [msg('block.opt.right'), 'turn_right']] },
         { type: 'field_number', name: 'ANGLE', value: 90, min: 1, max: 360 },
       ],
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Spin on the spot.',
     },
     python: (block) => {
       flight()
@@ -105,15 +94,13 @@ defineBlocks([
   {
     json: {
       type: 'codeair_circle',
-      message0: '🌀 circle %1 with radius %2 meters',
       args0: [
-        { type: 'field_dropdown', name: 'DIR', options: [['left', 'circle_left'], ['right', 'circle_right']] },
+        { type: 'field_dropdown', name: 'DIR', options: [[msg('block.opt.left'), 'circle_left'], [msg('block.opt.right'), 'circle_right']] },
         { type: 'field_number', name: 'RADIUS', value: 0.5, min: 0.1, max: 3, precision: 0.1 },
       ],
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Fly a full circle around a point.',
     },
     python: (block) => {
       flight()
@@ -123,13 +110,10 @@ defineBlocks([
   {
     json: {
       type: 'codeair_hover',
-      message0: '🚁 hover for %1 seconds',
       args0: [{ type: 'input_value', name: 'SECS', check: 'Number' }],
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip:
-        'Hold position in the air. Use this instead of a plain wait while flying — it keeps CodeAIR steady.',
     },
     python: (block, gen) => {
       flight()
@@ -141,20 +125,19 @@ defineBlocks([
   {
     json: {
       type: 'codeair_pixel_set',
-      message0: '✨ set neopixel %1 to %2 brightness %3 %%',
       args0: [
         {
           type: 'field_dropdown',
           name: 'NUM',
           options: [
-            ['front right top (0)', '0'],
-            ['front right bottom (1)', '1'],
-            ['front left top (2)', '2'],
-            ['front left bottom (3)', '3'],
-            ['rear left bottom (4)', '4'],
-            ['rear left top (5)', '5'],
-            ['rear right top (6)', '6'],
-            ['rear right bottom (7)', '7'],
+            [msg('block.opt.front_right_top_0'), '0'],
+            [msg('block.opt.front_right_bottom_1'), '1'],
+            [msg('block.opt.front_left_top_2'), '2'],
+            [msg('block.opt.front_left_bottom_3'), '3'],
+            [msg('block.opt.rear_left_bottom_4'), '4'],
+            [msg('block.opt.rear_left_top_5'), '5'],
+            [msg('block.opt.rear_right_top_6'), '6'],
+            [msg('block.opt.rear_right_bottom_7'), '7'],
           ],
         },
         { type: 'input_value', name: 'COLOR' },
@@ -164,7 +147,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Light up one of the eight colour LEDs around the drone.',
     },
     python: (block, gen) => {
       air()
@@ -174,7 +156,6 @@ defineBlocks([
   {
     json: {
       type: 'codeair_pixels_fill',
-      message0: '✨ set all neopixels to %1 brightness %2 %%',
       args0: [
         { type: 'input_value', name: 'COLOR' },
         { type: 'field_number', name: 'BRIGHT', value: 40, min: 0, max: 100 },
@@ -183,7 +164,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'All eight colour LEDs at once.',
     },
     python: (block, gen) => {
       air()
@@ -193,11 +173,9 @@ defineBlocks([
   {
     json: {
       type: 'codeair_pixels_off',
-      message0: '✨ turn all neopixels off',
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Switch the colour LEDs off.',
     },
     python: () => {
       air()
@@ -207,7 +185,6 @@ defineBlocks([
   {
     json: {
       type: 'codeair_led',
-      message0: '💡 set blue LED %1 brightness to %2',
       args0: [
         {
           type: 'field_dropdown',
@@ -220,7 +197,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Brightness goes from 0 (off) to 255 (full).',
     },
     python: (block, gen) => {
       air()
@@ -230,12 +206,10 @@ defineBlocks([
   {
     json: {
       type: 'codeair_status_led',
-      message0: '💡 set status LED brightness to %1',
       args0: [{ type: 'input_value', name: 'BRIGHT', check: 'Number' }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'The little status light on the drone.',
     },
     python: (block, gen) => {
       air()
@@ -247,7 +221,6 @@ defineBlocks([
   {
     json: {
       type: 'codeair_beep',
-      message0: '🎵 beep %1 Hz for %2 ms',
       args0: [
         { type: 'input_value', name: 'FREQ', check: 'Number' },
         { type: 'input_value', name: 'MS', check: 'Number' },
@@ -256,7 +229,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'sound_blocks',
-      tooltip: 'A short beep from the drone.',
     },
     python: (block, gen) => {
       air()
@@ -266,11 +238,9 @@ defineBlocks([
   {
     json: {
       type: 'codeair_quiet',
-      message0: '🔇 stop the sound',
       previousStatement: null,
       nextStatement: null,
       style: 'sound_blocks',
-      tooltip: 'Silence.',
     },
     python: () => {
       air()
@@ -282,11 +252,9 @@ defineBlocks([
   {
     json: {
       type: 'codeair_button',
-      message0: '🔘 button %1 is pressed',
       args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True while the button is held down.',
     },
     python: (block) => {
       air()
@@ -296,11 +264,9 @@ defineBlocks([
   {
     json: {
       type: 'codeair_button_was',
-      message0: '🔘 button %1 was pressed',
       args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True once per press.',
     },
     python: (block) => {
       air()
@@ -310,10 +276,8 @@ defineBlocks([
   {
     json: {
       type: 'codeair_battery',
-      message0: '🔋 battery volts',
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'Check before you fly — a tired battery makes for a wobbly flight.',
     },
     python: () => {
       air()
@@ -323,10 +287,8 @@ defineBlocks([
   {
     json: {
       type: 'codeair_on_usb',
-      message0: '🔌 plugged into USB',
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True when the drone is running from the USB cable.',
     },
     python: () => {
       air()

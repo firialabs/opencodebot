@@ -27,7 +27,7 @@ const basics = [
   block('ocb_forever'),
   block('ocb_wait', { SECS: num(1) }),
   block('ocb_wait_ms', { MS: num(500) }),
-  block('ocb_print', { TEXT: str('Hello!') }),
+  block('ocb_print', { TEXT: str(t('sample.hello')) }),
   block('ocb_seconds_since_start'),
   block('ocb_python'),
 ]
@@ -62,8 +62,8 @@ const math = [
 const text = [
   block('text'),
   block('text_join'),
-  block('text_length', { VALUE: str('hello') }),
-  block('text_changeCase', { TEXT: str('hello') }),
+  block('text_length', { VALUE: str(t('sample.word')) }),
+  block('text_changeCase', { TEXT: str(t('sample.word')) }),
   block('text_isEmpty', { VALUE: str('') }),
 ]
 
@@ -90,10 +90,10 @@ const generalTail = [
 
 const codexCategories = [
   category(t('cat.screen'), 'screen_category', [
-    block('codex_show', { THING: str('Hi!') }),
-    block('codex_print', { THING: str('Hello'), COLOR: col('WHITE') }),
+    block('codex_show', { THING: str(t('sample.hi')) }),
+    block('codex_print', { THING: str(t('sample.greeting')), COLOR: col('WHITE') }),
     block('codex_clear'),
-    block('codex_draw_text', { TEXT: str('Score'), X: num(10), Y: num(10), COLOR: col('YELLOW') }),
+    block('codex_draw_text', { TEXT: str(t('sample.score')), X: num(10), Y: num(10), COLOR: col('YELLOW') }),
     block('codex_draw_rect', { X: num(20), Y: num(20), W: num(80), H: num(50), COLOR: col('GREEN') }),
     block('codex_draw_circle', { X: num(120), Y: num(120), R: num(30), COLOR: col('CYAN') }),
     block('codex_draw_line', { X1: num(0), Y1: num(0), X2: num(239), Y2: num(239), COLOR: col('MAGENTA') }),
@@ -124,7 +124,7 @@ const codexCategories = [
   ]),
   category(t('cat.radio'), 'radio_category', [
     block('radio_on'),
-    block('radio_send', { MSG: str('hello') }),
+    block('radio_send', { MSG: str(t('sample.word')) }),
     block('radio_on_message'),
     block('radio_receive'),
   ]),
@@ -202,7 +202,7 @@ const codeairCategories = [
   ]),
   category(t('cat.radio'), 'radio_category', [
     block('radio_on'),
-    block('radio_send', { MSG: str('hello') }),
+    block('radio_send', { MSG: str(t('sample.word')) }),
     block('radio_on_message'),
     block('radio_receive'),
   ]),

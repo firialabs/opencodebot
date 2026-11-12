@@ -1,32 +1,32 @@
 /** CodeBot CB3: driving, lights, line and proximity sensors, sound. */
 import { Order } from 'blockly/python'
-import { defineBlocks, value } from './define.js'
+import { msg, defineBlocks, value } from './define.js'
 import { need } from './context.js'
 
 const DIRECTIONS = [
-  ['forward', 'forward'],
-  ['backward', 'backward'],
-  ['turn left', 'left'],
-  ['turn right', 'right'],
+  [msg('block.opt.forward'), 'forward'],
+  [msg('block.opt.backward'), 'backward'],
+  [msg('block.opt.turn_left'), 'left'],
+  [msg('block.opt.turn_right'), 'right'],
 ]
 
 const SIDES = [
-  ['left', 'LEFT'],
-  ['right', 'RIGHT'],
+  [msg('block.opt.left'), 'LEFT'],
+  [msg('block.opt.right'), 'RIGHT'],
 ]
 
 const LINE_SENSORS = [
-  ['far left (0)', '0'],
-  ['left (1)', '1'],
-  ['middle (2)', '2'],
-  ['right (3)', '3'],
-  ['far right (4)', '4'],
+  [msg('block.opt.far_left_0'), '0'],
+  [msg('block.opt.left_1'), '1'],
+  [msg('block.opt.middle_2'), '2'],
+  [msg('block.opt.right_3'), '3'],
+  [msg('block.opt.far_right_4'), '4'],
 ]
 
 const AXES = [
-  ['side to side (x)', '0'],
-  ['front to back (y)', '1'],
-  ['up and down (z)', '2'],
+  [msg('block.opt.side_to_side_x'), '0'],
+  [msg('block.opt.front_to_back_y'), '1'],
+  [msg('block.opt.up_and_down_z'), '2'],
 ]
 
 const bot = () => need('botcore')
@@ -54,7 +54,6 @@ defineBlocks([
   {
     json: {
       type: 'codebot_drive',
-      message0: '🤖 drive %1 at %2 %% power',
       args0: [
         { type: 'field_dropdown', name: 'DIR', options: DIRECTIONS },
         { type: 'input_value', name: 'POWER', check: 'Number' },
@@ -63,7 +62,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Start driving and keep going until something stops the motors.',
     },
     python: (block, gen) => {
       wheels()
@@ -74,7 +72,6 @@ defineBlocks([
   {
     json: {
       type: 'codebot_drive_for',
-      message0: '🤖 drive %1 at %2 %% power for %3 seconds',
       args0: [
         { type: 'field_dropdown', name: 'DIR', options: DIRECTIONS },
         { type: 'input_value', name: 'POWER', check: 'Number' },
@@ -84,7 +81,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Drive for a set time, then stop.',
     },
     python: (block, gen) => {
       wheels()
@@ -101,7 +97,6 @@ defineBlocks([
   {
     json: {
       type: 'codebot_motor',
-      message0: '🤖 set %1 motor to %2 %% power',
       args0: [
         { type: 'field_dropdown', name: 'SIDE', options: SIDES },
         { type: 'input_value', name: 'POWER', check: 'Number' },
@@ -110,7 +105,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Drive one wheel on its own. Use a negative number to go backward.',
     },
     python: (block, gen) => {
       wheels()
@@ -120,11 +114,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_stop',
-      message0: '🛑 stop driving',
       previousStatement: null,
       nextStatement: null,
       style: 'move_blocks',
-      tooltip: 'Stop both wheels.',
     },
     python: () => {
       wheels()
@@ -136,19 +128,17 @@ defineBlocks([
   {
     json: {
       type: 'codebot_led',
-      message0: '💡 turn top LED %1 %2',
       args0: [
         {
           type: 'field_dropdown',
           name: 'NUM',
           options: [['0', '0'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7']],
         },
-        { type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] },
+        { type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']] },
       ],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Switch one of the eight LEDs on the top of the robot.',
     },
     python: (block) => {
       bot()
@@ -158,12 +148,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_leds_all',
-      message0: '💡 turn all top LEDs %1',
-      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', '0xFF'], ['off', '0x00']] }],
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), '0xFF'], [msg('block.opt.off'), '0x00']] }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'All eight LEDs at once.',
     },
     python: (block) => {
       bot()
@@ -173,12 +161,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_leds_pattern',
-      message0: '💡 show top LED pattern %1',
       args0: [{ type: 'field_input', name: 'BITS', text: '10101010' }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Eight 1s and 0s, one per LED. 1 means on.',
     },
     python: (block) => {
       bot()
@@ -190,15 +176,13 @@ defineBlocks([
   {
     json: {
       type: 'codebot_ls_led',
-      message0: '💡 turn line sensor LED %1 %2',
       args0: [
         { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
-        { type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] },
+        { type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']] },
       ],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Switch one of the five LEDs above the line sensors, on the front of the robot.',
     },
     python: (block) => {
       bot()
@@ -208,12 +192,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_ls_leds_all',
-      message0: '💡 turn all line sensor LEDs %1',
-      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', '0b11111'], ['off', '0b00000']] }],
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), '0b11111'], [msg('block.opt.off'), '0b00000']] }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'All five line sensor LEDs at once.',
     },
     python: (block) => {
       bot()
@@ -223,15 +205,13 @@ defineBlocks([
   {
     json: {
       type: 'codebot_prox_led',
-      message0: '💡 turn %1 proximity LED %2',
       args0: [
-        { type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] },
-        { type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] },
+        { type: 'field_dropdown', name: 'SIDE', options: [[msg('block.opt.left'), '0'], [msg('block.opt.right'), '1']] },
+        { type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']] },
       ],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'Switch the LED next to a proximity sensor.',
     },
     python: (block) => {
       bot()
@@ -241,12 +221,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_pwr_led',
-      message0: '💡 turn power LED %1',
-      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] }],
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']] }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'The power light, next to the on/off switch.',
     },
     python: (block) => {
       bot()
@@ -256,12 +234,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_usb_led',
-      message0: '💡 turn USB LED %1',
-      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] }],
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']] }],
       previousStatement: null,
       nextStatement: null,
       style: 'lights_blocks',
-      tooltip: 'The light next to the USB socket.',
     },
     python: (block) => {
       bot()
@@ -273,13 +249,11 @@ defineBlocks([
   {
     json: {
       type: 'codebot_line_sees',
-      message0: '👀 line sensor %1 sees a line',
       args0: [
         { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
       ],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True when that sensor is over a line.',
     },
     python: (block) => {
       bot()
@@ -289,13 +263,11 @@ defineBlocks([
   {
     json: {
       type: 'codebot_line_value',
-      message0: '👀 line sensor %1 reading',
       args0: [
         { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
       ],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'The raw number from a line sensor. Darker surfaces read higher: black tape reads high, white paper low.',
     },
     python: (block) => {
       bot()
@@ -305,11 +277,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_prox',
-      message0: '📡 something is close on the %1',
-      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] }],
+      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [[msg('block.opt.left'), '0'], [msg('block.opt.right'), '1']] }],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True when the proximity sensor spots an obstacle.',
     },
     python: (block) => {
       bot()
@@ -319,11 +289,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_prox_range',
-      message0: '📡 proximity reading on the %1',
-      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] }],
+      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [[msg('block.opt.left'), '0'], [msg('block.opt.right'), '1']] }],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'A number from 0 to 100 from the proximity sensor on that side.',
     },
     python: (block) => {
       bot()
@@ -333,11 +301,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_button',
-      message0: '🔘 button %1 is pressed',
       args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True while the button on the robot is held down.',
     },
     python: (block) => {
       bot()
@@ -347,11 +313,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_button_was',
-      message0: '🔘 button %1 was pressed',
       args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True if the button was pressed since the last time you checked, even if it is up now.',
     },
     python: (block) => {
       bot()
@@ -361,11 +325,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_accel',
-      message0: '📐 tilt %1',
       args0: [{ type: 'field_dropdown', name: 'AXIS', options: AXES }],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'How the robot is tilted.',
     },
     python: (block) => {
       bot()
@@ -375,11 +337,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_encoder',
-      message0: '⚙️ %1 wheel encoder',
       args0: [{ type: 'field_dropdown', name: 'SIDE', options: SIDES }],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'Reading from the wheel encoder, for measuring distance.',
     },
     python: (block) => {
       bot()
@@ -389,10 +349,8 @@ defineBlocks([
   {
     json: {
       type: 'codebot_volts',
-      message0: '🔋 battery volts',
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'Supply voltage, so you can tell when batteries are low.',
     },
     python: () => {
       bot()
@@ -402,10 +360,8 @@ defineBlocks([
   {
     json: {
       type: 'codebot_on_usb',
-      message0: '🔌 powered by USB',
       output: 'Boolean',
       style: 'sensors_blocks',
-      tooltip: 'True when the power switch is set to USB rather than batteries.',
     },
     python: () => {
       bot()
@@ -415,11 +371,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_temp',
-      message0: '🌡️ temperature in %1',
-      args0: [{ type: 'field_dropdown', name: 'UNIT', options: [['°F', 'temp_F'], ['°C', 'temp_C']] }],
+      args0: [{ type: 'field_dropdown', name: 'UNIT', options: [[msg('block.opt.deg_f'), 'temp_F'], [msg('block.opt.deg_c'), 'temp_C']] }],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'How warm the robot is.',
     },
     python: (block) => {
       bot()
@@ -431,7 +385,6 @@ defineBlocks([
   {
     json: {
       type: 'codebot_tone_for',
-      message0: '🎵 play %1 Hz for %2 seconds',
       args0: [
         { type: 'input_value', name: 'FREQ', check: 'Number' },
         { type: 'input_value', name: 'SECS', check: 'Number' },
@@ -440,7 +393,6 @@ defineBlocks([
       previousStatement: null,
       nextStatement: null,
       style: 'sound_blocks',
-      tooltip: 'Beep for a moment, then go quiet.',
     },
     python: (block, gen) => {
       bot()
@@ -455,12 +407,10 @@ defineBlocks([
   {
     json: {
       type: 'codebot_tone',
-      message0: '🎵 start playing %1 Hz',
       args0: [{ type: 'input_value', name: 'FREQ', check: 'Number' }],
       previousStatement: null,
       nextStatement: null,
       style: 'sound_blocks',
-      tooltip: 'Hold a note until you stop it.',
     },
     python: (block, gen) => {
       bot()
@@ -470,11 +420,9 @@ defineBlocks([
   {
     json: {
       type: 'codebot_quiet',
-      message0: '🔇 stop the sound',
       previousStatement: null,
       nextStatement: null,
       style: 'sound_blocks',
-      tooltip: 'Silence.',
     },
     python: () => {
       bot()

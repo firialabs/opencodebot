@@ -163,14 +163,33 @@ toast({ title: t('saved.title'), detail: t('saved.detail', { file: name }) })
   text, `data-i18n-html` for HTML, or `data-i18n-attr="title=key;aria-label=key"` for
   attributes.
 
-**Adding a language.** Copy `en.js` to `<code>.js` (say `es.js`), translate the values
-and leave the keys, then add it to `TABLES` in `src/i18n/index.js`. A key the new
-table leaves out falls back to English, so a partial translation works. The language
-comes from `?lang=es` in the address, then a saved choice (`setLanguage`), then the
-browser's own languages. Changing it reloads the page.
+**Blocks.** A block's words are in the table too, by its type: `block.<type>.message0`
+(and `message1` and on, for a block with more lines) and `block.<type>.tooltip`. Leave
+them out of the block's JSON in `src/blocks/`; `defineBlocks` fills them in through
+Blockly's message system (`Blockly.Msg`, `%{BKY_...}`), as Blockly's own blocks do.
+`%1`, `%2` mark where the block's inputs and fields go; a translation keeps every one
+and may reorder them. A dropdown's labels use `msg()`:
+`options: [[msg('block.opt.on'), 'True'], [msg('block.opt.off'), 'False']]`. Example
+values filled in on palette blocks are `sample.*` keys. Blockly's built-in blocks
+(Logic, Loops, Math, Text, Lists, Variables, Functions) use Blockly's own translations,
+picked in `src/blocks/locale.js`.
 
-Not in the table yet: the blocks' own labels and tooltips (`src/blocks/`), which go
-through Blockly's message system next.
+**Adding a language.** Copy `en.js` to `<code>.js` (say `fr.js`), translate the values
+and leave the keys, then add it to `TABLES` in `src/i18n/index.js`, and Blockly's own
+messages for it (`blockly/msg/fr`) to `src/blocks/locale.js`. A key the new table
+leaves out falls back to English, so a partial translation works. The language comes
+from `?lang=fr` in the address, then the one picked in the ⋯ menu (saved in the
+browser), then the browser's own languages. Changing it reloads the page.
+
+Spanish (`es.js`) is the first: a machine draft that needs a review by a native
+speaker who teaches. Corrections are very welcome.
+
+**Checking.** `npm run test:pseudo` runs the app in a pseudo-language, `?lang=en-XA`,
+where every string from the table has its letters accented (`⟦Ŕûñ⟧`). Any plain letter
+on screen, in a dialog, a menu, a block, a tooltip or a dropdown, is a string that
+skipped the table, and the test names it. `tests/i18n.mjs` checks that every key the
+code uses is in English, that every block has its words, and that each translation
+keeps the English placeholders.
 
 ## Contributing
 

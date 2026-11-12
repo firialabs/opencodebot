@@ -6,7 +6,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import assert from 'node:assert/strict'
-import { t, listOf } from '../src/i18n/index.js'
+import { t, listOf, pseudo, LANGUAGES } from '../src/i18n/index.js'
 import en from '../src/i18n/en.js'
 
 let failed = 0
@@ -46,7 +46,7 @@ test('every key the code uses is in English', () => {
       }
       else if (/\.(js|html)$/.test(f.name)) {
         const src = fs.readFileSync(p, 'utf8')
-        for (const m of src.matchAll(/\bt(?:Html)?\('([\w.]+)'/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
+        for (const m of src.matchAll(/\b(?:t|tHtml|msg)\('([\w.]+)'/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
         for (const m of src.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
         for (const m of src.matchAll(/data-i18n-attr="([^"]+)"/g)) {
           for (const pair of m[1].split(';')) {
@@ -79,6 +79,49 @@ test('every key the code uses is in English', () => {
   ]
   for (const k of built) if (!(k in en)) missing.push(k)
   assert.deepEqual(missing, [])
+})
+
+// The blocks' words: block.<type>.message0 and on, and block.<type>.tooltip
+// (src/blocks/define.js fills them in by type).
+test('every block has its words, and every block string has a block', () => {
+  const types = new Set()
+  for (const f of fs.readdirSync('src/blocks')) {
+    for (const m of fs.readFileSync(path.join('src/blocks', f), 'utf8').matchAll(/^ {6}type: '(\w+)',$/gm)) types.add(m[1])
+  }
+  assert.ok(types.size > 50, `found ${types.size} block types`)
+  const orphans = Object.keys(en)
+    .filter((k) => /^block\.\w+\.(message\d|tooltip)$/.test(k))
+    .filter((k) => !types.has(k.split('.')[1]))
+  assert.deepEqual(orphans, [], 'strings for blocks that no longer exist')
+  const untipped = [...types].filter((type) => !(`block.${type}.tooltip` in en))
+  assert.deepEqual(untipped, [], 'blocks with no tooltip in en.js')
+})
+
+// Each translation: only keys English has, and the same {placeholders} and
+// %1, %2 (in any order) as the English, so nothing the code fills in is lost.
+const marks = (v) =>
+  [...(typeof v === 'object' ? Object.values(v).join('|') : String(v)).matchAll(/\{\w+\}|%\d+/g)]
+    .map((m) => m[0])
+    .sort()
+    .join(' ')
+for (const lang of LANGUAGES.filter((l) => l !== 'en')) {
+  const table = (await import(`../src/i18n/${lang}.js`)).default
+  test(`${lang}: every key is one English has`, () => {
+    assert.deepEqual(Object.keys(table).filter((k) => !(k in en)), [])
+  })
+  test(`${lang}: the same placeholders as English`, () => {
+    const off = Object.keys(table).filter((k) => k in en && marks(table[k]) !== marks(en[k]))
+    assert.deepEqual(off.map((k) => `${k}: ${marks(en[k])} -> ${marks(table[k])}`), [])
+  })
+  test(`${lang}: no em dashes`, () => {
+    assert.deepEqual(Object.keys(table).filter((k) => JSON.stringify(table[k]).includes('\u2014')), [])
+  })
+}
+
+test('the pseudo-language accents letters and keeps what the code fills in', () => {
+  assert.equal(pseudo('Saved {file}.'), '⟦Šåṽéð {file}.⟧')
+  assert.equal(pseudo('🤖 drive %1 at %2'), '⟦🤖 ðŕîṽé %1 åţ %2⟧')
+  assert.equal(pseudo('<kbd>Ctrl</kbd> &amp; %{BKY_X}'), '⟦<kbd>Çţŕļ</kbd> &amp; %{BKY_X}⟧')
 })
 
 if (failed) {
