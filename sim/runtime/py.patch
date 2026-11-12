@@ -1,0 +1,17 @@
+diff --git a/py/profile.c b/py/profile.c
+index 0523a18..8e42c0a 100644
+--- a/py/profile.c
++++ b/py/profile.c
+@@ -280,7 +280,11 @@ mp_obj_t mp_prof_instr_tick(mp_code_state_t *code_state, bool is_exception) {
+     const mp_bytecode_prelude_t *prelude = &rc->prelude;
+     size_t prev_line_no = args->frame->lineno;
+     size_t current_line_no = mp_prof_bytecode_lineno(rc, code_state->ip - prelude->opcodes);
+-    if (prev_line_no != current_line_no) {
++    // A jump back starts the line again (the next turn of a loop), as in CPython.
++    size_t at = code_state->ip - prelude->opcodes;
++    bool back = at < args->frame->lasti;
++    args->frame->lasti = at;
++    if (prev_line_no != current_line_no || back) {
+         args->frame->lineno = current_line_no;
+         args->event = MP_OBJ_NEW_QSTR(MP_QSTR_line);
+         top = mp_prof_callback_invoke(callback, args);

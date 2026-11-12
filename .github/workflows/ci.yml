@@ -13,13 +13,15 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # The whole suite, the simulator's included, takes a few minutes; a hung
+    # browser should not hold a runner for hours.
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24   # the simulator's MicroPython needs JSPI, on by default from Node 24
           cache: npm
 
       - run: npm ci
@@ -45,3 +47,18 @@ jobs:
       - run: npm run build
 
       - run: npm test
+
+      # The budget for a school Chromebook (tests/perf.mjs). A report only: a
+      # runner's speed is not a Chromebook's, and it varies from run to run.
+      - name: Performance budget (report)
+        run: npm run perf
+        continue-on-error: true
+
+      # What the simulator's UI test saw, to read a failure on the runner.
+      - name: Keep the test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: tests/screenshots/
+          if-no-files-found: ignore

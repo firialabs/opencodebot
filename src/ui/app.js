@@ -5,10 +5,13 @@ import '../device/device-manager.js'
 import '../device/loopback-device.js'
 import { SUPPORTED_TARGETS, getTarget } from '../device/targets.js'
 import { BlockWorkspace, STARTER_PROJECTS, DEFAULT_PROJECT_NAME, fileNameFor } from '../workspace/workspace.js'
-import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js'
+import { generatePython, generateWithLines, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
 import { t, listOf } from '../i18n/index.js'
+import { DeviceSwitch } from '../sim/device-switch.js'
+import { SimDevice } from '../sim/sim-device.js'   // registers the 'sim' kind
+import { SimPanel } from '../sim/sim-panel.js'
 
 const SEEN_WELCOME = 'opencodebot.welcomed.v1'
 const PICKED_DEVICE = 'opencodebot.device.v1'
@@ -17,7 +20,14 @@ const $ = (id) => document.getElementById(id)
 
 export class App {
   constructor() {
-    this.device = createDevice(deviceKindFromUrl())
+    // The kind the page was opened with (?device=) is the board; the simulator
+    // sits beside it, behind Simulate. ?device=sim opens in the simulator.
+    const kind = deviceKindFromUrl()
+    this.device = new DeviceSwitch(createDevice(kind === 'sim' ? 'serial' : kind), createDevice('sim'))
+    this.simPanel = new SimPanel($('sim-host'), this.device.sim, {
+      onStart: () => this._toggleSimulate(),
+      onStepStart: () => this._run({ stepFirst: true }),
+    })
     this.pickedTarget = localStorage.getItem(PICKED_DEVICE) || null
 
     this.workspace = new BlockWorkspace($('blockly-root'), this.pickedTarget)
@@ -25,6 +35,8 @@ export class App {
 
     this._bindDevice()
     this._bindChrome()
+    // A paused program's line, on its block and in the Python tab.
+    this.device.sim.addEventListener('line', (e) => this._showLine(e.detail.line))
     this._bindWorkspace()
     this._bindTextMode()
 
@@ -40,7 +52,8 @@ export class App {
     this._maybeWelcome()
 
     // A board that is already plugged in and paired can just come back.
-    this.device.autoConnect?.().catch(() => {})
+    this.device.autoConnect().catch(() => {})
+    if (kind === 'sim') this._toggleSimulate()
   }
 
   _greet() {
@@ -116,8 +129,32 @@ export class App {
     }
   }
 
+  async _toggleSimulate() {
+    if (this.device.simulating) {
+      await this.device.disconnect()
+      this._refreshSimButton()
+      return
+    }
+    const target = this.pickedTarget || 'codebot'
+    if (!SimDevice.canSimulate(target)) {
+      const [title, detail] = SimDevice.whyNot(target)
+      toast({ kind: 'warn', title, detail })
+      return
+    }
+    this._selectTab('sim')
+    await this.device.simulate(target)
+    this._refreshSimButton()
+  }
+
+  _refreshSimButton() {
+    const on = this.device.simulating
+    const b = $('btn-sim')
+    b.dataset.connected = String(on)
+    b.querySelector('.btn-text').textContent = t(on ? 'btn.stopSimulator' : 'btn.simulate')
+  }
+
   async _toggleConnect() {
-    if (this.device.isConnected) {
+    if (this.device.isConnected && !this.device.simulating) {
       await this.device.disconnect()
       this.terminal.warn(t('term.disconnected'))
       return
@@ -126,7 +163,8 @@ export class App {
     if (ok) this.terminal.focus()
   }
 
-  async _run() {
+  // stepFirst (the simulator): pause at the first line, to step by line.
+  async _run(opts = {}) {
     const textMode = this.workspace.mode === 'text'
     if (textMode ? !this.workspace.pythonText.trim() : this.workspace.isEmpty) {
       toast({
@@ -148,9 +186,39 @@ export class App {
       return
     }
 
-    const code = this._currentPython()
+    // Typed Python runs as typed, with no blocks behind its lines (line n is
+    // the editor's line n); the blocks' Python knows which block made each line.
+    const { code, blockAt } = textMode
+      ? { code: this.workspace.pythonText, blockAt: {} }
+      : generateWithLines(this.workspace.workspace, this.workspace.targetId)
+    this._ran = { code, blockAt, text: textMode }
     this.terminal.say(t('term.sending'))
-    await this.device.run(code)
+    await this.device.run(code, opts)
+  }
+
+  // Mark the line a paused program is at (null: none): typed Python's line in
+  // the editor, while it still holds the program that runs; else on its block
+  // and in the Python tab, while that tab still shows the program that runs.
+  _showLine(line) {
+    const ws = this.workspace.workspace
+    const id = line && this._ran?.blockAt[line]
+    ws.highlightBlock?.(id && ws.getBlockById(id) ? id : null)
+    if (this._ran?.text) {
+      const editor = $('python-editor')
+      if (!line || editor.value !== this._ran.code) return
+      const lines = editor.value.split('\n')
+      const start = lines.slice(0, line - 1).reduce((n, l) => n + l.length + 1, 0)
+      editor.setSelectionRange(start, start + (lines[line - 1]?.length ?? 0))
+      const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 18
+      editor.scrollTop = Math.max(0, (line - 3) * lineHeight)
+      return
+    }
+    const view = $('python-view')
+    view.querySelector('.py-line.is-current')?.classList.remove('is-current')
+    if (!line || this._shownCode !== this._ran?.code) return
+    const el = view.querySelector(`.py-line[data-n="${line}"]`)
+    el?.classList.add('is-current')
+    el?.scrollIntoView({ block: 'nearest' })
   }
 
   async _stop() {
@@ -161,6 +229,7 @@ export class App {
 
   _bindChrome() {
     $('btn-connect').addEventListener('click', () => this._toggleConnect())
+    $('btn-sim').addEventListener('click', () => this._toggleSimulate())
     $('btn-run').addEventListener('click', () => this._run())
     $('btn-stop').addEventListener('click', () => this._stop())
     $('btn-clear-term').addEventListener('click', () => this.terminal.clear())
@@ -251,6 +320,7 @@ export class App {
     for (const panel of document.querySelectorAll('.tab-panel')) {
       panel.classList.toggle('is-active', panel.dataset.panel === name)
     }
+    if (name === 'sim') this.device.sim.view?.resize()
     if (name === 'terminal') {
       this.terminal.resize()
       this.terminal.focus()
@@ -368,10 +438,12 @@ export class App {
     $('device-chip-label').textContent = target ? target.name : t('chip.pick')
     $('device-chip-icon').src = `./icons/${target?.icon || 'dev-any.svg'}`
 
+    const usb = connected && !this.device.simulating
     const connect = $('btn-connect')
-    connect.dataset.connected = String(connected)
-    connect.querySelector('.btn-text').textContent = t(connected ? 'btn.disconnect' : 'btn.connect')
-    connect.querySelector('.btn-emoji').textContent = connected ? '✅' : '🔌'
+    connect.dataset.connected = String(usb)
+    connect.querySelector('.btn-text').textContent = t(usb ? 'btn.disconnect' : 'btn.connect')
+    connect.querySelector('.btn-emoji').textContent = usb ? '✅' : '🔌'
+    this._refreshSimButton()
   }
 
   _refreshButtons() {
@@ -418,7 +490,12 @@ export class App {
 
   _refreshPython() {
     if (this.workspace.mode !== 'text') {
-      $('python-view').innerHTML = `<code>${highlightPython(this._blocksPython())}</code>`
+      const code = this._blocksPython()
+      this._shownCode = code
+      // One span a line (the highlighter's spans never cross a line), so a
+      // paused program's line can be marked.
+      const lines = highlightPython(code).split('\n')
+      $('python-view').innerHTML = `<code>${lines.map((l, i) => `<span class="py-line" data-n="${i + 1}">${l}</span>`).join('\n')}</code>`
     }
     $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
   }
@@ -557,7 +634,7 @@ export class App {
     if (this.device.supported) return
     $('browser-note').textContent = t('browser.note')
     $('btn-connect').disabled = true
-    this.terminal.warn(`${t('browser.noSerial')}\r\n${t('browser.noSerialHint')}`)
+    this.terminal.warn(`${t('browser.noSerial')}\r\n${t('browser.noSerialHintSim')}`)
   }
 
   _maybeWelcome() {

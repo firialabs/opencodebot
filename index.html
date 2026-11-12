@@ -44,6 +44,9 @@
           <button id="btn-connect" class="btn btn-connect">
             <span class="btn-emoji" aria-hidden="true">🔌</span><span class="btn-text" data-i18n="btn.connect"></span>
           </button>
+          <button id="btn-sim" class="btn btn-sim" data-i18n-attr="title=btn.simulateTitle">
+            <span class="btn-emoji" aria-hidden="true">🎮</span><span class="btn-text" data-i18n="btn.simulate"></span>
+          </button>
           <button id="btn-run" class="btn btn-run" disabled>
             <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text" data-i18n="btn.run"></span>
           </button>
@@ -89,6 +92,9 @@
             <button class="tab is-active" role="tab" data-tab="terminal" aria-selected="true">
               <span aria-hidden="true">💬</span> <span data-i18n="tab.terminal"></span>
             </button>
+            <button class="tab" role="tab" data-tab="sim" aria-selected="false">
+              <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
+            </button>
             <button class="tab" role="tab" data-tab="python" aria-selected="false">
               <span aria-hidden="true">🐍</span> <span data-i18n="tab.python"></span>
             </button>
@@ -101,6 +107,10 @@
             <div class="terminal-foot" id="terminal-foot">
               <span class="term-hint" data-i18n-html="term.hintHtml"></span>
             </div>
+          </div>
+
+          <div class="tab-panel" data-panel="sim">
+            <div id="sim-host" class="sim-host"></div>
           </div>
 
           <div class="tab-panel" data-panel="python">

@@ -24,4 +24,4 @@ import './radio.js'
 
 export { toolboxFor } from './toolbox.js'
 export { cuteTheme } from './theme.js'
-export { generatePython, highlightPython, devicesUsed } from './generate.js'
+export { generatePython, generateWithLines, highlightPython, devicesUsed } from './generate.js'

@@ -5,3 +5,7 @@ dev-dist/
 *.log
 tests/screenshots/
 .vite/
+
+# Simulator: the MicroPython checkout and other build trees
+sim/build/
+public/sim-assets/
