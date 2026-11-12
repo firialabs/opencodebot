@@ -171,6 +171,40 @@ for (const device of DEVICES) {
   for (const m of result.missing) problems.push(`codebot ▸ ${m}`)
 }
 
+// On a phone the ⋯ button wraps to the left edge: its menu must still open on
+// screen and above the block palette, or Open, Save, the examples and the
+// language cannot be reached.
+for (const width of [360, 412, 683]) {
+  const narrow = await browser.newPage({ viewport: { width, height: 800 }, hasTouch: true })
+  await narrow.goto(URL, { waitUntil: 'networkidle' })
+  if (await narrow.evaluate(() => document.getElementById('modal')?.open)) {
+    await narrow.click('#modal button[value="ok"]')
+  }
+  await narrow.click('#btn-menu')
+  for (const item of await narrow.locator('#app-menu [role^="menuitem"]').all()) {
+    const box = await item.boundingBox()
+    const label = (await item.innerText()).trim()
+    if (!box || box.x < 0 || box.x + box.width > width) {
+      problems.push(`menu at ${width}px ▸ "${label}" is off screen`)
+      continue
+    }
+    const onTop = await item.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+      return el === hit || el.contains(hit)
+    })
+    if (!onTop) problems.push(`menu at ${width}px ▸ "${label}" is covered`)
+  }
+  await narrow.keyboard.press('Escape')
+  await narrow.click('#device-chip')
+  const picker = await narrow.locator('#device-menu').boundingBox()
+  if (!picker || picker.x < 0 || picker.x + picker.width > width) {
+    problems.push(`device menu at ${width}px ▸ off screen (${JSON.stringify(picker)})`)
+  }
+  console.log(`menus at ${width}px: on screen and on top`)
+  await narrow.close()
+}
+
 await browser.close()
 server?.kill()
 
