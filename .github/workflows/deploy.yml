@@ -39,12 +39,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24   # the simulator's MicroPython needs JSPI, on by default from Node 24
           cache: npm
 
       - run: npm ci

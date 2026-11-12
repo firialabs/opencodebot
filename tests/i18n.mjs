@@ -46,7 +46,7 @@ test('every key the code uses is in English', () => {
       }
       else if (/\.(js|html)$/.test(f.name)) {
         const src = fs.readFileSync(p, 'utf8')
-        for (const m of src.matchAll(/\bt\('([\w.]+)'/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
+        for (const m of src.matchAll(/\bt(?:Html)?\('([\w.]+)'/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
         for (const m of src.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) if (!(m[1] in en)) missing.push(`${p}: ${m[1]}`)
         for (const m of src.matchAll(/data-i18n-attr="([^"]+)"/g)) {
           for (const pair of m[1].split(';')) {
@@ -58,17 +58,26 @@ test('every key the code uses is in English', () => {
     }
   }
   walk('src')
-  const html = fs.readFileSync('index.html', 'utf8')
-  for (const m of html.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) if (!(m[1] in en)) missing.push(`index.html: ${m[1]}`)
-  for (const m of html.matchAll(/data-i18n-attr="([^"]+)"/g)) {
-    for (const pair of m[1].split(';')) {
-      const key = pair.split('=')[1]?.trim()
-      if (key && !(key in en)) missing.push(`index.html: ${key}`)
+  for (const page of ['index.html', 'boards.html']) {
+    const html = fs.readFileSync(page, 'utf8')
+    for (const m of html.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) if (!(m[1] in en)) missing.push(`${page}: ${m[1]}`)
+    for (const m of html.matchAll(/data-i18n-attr="([^"]+)"/g)) {
+      for (const pair of m[1].split(';')) {
+        const key = pair.split('=')[1]?.trim()
+        if (key && !(key in en)) missing.push(`${page}: ${key}`)
+      }
     }
   }
-  for (const k of ['status.offline', 'status.connecting', 'status.ready', 'status.loading', 'status.running', 'status.error']) {
-    if (!(k in en)) missing.push(k)
-  }
+  const built = [
+    ...['offline', 'connecting', 'ready', 'loading', 'running', 'error'].map((s) => `status.${s}`),
+    ...['still', 'moving', 'backing', 'turnLeft', 'turnRight'].map((m) => `doing.${m}`),
+    ...['backing', 'turnLeft', 'turnRight'].map((m) => `say.${m}`),
+    ...['east', 'northEast', 'north', 'northWest', 'west', 'southWest', 'south', 'southEast'].map((c) => `compass.${c}`),
+    'codex.up', 'codex.left', 'codex.right', 'codex.down',
+    'simPanel.camChase', 'simPanel.camOrbit', 'simPanel.camTop',
+    'example.remote', 'example.listener', 'example.codeairRemote', 'example.xfly', 'example.lights',
+  ]
+  for (const k of built) if (!(k in en)) missing.push(k)
   assert.deepEqual(missing, [])
 })
 

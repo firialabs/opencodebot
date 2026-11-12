@@ -10,7 +10,11 @@ Code: `src/device/device-target.js` (interface, registry, contract check).
 | ---------- | --------------------------------- | ---------------------- |
 | `serial`   | `src/device/device-manager.js`    | default                |
 | `loopback` | `src/device/loopback-device.js`   | `?device=loopback`     |
-| `sim`      | to come, on the `sim` branch      | `?device=sim` (suggested) |
+| `sim`      | `src/sim/sim-device.js`           | `?device=sim`, or Simulate |
+
+The app pairs the page's kind with the simulator (`src/sim/device-switch.js`, itself a
+DeviceTarget): the Simulate button switches to it and back, and a board plugged in while
+simulating takes over. `?device=sim` opens the page in the simulator.
 
 ## Adding a kind
 

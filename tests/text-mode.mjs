@@ -75,7 +75,8 @@ await page.click('#btn-connect')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready')
 await page.keyboard.press('Control+Enter')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'running')
-const sent = await page.evaluate(() => window.openCodeBot.device.files['main.py'])
+// The app's device pairs the page's kind with the simulator; files are the loopback's.
+const sent = await page.evaluate(() => window.openCodeBot.device.board.files['main.py'])
 check(sent.includes("print('typed by hand')"), 'Run sends the typed Python')
 
 // Survives a reload

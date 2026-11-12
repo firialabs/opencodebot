@@ -394,6 +394,7 @@ kbd {
 .python-view .s { color: var(--green-deep); }
 .python-view .c { color: var(--ink-soft); font-style: italic; }
 .python-view .n { color: #a3540a; }
+.python-view .py-line.is-current { display: inline-block; min-width: 100%; background: var(--gold-soft); outline: 1px solid var(--gold); }
 
 /* ------------------------------------------------------------- statusbar */
 .statusbar {

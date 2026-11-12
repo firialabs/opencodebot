@@ -26,6 +26,11 @@ const plural = new Intl.PluralRules(language)
 const number = new Intl.NumberFormat(language)
 const list = new Intl.ListFormat(language, { type: 'conjunction' })
 
+/** A number with exactly `digits` decimals, as the language writes it: "0.5". */
+export function fixed(value, digits) {
+  return new Intl.NumberFormat(language, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value)
+}
+
 /** Items joined as the language joins a list: "CodeX and CodeAIR". */
 export function listOf(items) {
   return list.format(items.map(String))
@@ -72,6 +77,11 @@ export function t(key, params = {}) {
     const text = typeof v === 'number' ? number.format(v) : String(v)
     return html ? escapeHtml(text) : text
   })
+}
+
+/** A string made safe to put in HTML markup, for templates built in code. */
+export function tHtml(key, params) {
+  return escapeHtml(t(key, params))
 }
 
 /**

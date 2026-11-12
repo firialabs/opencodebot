@@ -295,7 +295,7 @@ defineBlocks([
       ],
       output: 'Number',
       style: 'sensors_blocks',
-      tooltip: 'The raw number from a line sensor. Darker surfaces read lower.',
+      tooltip: 'The raw number from a line sensor. Darker surfaces read higher: black tape reads high, white paper low.',
     },
     python: (block) => {
       bot()
