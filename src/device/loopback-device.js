@@ -8,6 +8,7 @@
  * `&board=codex` to choose which board it claims to be (default CodeBot).
  */
 import { State, registerDeviceKind } from './device-target.js'
+import { t } from '../i18n/index.js'
 import { getTarget } from './targets.js'
 
 const encoder = new TextEncoder()
@@ -30,13 +31,13 @@ export class LoopbackDevice extends EventTarget {
   }
 
   async connect() {
-    this._setState(State.CONNECTING, 'Looking for your device…')
+    this._setState(State.CONNECTING, t('usb.looking'))
     this.isConnected = true
     this.targetId = this.board
     this.firmware = { version: 'loopback', date: '2026-01-01' }
     this._emit('device', { targetId: this.targetId, target: getTarget(this.targetId), firmware: this.firmware })
     this._print('>>> ')
-    this._setState(State.READY, 'Ready when you are!')
+    this._setState(State.READY, t('usb.ready'))
     return true
   }
 
@@ -45,23 +46,23 @@ export class LoopbackDevice extends EventTarget {
     this.targetId = null
     this.firmware = null
     this._emit('device', { targetId: null, target: null })
-    this._setState(State.OFFLINE, 'Device unplugged.')
+    this._setState(State.OFFLINE, t('usb.unplugged'))
   }
 
   async run(source) {
     if (!this.isConnected) return false
-    this._setState(State.LOADING, 'Sending your program…')
+    this._setState(State.LOADING, t('usb.sending'))
     await this.writeFile('main.py', source)
     this.runs.push(source)
     this._print('\r\n[loopback] running main.py\r\n')
-    this._setState(State.RUNNING, 'Your program is running!')
+    this._setState(State.RUNNING, t('usb.running'))
     return true
   }
 
   async stop() {
     if (!this.isConnected) return false
     this._print('\r\n>>> ')
-    this._setState(State.READY, 'Stopped. Ready when you are!')
+    this._setState(State.READY, t('usb.stoppedReady'))
     return true
   }
 
@@ -111,4 +112,4 @@ function boardFromUrl() {
   }
 }
 
-registerDeviceKind('loopback', () => new LoopbackDevice(), { label: 'Pretend device (for testing)' })
+registerDeviceKind('loopback', () => new LoopbackDevice(), { label: t('kind.loopback') })

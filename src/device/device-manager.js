@@ -14,6 +14,7 @@ import { Repl, ReplAborted, CTRL_C, CTRL_D } from './repl.js'
 import { getTarget, targetIdForPort, TARGETS } from './targets.js'
 
 import { State, registerDeviceKind } from './device-target.js'
+import { t } from '../i18n/index.js'
 
 export { State }
 
@@ -72,23 +73,23 @@ export class DeviceManager extends EventTarget {
   /** Show the port picker. Must be called straight from a click. */
   async connect() {
     if (!this.supported) {
-      this._notice('error', 'This browser cannot talk to devices', 'Try Chrome or Edge on a computer — they support Web Serial.')
+      this._notice('error', t('usb.noSerialTitle'), t('usb.noSerialDetail'))
       return false
     }
-    this._setState(State.CONNECTING, 'Looking for your device…')
+    this._setState(State.CONNECTING, t('usb.looking'))
     try {
       const opened = (await this.link.openPaired()) || (await this.link.requestPort())
-      if (!opened) this._setState(State.OFFLINE, 'No device chosen.')
+      if (!opened) this._setState(State.OFFLINE, t('usb.noneChosen'))
       return opened
     } catch (err) {
       if (err?.name === 'NotFoundError') {
         // The picker was dismissed — not an error worth shouting about.
-        this._setState(State.OFFLINE, 'No device chosen.')
+        this._setState(State.OFFLINE, t('usb.noneChosen'))
         return false
       }
       console.error(err)
-      this._setState(State.OFFLINE, 'Could not open the device.')
-      this._notice('error', 'Could not open that device', friendlyOpenError(err))
+      this._setState(State.OFFLINE, t('usb.couldNotOpen'))
+      this._notice('error', t('usb.couldNotOpenTitle'), friendlyOpenError(err))
       return false
     }
   }
@@ -118,11 +119,11 @@ export class DeviceManager extends EventTarget {
 
     const target = getTarget(targetId)
     if (target && !target.supported) {
-      this._notice('warn', `${target.name} isn't supported yet`, 'OpenCodeBot works with CodeBot CB3, CodeX and CodeAIR.')
+      this._notice('warn', t('usb.unsupportedTitle', { device: target.name }), t('usb.unsupportedDetail'))
     }
 
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId, target } }))
-    this._setState(State.CONNECTING, `Saying hello to your ${target?.name || 'device'}…`)
+    this._setState(State.CONNECTING, t('usb.hello', { device: target?.name || t('device.generic') }))
 
     // Say nothing at first. Interrupting CircuitPython while its USB stack is
     // still starting up can wedge it past the point where even Ctrl-C helps.
@@ -134,7 +135,7 @@ export class DeviceManager extends EventTarget {
       setTimeout(async () => {
         if (this._sawPrompt || this.firmware) return
         // Board is probably already running a program — that's fine, let it.
-        this._setState(State.RUNNING, 'Your device is running a program.')
+        this._setState(State.RUNNING, t('usb.alreadyRunning'))
       }, BOOT_WAIT_MS),
     )
   }
@@ -146,7 +147,7 @@ export class DeviceManager extends EventTarget {
     this.firmware = null
     this.busy = false
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId: null, target: null } }))
-    this._setState(State.OFFLINE, 'Device unplugged.')
+    this._setState(State.OFFLINE, t('usb.unplugged'))
   }
 
   _clearBootTimers() {
@@ -173,7 +174,7 @@ export class DeviceManager extends EventTarget {
       this._sawPrompt = true
       this._clearBootTimers()
       if (!this.busy && this.state !== State.READY) {
-        this._setState(State.READY, 'Ready when you are!')
+        this._setState(State.READY, t('usb.ready'))
       }
     }
 
@@ -194,7 +195,7 @@ export class DeviceManager extends EventTarget {
     }
 
     if (/Code done running\.|MP-Complete/.test(text) && !this.busy) {
-      this._setState(State.READY, 'Program finished.')
+      this._setState(State.READY, t('usb.finished'))
     }
 
     this._checkTraceback(text)
@@ -244,7 +245,7 @@ export class DeviceManager extends EventTarget {
   /** Load `source` onto the board and start it. */
   async run(source) {
     if (!this.isConnected) {
-      this._notice('warn', 'No device connected', 'Press Connect and pick your board first.')
+      this._notice('warn', t('usb.notConnectedTitle'), t('usb.notConnectedDetail'))
       return false
     }
     if (this.busy) return false
@@ -252,7 +253,7 @@ export class DeviceManager extends EventTarget {
     this.busy = true
     this._clearBootTimers()
     this.repl.resume()
-    this._setState(State.LOADING, 'Sending your program…')
+    this._setState(State.LOADING, t('usb.sending'))
 
     try {
       const atPrompt = await this.repl.interrupt()
@@ -284,12 +285,12 @@ export class DeviceManager extends EventTarget {
       }
 
       this.busy = false
-      this._setState(State.RUNNING, 'Your program is running!')
+      this._setState(State.RUNNING, t('usb.running'))
       return true
     } catch (err) {
       this.busy = false
       if (err instanceof ReplAborted) {
-        this._setState(State.READY, 'Stopped.')
+        this._setState(State.READY, t('usb.stopped'))
         return false
       }
       console.error(err)
@@ -297,13 +298,9 @@ export class DeviceManager extends EventTarget {
       this.link.send(CTRL_C)
       await this.stop({ quiet: true })
       if (err instanceof DeviceUnresponsive) {
-        this._notice(
-          'error',
-          `Your ${this.target?.name || 'device'} isn't answering`,
-          'Unplug the USB cable, plug it back in, then press Connect again.',
-        )
+        this._notice('error', t('usb.notAnsweringTitle', { device: this.target?.name || t('device.generic') }), t('usb.notAnsweringDetail'))
       } else {
-        this._notice('error', "That program didn't load", err.message || 'Please try again.')
+        this._notice('error', t('usb.loadFailedTitle'), err.message || t('usb.tryAgain'))
       }
       return false
     }
@@ -319,11 +316,11 @@ export class DeviceManager extends EventTarget {
       await this.repl.writeFile(name, contents, (fraction) => {
         this.dispatchEvent(new CustomEvent('progress', { detail: fraction }))
       })
-      this._setState(State.READY, `Saved ${name}.`)
+      this._setState(State.READY, t('usb.saved', { file: name }))
       return true
     } catch (err) {
       console.error(err)
-      this._notice('error', `Could not save ${name}`, err.message || 'Please try again.')
+      this._notice('error', t('usb.saveFailedTitle', { file: name }), err.message || t('usb.tryAgain'))
       return false
     } finally {
       this.busy = false
@@ -347,20 +344,16 @@ export class DeviceManager extends EventTarget {
     this.busy = false
     this.filter.suppressDebug(false)
     this.filter.reset()
-    this._setState(State.LOADING, 'Stopping…')
+    this._setState(State.LOADING, t('usb.stopping'))
 
     const stopped = await this.repl.interrupt({ tries: 5, timeout: 900 })
     if (stopped) {
       this.parkActuators()
-      this._setState(State.READY, 'Stopped. Ready when you are!')
+      this._setState(State.READY, t('usb.stoppedReady'))
     } else {
-      this._setState(State.READY, 'Device did not answer.')
+      this._setState(State.READY, t('usb.noAnswer'))
       if (!quiet) {
-        this._notice(
-          'warn',
-          `Your ${this.target?.name || 'device'} isn't answering`,
-          'Unplug the USB cable, plug it back in, then press Connect again.',
-        )
+        this._notice('warn', t('usb.notAnsweringTitle', { device: this.target?.name || t('device.generic') }), t('usb.notAnsweringDetail'))
       }
     }
     return stopped
@@ -388,14 +381,14 @@ class DeviceUnresponsive extends Error {
 function friendlyOpenError(err) {
   const text = String(err?.message || err)
   if (/already open|in use|Failed to open/i.test(text)) {
-    return 'Something else may be using the device — close other coding tabs or apps and try again.'
+    return t('usb.busy')
   }
   if (/denied|security/i.test(text)) {
-    return 'The browser blocked access. Make sure the page is loaded over https.'
+    return t('usb.blocked')
   }
   return text
 }
 
 export { targetIdForPort }
 
-registerDeviceKind('serial', () => new DeviceManager(), { label: 'USB cable' })
+registerDeviceKind('serial', () => new DeviceManager(), { label: t('kind.serial') })

@@ -8,7 +8,7 @@ import { BlockWorkspace, STARTER_PROJECTS, DEFAULT_PROJECT_NAME, fileNameFor } f
 import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
-import { HELP_HTML, ABOUT_HTML, welcomeHtml } from './copy.js'
+import { t, listOf } from '../i18n/index.js'
 
 const SEEN_WELCOME = 'opencodebot.welcomed.v1'
 const PICKED_DEVICE = 'opencodebot.device.v1'
@@ -43,10 +43,7 @@ export class App {
   }
 
   _greet() {
-    this.terminal.write(
-      '\x1b[32mHi! This is a live Python prompt on your device.\x1b[0m\r\n' +
-        '\x1b[90mPlug a device in, press Connect, and start typing.\x1b[0m\r\n',
-    )
+    this.terminal.write(`\x1b[32m${t('term.greeting')}\x1b[0m\r\n\x1b[90m${t('term.greetingHint')}\x1b[0m\r\n`)
   }
 
   // ------------------------------------------------------------- device
@@ -68,7 +65,7 @@ export class App {
       if (targetId && target?.supported) {
         this._adoptConnectedTarget(targetId)
         if (firmware) {
-          this.terminal.say(`${target.name} connected — firmware ${firmware.version} (${firmware.date})`)
+          this.terminal.say(t('term.connected', { device: target.name, version: firmware.version, date: firmware.date }))
         }
       }
       this._refreshDeviceChip()
@@ -82,14 +79,14 @@ export class App {
       toast({
         kind: 'error',
         title: friendlyErrorTitle(name),
-        detail: [message, line ? `(Python line ${line})` : ''].filter(Boolean).join(' '),
+        detail: [message, line ? t('error.atLine', { line }) : ''].filter(Boolean).join(' '),
       })
-      this._setStatus('error', `${name}: ${message}`)
+      this._setStatus('error', t('status.programError', { name, message }))
     })
 
     device.addEventListener('progress', (e) => {
       const pct = Math.round(e.detail * 100)
-      this._setStatus(State.LOADING, `Sending your program… ${pct}%`)
+      this._setStatus(State.LOADING, t('status.sendingPct', { pct }))
     })
   }
 
@@ -103,25 +100,25 @@ export class App {
     localStorage.setItem(PICKED_DEVICE, targetId)
     this._renderDevicePicker()
 
-    const name = getTarget(targetId)?.name
+    const device = getTarget(targetId)?.name
     if (conflicting.length) {
       toast({
         kind: 'warn',
-        title: `Switched to ${name} blocks`,
-        detail: `Your project still has ${conflicting.map((id) => getTarget(id)?.name).join(' and ')} blocks in it.`,
+        title: t('switched.title', { device }),
+        detail: t('switched.detail', { names: deviceNames(conflicting) }),
       })
     } else if (this.workspace.isEmpty) {
       this.workspace.loadProject(STARTER_PROJECTS[targetId] || { blocks: {} })
-      toast({ kind: 'info', title: `${name} is ready!`, detail: 'Here is a tiny program to try.' })
+      toast({ kind: 'info', title: t('adopted.readyTitle', { device }), detail: t('adopted.readyDetail') })
     } else {
-      toast({ kind: 'info', title: `${name} connected`, detail: 'Your blocks are ready to run.' })
+      toast({ kind: 'info', title: t('adopted.connectedTitle', { device }), detail: t('adopted.connectedDetail') })
     }
   }
 
   async _toggleConnect() {
     if (this.device.isConnected) {
       await this.device.disconnect()
-      this.terminal.warn('Device disconnected.')
+      this.terminal.warn(t('term.disconnected'))
       return
     }
     const ok = await this.device.connect()
@@ -130,7 +127,7 @@ export class App {
 
   async _run() {
     if (this.workspace.isEmpty) {
-      toast({ kind: 'warn', title: 'Nothing to run yet', detail: 'Drag some blocks in first!' })
+      toast({ kind: 'warn', title: t('run.emptyTitle'), detail: t('run.emptyDetail') })
       return
     }
     const target = this.device.targetId
@@ -139,14 +136,14 @@ export class App {
     if (target && wrong.length) {
       toast({
         kind: 'warn',
-        title: 'Those blocks are for another device',
-        detail: `Your project uses ${wrong.map((id) => getTarget(id)?.name).join(' and ')} blocks, but a ${getTarget(target)?.name} is plugged in.`,
+        title: t('run.wrongTitle'),
+        detail: t('run.wrongDetail', { names: deviceNames(wrong), device: getTarget(target)?.name }),
       })
       return
     }
 
     const code = this._currentPython()
-    this.terminal.say('Sending your program…')
+    this.terminal.say(t('term.sending'))
     await this.device.run(code)
   }
 
@@ -180,7 +177,7 @@ export class App {
     })
     this.workspace.addEventListener('rename', () => {
       nameField.value = this.workspace.name
-      document.title = `${this.workspace.name} · OpenCodeBot`
+      document.title = t('project.pageTitle', { name: this.workspace.name })
     })
 
     // Tabs
@@ -287,7 +284,8 @@ export class App {
 
   _renderDevicePicker() {
     const menu = $('device-menu')
-    menu.innerHTML = '<div class="dm-head">I am using a…</div>'
+    menu.innerHTML = '<div class="dm-head"></div>'
+    menu.firstChild.textContent = t('chip.menuHead')
     for (const target of SUPPORTED_TARGETS) {
       const item = document.createElement('button')
       item.type = 'button'
@@ -313,8 +311,8 @@ export class App {
     if (this.device.isConnected && this.device.targetId && this.device.targetId !== targetId) {
       toast({
         kind: 'warn',
-        title: 'A different device is plugged in',
-        detail: `Unplug the ${getTarget(this.device.targetId)?.name} first, or press Connect again after swapping.`,
+        title: t('pick.otherTitle'),
+        detail: t('pick.otherDetail', { device: getTarget(this.device.targetId)?.name }),
       })
       return
     }
@@ -324,13 +322,12 @@ export class App {
     const strays = [...devicesUsed(this.workspace.workspace)].filter((id) => id !== targetId)
     let startFresh = this.workspace.isEmpty
     if (strays.length) {
-      const names = strays.map((id) => getTarget(id)?.name).join(' and ')
+      const device = getTarget(targetId)?.name
       startFresh = await showModal({
-        title: `Switch to ${getTarget(targetId)?.name}?`,
-        bodyHtml: `<p>Your project uses ${names} blocks, which a ${getTarget(targetId)?.name} cannot run.</p>
-          <p>Start a fresh project, or keep these blocks and switch anyway?</p>`,
-        confirmText: 'Start fresh',
-        cancelText: 'Keep my blocks',
+        title: t('pick.switchTitle', { device }),
+        bodyHtml: t('pick.switchBodyHtml', { names: deviceNames(strays), device }),
+        confirmText: t('pick.startFresh'),
+        cancelText: t('pick.keep'),
       })
     }
 
@@ -357,12 +354,12 @@ export class App {
         ? 'busy'
         : 'on'
       : 'off'
-    $('device-chip-label').textContent = target ? target.name : 'Pick a device'
+    $('device-chip-label').textContent = target ? target.name : t('chip.pick')
     $('device-chip-icon').src = `./icons/${target?.icon || 'dev-any.svg'}`
 
     const connect = $('btn-connect')
     connect.dataset.connected = String(connected)
-    connect.querySelector('.btn-text').textContent = connected ? 'Disconnect' : 'Connect'
+    connect.querySelector('.btn-text').textContent = t(connected ? 'btn.disconnect' : 'btn.connect')
     connect.querySelector('.btn-emoji').textContent = connected ? '✅' : '🔌'
   }
 
@@ -375,16 +372,8 @@ export class App {
 
   _setStatus(state, message) {
     const chip = $('status-chip')
-    const label =
-      {
-        [State.OFFLINE]: 'Not connected',
-        [State.CONNECTING]: 'Connecting',
-        [State.READY]: 'Ready',
-        [State.LOADING]: 'Sending',
-        [State.RUNNING]: 'Running',
-        error: 'Oops',
-      }[state] || 'Ready'
-    chip.textContent = label
+    const known = [State.OFFLINE, State.CONNECTING, State.READY, State.LOADING, State.RUNNING, 'error']
+    chip.textContent = t(`status.${known.includes(state) ? state : State.READY}`)
     chip.dataset.state =
       { [State.READY]: 'ready', [State.LOADING]: 'busy', [State.RUNNING]: 'running', error: 'error' }[
         state
@@ -431,21 +420,21 @@ export class App {
         break
       case 'export-py':
         download('main.py', this._currentPython(), 'text/x-python')
-        toast({ kind: 'info', title: 'Python saved', detail: 'Look in your Downloads folder for main.py.' })
+        toast({ kind: 'info', title: t('pySaved.title'), detail: t('pySaved.detail') })
         break
       case 'copy-py':
         try {
           await navigator.clipboard.writeText(this._currentPython())
-          toast({ kind: 'info', title: 'Python copied!' })
+          toast({ kind: 'info', title: t('pyCopied.title') })
         } catch {
-          toast({ kind: 'warn', title: 'Could not copy', detail: 'Select the code in the Python tab instead.' })
+          toast({ kind: 'warn', title: t('pyCopyFailed.title'), detail: t('pyCopyFailed.detail') })
         }
         break
       case 'help':
-        showModal({ title: 'Help & shortcuts', bodyHtml: HELP_HTML })
+        showModal({ title: t('help.title'), bodyHtml: t('help.bodyHtml') })
         break
       case 'about':
-        showModal({ title: 'About OpenCodeBot', bodyHtml: ABOUT_HTML })
+        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') })
         break
     }
   }
@@ -454,18 +443,16 @@ export class App {
   async _newProject() {
     if (!this.workspace.isEmpty) {
       const ok = await showModal({
-        title: 'Start a new project?',
-        bodyHtml:
-          '<p>Your current blocks will be cleared. This cannot be undone.</p>' +
-          '<p>To keep them, press <b>Keep my blocks</b>, then Save project from the ⋯ menu.</p>',
-        confirmText: 'Yes, start over',
-        cancelText: 'Keep my blocks',
+        title: t('new.title'),
+        bodyHtml: t('new.bodyHtml'),
+        confirmText: t('new.confirm'),
+        cancelText: t('pick.keep'),
       })
       if (!ok) return
     }
     this.workspace.clear()
     this.workspace.rename(DEFAULT_PROJECT_NAME)
-    this.terminal.say('New project. Have fun!')
+    this.terminal.say(t('new.started'))
     $('project-name').focus()
     $('project-name').select()
   }
@@ -473,7 +460,7 @@ export class App {
   _saveFile() {
     const name = fileNameFor(this.workspace.name, 'ocb')
     download(name, JSON.stringify(this.workspace.toProject(), null, 2), 'application/json')
-    toast({ kind: 'info', title: 'Project saved', detail: `Look in your Downloads folder for ${name}.` })
+    toast({ kind: 'info', title: t('saved.title'), detail: t('saved.detail', { file: name }) })
   }
 
   async _openFile(file) {
@@ -482,9 +469,9 @@ export class App {
       this.workspace.loadProject(JSON.parse(await file.text()))
       this._renderDevicePicker()
       this._refreshDeviceChip()
-      toast({ kind: 'info', title: 'Project opened!' })
+      toast({ kind: 'info', title: t('opened.title') })
     } catch (err) {
-      toast({ kind: 'error', title: 'Could not open that file', detail: err.message })
+      toast({ kind: 'error', title: t('openFailed.title'), detail: err.message })
     } finally {
       $('file-input').value = ''
     }
@@ -494,19 +481,21 @@ export class App {
 
   _checkBrowser() {
     if (this.device.supported) return
-    $('browser-note').textContent = 'This browser cannot connect to devices — try Chrome or Edge.'
+    $('browser-note').textContent = t('browser.note')
     $('btn-connect').disabled = true
-    this.terminal.warn(
-      'This browser does not support Web Serial, so OpenCodeBot cannot talk to your device.\r\n' +
-        'You can still build blocks and download the Python. Chrome or Edge on a computer will connect.',
-    )
+    this.terminal.warn(`${t('browser.noSerial')}\r\n${t('browser.noSerialHint')}`)
   }
 
   _maybeWelcome() {
     if (localStorage.getItem(SEEN_WELCOME)) return
     localStorage.setItem(SEEN_WELCOME, '1')
-    showModal({ title: 'Welcome to OpenCodeBot!', bodyHtml: welcomeHtml(), confirmText: "Let's go!" })
+    showModal({ title: t('welcome.title'), bodyHtml: t('welcome.bodyHtml'), confirmText: t('welcome.confirm') })
   }
+}
+
+/** Boards' names as a list: "CodeX and CodeAIR". */
+function deviceNames(ids) {
+  return listOf(ids.map((id) => getTarget(id)?.name))
 }
 
 function download(filename, contents, type) {
@@ -518,17 +507,8 @@ function download(filename, contents, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+const KNOWN_ERRORS = ['NameError', 'SyntaxError', 'TypeError', 'ValueError', 'ZeroDivisionError', 'MemoryError', 'ImportError', 'OSError']
+
 function friendlyErrorTitle(name) {
-  return (
-    {
-      NameError: 'Something has no name yet',
-      SyntaxError: 'The device could not read that code',
-      TypeError: 'Those pieces do not fit together',
-      ValueError: 'That value was out of range',
-      ZeroDivisionError: 'Cannot divide by zero',
-      MemoryError: 'The program is too big for the device',
-      ImportError: 'A missing part of the device library',
-      OSError: 'The device had trouble with that',
-    }[name] || `Your program stopped: ${name}`
-  )
+  return KNOWN_ERRORS.includes(name) ? t(`pyerr.${name}`) : t('pyerr.other', { name })
 }
