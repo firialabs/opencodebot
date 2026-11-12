@@ -54,7 +54,7 @@ export default {
   'status.loading': 'Enviando',
   'status.running': 'En ejecución',
   'status.error': '¡Ups!',
-  'status.start': 'Conecta tu dispositivo con un cable USB y luego presiona Conectar.',
+  'status.start': 'Conecta tu dispositivo con un cable USB y luego presiona Conectar. ¿No tienes dispositivo? Presiona Simular.',
   'status.sendingPct': 'Enviando tu programa… {pct}%',
   'status.programError': '{name}: {message}',
 
@@ -126,6 +126,9 @@ export default {
       <li><strong>Conéctalo</strong> con un cable USB y presiona <strong>Conectar</strong>.</li>
       <li><strong>Arrastra algunos bloques</strong> y luego presiona <strong>Ejecutar</strong>.</li>
     </ol>
+    <p><strong>¿No tienes un dispositivo a mano?</strong> Presiona <strong>🎮 Simular</strong>
+    para ejecutar tu programa en un CodeBot o un CodeX simulado. Para empezar con un programa
+    ya hecho, abre el menú <strong>⋯</strong> y elige <strong>Empezar con un ejemplo</strong>.</p>
     <p>Nada de lo que hagas aquí sale de tu computadora, y una vez que esta página
     se carga, sigue funcionando sin internet.</p>`,
   'help.bodyHtml': `
@@ -135,10 +138,20 @@ export default {
       <li>Conecta el dispositivo, presiona <strong>Conectar</strong> y luego elígelo de la lista que muestra el navegador.</li>
       <li>Si el dispositivo deja de responder, desconéctalo, vuelve a conectarlo y presiona Conectar otra vez.</li>
     </ul>
-    <h3>Las dos pestañas</h3>
+    <h3>¿No tienes dispositivo?</h3>
     <ul>
-      <li><strong>Consola</strong> es una consola de Python en vivo en el dispositivo. ¡Escribe en ella!
+      <li>Presiona <strong>🎮 Simular</strong> para ejecutar tu programa en un CodeBot o un CodeX
+        simulado y luego <strong>Ejecutar</strong>. Presiona <strong>Detener simulador</strong> para
+        volver a un dispositivo real.</li>
+      <li>Para un programa ya hecho, abre el menú <strong>⋯</strong> y elige
+        <strong>Empezar con un ejemplo</strong>.</li>
+    </ul>
+    <h3>Las pestañas</h3>
+    <ul>
+      <li><strong>Consola</strong> es una consola de Python en vivo en el dispositivo o en el simulador,
+        y donde aparecen los mensajes de tu programa. ¡Escribe en ella!
         Presiona <kbd>Tab</kbd> para completar un nombre y <kbd>Ctrl</kbd>+<kbd>C</kbd> para detener un programa.</li>
+      <li><strong>Simulador</strong> muestra el dispositivo simulado mientras funciona.</li>
       <li><strong>Python</strong> muestra exactamente el código que forman tus bloques. Presiona
         <strong>✏️ Editar como Python</strong> para escribir el tuyo; <strong>🧩 Volver a los bloques</strong>
         te regresa a tus bloques (los cambios que escribiste no se convierten otra vez en bloques).</li>

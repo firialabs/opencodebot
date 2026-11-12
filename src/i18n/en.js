@@ -56,7 +56,7 @@ export default {
   'status.loading': 'Sending',
   'status.running': 'Running',
   'status.error': 'Oops',
-  'status.start': 'Plug in your device with a USB cable, then press Connect.',
+  'status.start': 'Plug in your device with a USB cable, then press Connect. No device? Press Simulate.',
   'status.sendingPct': 'Sending your program… {pct}%',
   'status.programError': '{name}: {message}',
 
@@ -128,6 +128,9 @@ export default {
       <li><strong>Plug it in</strong> with a USB cable and press <strong>Connect</strong>.</li>
       <li><strong>Drag some blocks</strong>, then press <strong>Run</strong>.</li>
     </ol>
+    <p><strong>No device with you?</strong> Press <strong>🎮 Simulate</strong> to run
+    your program on a simulated CodeBot or CodeX. For a ready-made program to start
+    from, open the <strong>⋯</strong> menu and choose <strong>Start from an example</strong>.</p>
     <p>Nothing you make here leaves your computer, and once this page has
     loaded it keeps working without internet.</p>`,
   'help.bodyHtml': `
@@ -137,10 +140,19 @@ export default {
       <li>Plug the device in, press <strong>Connect</strong>, then choose it from the list the browser shows.</li>
       <li>If the device stops answering, unplug it, plug it back in, and press Connect again.</li>
     </ul>
-    <h3>The two tabs</h3>
+    <h3>No device?</h3>
     <ul>
-      <li><strong>Talk to device</strong> is a live Python prompt on the device. Type in it!
+      <li>Press <strong>🎮 Simulate</strong> to run your program on a simulated CodeBot or CodeX,
+        then <strong>Run</strong>. Press <strong>Stop simulator</strong> to go back to a real device.</li>
+      <li>For a ready-made program, open the <strong>⋯</strong> menu and choose
+        <strong>Start from an example</strong>.</li>
+    </ul>
+    <h3>The tabs</h3>
+    <ul>
+      <li><strong>Talk to device</strong> is a live Python prompt on the device or the simulator,
+        and where your program's messages appear. Type in it!
         Press <kbd>Tab</kbd> to complete a name and <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop a program.</li>
+      <li><strong>Simulator</strong> shows the simulated device while it runs.</li>
       <li><strong>Python</strong> shows exactly the code your blocks make. Press
         <strong>✏️ Edit as Python</strong> to type your own; <strong>🧩 Back to blocks</strong>
         returns to your blocks (typed changes do not turn back into blocks).</li>
