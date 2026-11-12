@@ -6,6 +6,8 @@ export default {
   'app.name': 'OpenCodeBot',
   'app.description': 'Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR.',
   'app.tagline': 'blocks that fly, roll & glow',
+  'app.beta': 'Beta',
+  'app.betaTitle': 'An early public release: see About',
   // This language's name for itself, shown in the language menu.
   'lang.name': 'English',
 
@@ -169,6 +171,11 @@ export default {
     <a href="https://docs.firialabs.com/" target="_blank" rel="noreferrer">docs.firialabs.com</a>.</p>
     <p>Found a bug, or want a block that is missing? Contributions are very
     welcome on GitHub.</p>`,
+  'about.betaHtml': `
+    <p><strong>Beta:</strong> this is an early public release, so some things
+    may change or not work yet. If something goes wrong, please
+    <a href="https://github.com/firialabs/opencodebot/issues" target="_blank" rel="noreferrer">report
+    a problem on GitHub</a> and tell us what you were doing.</p>`,
   'about.privacyHtml': `
     <h3>Your privacy</h3>
     <p>{app} has no accounts, no ads and no tracking. Your programs stay with

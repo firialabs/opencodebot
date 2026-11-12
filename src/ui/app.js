@@ -648,7 +648,7 @@ export class App {
         showModal({ title: t('help.title'), bodyHtml: t('help.bodyHtml') })
         break
       case 'about':
-        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') + t('about.privacyHtml') })
+        showModal({ title: t('about.title'), bodyHtml: t('about.betaHtml') + t('about.bodyHtml') + t('about.privacyHtml') })
         break
       default:
         if (action.startsWith('lang:') && action.slice(5) !== language) setLanguage(action.slice(5))
