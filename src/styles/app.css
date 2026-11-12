@@ -16,6 +16,10 @@ body {
 
 button { font-family: inherit; }
 
+/* A clear focus ring for keyboard users, never for mouse clicks. */
+:focus-visible { outline: 3px solid var(--sky-strong); outline-offset: 2px; }
+.brand-name { margin: 0; }
+
 kbd {
   font-family: var(--font-mono);
   font-size: 0.85em;
@@ -61,7 +65,7 @@ kbd {
   color: var(--green);
   letter-spacing: 0.1px;
 }
-.brand-tag { font-size: 11px; color: var(--ink-faint); font-weight: 600; }
+.brand-tag { font-size: 11px; color: var(--ink-soft); font-weight: 600; }
 
 /* ----------------------------------------------------------- project bar */
 .project-bar { display: flex; align-items: center; gap: 4px; margin-left: 6px; min-width: 0; }
@@ -150,7 +154,7 @@ kbd {
 .device-menu .dm-sub { display: block; font-size: 11.5px; color: var(--ink-soft); font-weight: 600; }
 .device-menu .dm-head {
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--ink-faint); font-weight: 800; padding: 8px 10px 4px;
+  color: var(--ink-soft); font-weight: 800; padding: 8px 10px 4px;
 }
 
 /* --------------------------------------------------------------- buttons */
@@ -167,8 +171,8 @@ kbd {
   font-size: 15px;
   cursor: pointer;
   color: #fff;
-  background: var(--green);
-  box-shadow: 0 3px 0 var(--green-dark);
+  background: var(--green-strong);
+  box-shadow: 0 3px 0 var(--green-strong-dark);
   transition: transform 0.07s, box-shadow 0.07s, background 0.15s, filter 0.15s;
   white-space: nowrap;
 }
@@ -177,13 +181,13 @@ kbd {
 .btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 .btn-emoji { font-size: 14px; line-height: 1; }
 
-.btn-connect { background: var(--sky); box-shadow: 0 3px 0 #3ea9d6; }
-.btn-connect:active:not(:disabled) { box-shadow: 0 0 0 #3ea9d6; }
+.btn-connect { background: var(--sky-strong); box-shadow: 0 3px 0 var(--sky-strong-dark); }
+.btn-connect:active:not(:disabled) { box-shadow: 0 0 0 var(--sky-strong-dark); }
 .btn-connect[data-connected='true'] { background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--line-strong); }
 
-.btn-run { background: var(--green); box-shadow: 0 3px 0 var(--green-dark); }
-.btn-stop { background: var(--coral); box-shadow: 0 3px 0 var(--coral-dark); }
-.btn-stop:active:not(:disabled) { box-shadow: 0 0 0 var(--coral-dark); }
+.btn-run { background: var(--green-strong); box-shadow: 0 3px 0 var(--green-strong-dark); }
+.btn-stop { background: var(--coral-strong); box-shadow: 0 3px 0 var(--coral-strong-dark); }
+.btn-stop:active:not(:disabled) { box-shadow: 0 0 0 var(--coral-strong-dark); }
 
 .btn-ghost {
   background: transparent;
@@ -247,7 +251,7 @@ kbd {
   background: var(--surface);
   border: 2px dashed var(--green);
   border-radius: var(--r-pill);
-  color: var(--green-dark);
+  color: var(--green-deep);
   font-weight: 700;
   box-shadow: var(--shadow-sm);
   pointer-events: none;
@@ -295,6 +299,7 @@ kbd {
   border-bottom: 2px solid var(--line);
 }
 .tabs-spacer { flex: 1; }
+.tablist { display: flex; gap: 4px; }
 .tab {
   border: 0;
   background: transparent;
@@ -306,7 +311,7 @@ kbd {
   color: var(--ink-soft);
 }
 .tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.6); }
-.tab.is-active { background: var(--surface); color: var(--green-dark); box-shadow: 0 -2px 0 var(--green) inset; }
+.tab.is-active { background: var(--surface); color: var(--green-deep); box-shadow: 0 -2px 0 var(--green) inset; }
 
 .tab-panel { display: none; min-height: 0; grid-row: 2; grid-column: 1; }
 .tab-panel.is-active { display: grid; grid-template-rows: 1fr auto; }
@@ -387,8 +392,8 @@ kbd {
 
 .python-view .k { color: #b0409a; font-weight: 700; }
 .python-view .s { color: var(--green-deep); }
-.python-view .c { color: var(--ink-faint); font-style: italic; }
-.python-view .n { color: #c2630b; }
+.python-view .c { color: var(--ink-soft); font-style: italic; }
+.python-view .n { color: #a3540a; }
 
 /* ------------------------------------------------------------- statusbar */
 .statusbar {
@@ -474,7 +479,7 @@ kbd {
   font-weight: 600;
   margin: 0 0 10px;
   font-size: 22px;
-  color: var(--green-dark);
+  color: var(--green-deep);
 }
 .modal p, .modal li { line-height: 1.6; }
 .modal ul { padding-left: 20px; }

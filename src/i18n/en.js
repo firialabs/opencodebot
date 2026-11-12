@@ -31,10 +31,11 @@ export default {
 
   // The work area
   'blocks.hint': 'Drag blocks from the left to build your program!',
-  'splitter.label': 'Resize panels',
+  'splitter.label': 'Resize panels. Use the arrow keys.',
   'tab.terminal': 'Talk to device',
   'tab.python': 'Python',
   'term.clear': 'Clear the terminal',
+  'tab.listLabel': 'Device and Python views',
   'term.hintHtml': 'Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.',
   'term.greeting': 'Hi! This is a live Python prompt on your device.',
   'term.greetingHint': 'Plug a device in, press Connect, and start typing.',
@@ -144,6 +145,16 @@ export default {
       <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd>: run your program</li>
       <li><kbd>Esc</kbd>: stop a running program</li>
       <li><kbd>Ctrl</kbd>+<kbd>S</kbd>: save your project to a file</li>
+    </ul>
+    <h3>Using the keyboard</h3>
+    <p>Everything works without a mouse. <kbd>Tab</kbd> moves between parts of the screen.</p>
+    <ul>
+      <li><kbd>T</kbd>: go to the block palette. <kbd>W</kbd>: go to your program.</li>
+      <li>Arrow keys move around. <kbd>Enter</kbd> or <kbd>Space</kbd> adds a block or opens a menu.</li>
+      <li><kbd>M</kbd> picks up a block to move it; arrows move it, <kbd>Enter</kbd> drops it, <kbd>Esc</kbd> cancels.</li>
+      <li><kbd>Delete</kbd> removes a block, <kbd>D</kbd> duplicates it, <kbd>Shift</kbd>+<kbd>F10</kbd> opens its menu.</li>
+      <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes.</li>
+      <li>The divider between the blocks and the side panel moves with the arrow keys.</li>
     </ul>`,
   'about.bodyHtml': `
     <p>{app} is a free, open-source block editor for the Firia Labs
