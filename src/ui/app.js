@@ -647,7 +647,7 @@ export class App {
         showModal({ title: t('help.title'), bodyHtml: t('help.bodyHtml') })
         break
       case 'about':
-        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') })
+        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') + t('about.privacyHtml') })
         break
     }
   }
