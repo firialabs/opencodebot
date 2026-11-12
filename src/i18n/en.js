@@ -303,7 +303,6 @@ export default {
   'simPanel.speedValue': '{speed}×',
   'simPanel.buttons': "The board's buttons (hold Space or Enter)",
   'simPanel.buttonTitle': 'Button {n} on the board',
-  'simPanel.button': 'Button {n}',
   'simPanel.buttonFace': 'BTN {n}',
   'simPanel.moreBoardsTitle': 'More simulated boards, in a new tab: their radios hear this one',
   'simPanel.moreBoards': '📡 More boards',

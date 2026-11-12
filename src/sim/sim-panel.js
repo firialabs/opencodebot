@@ -12,7 +12,7 @@ const SPEEDS = [0.5, 1, 2, 4]
 
 // A board's two buttons (BTN 0 and 1), as the panel and the boards page show them.
 export function boardButtonsHtml() {
-  return [0, 1].map((n) => `<button type="button" class="sim-board-btn" data-n="${n}" title="${tHtml('simPanel.buttonTitle', { n })}" aria-label="${tHtml('simPanel.button', { n })}">${tHtml('simPanel.buttonFace', { n })}</button>`).join('\n')
+  return [0, 1].map((n) => `<button type="button" class="sim-board-btn" data-n="${n}" title="${tHtml('simPanel.buttonTitle', { n })}">${tHtml('simPanel.buttonFace', { n })}</button>`).join('\n')
 }
 
 export class SimPanel {

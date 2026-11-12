@@ -86,6 +86,8 @@ await page.click('#btn-run')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'running')
 await audit('connected and running')
 
+await page.click('.tab[data-tab="sim"]')
+await audit('Simulator tab')
 await page.click('.tab[data-tab="python"]')
 await audit('Python tab')
 await page.click('#btn-mode')
@@ -123,9 +125,9 @@ await page.focus('#tab-terminal')
 await page.keyboard.press('ArrowRight')
 check(
   await page.evaluate(
-    () => document.activeElement.id === 'tab-python' && document.getElementById('tab-python').ariaSelected === 'true',
+    () => document.activeElement.id === 'tab-sim' && document.getElementById('tab-sim').ariaSelected === 'true',
   ),
-  'Right arrow moves to and selects the Python tab',
+  'Right arrow moves to and selects the next tab (Simulator)',
 )
 check(
   await page.evaluate(() => document.getElementById('tab-terminal').tabIndex === -1),
@@ -171,6 +173,12 @@ await page.click('#btn-new')
 await page.click('#modal button[value="ok"]')
 await page.waitForFunction(() => !document.getElementById('blocks-hint').hidden)
 await audit('empty project')
+
+// Simulating: the simulator's view, its controls and its status in the side pane.
+await page.click('#btn-sim')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+await page.waitForTimeout(500)
+await audit('simulating')
 
 await browser.close()
 server?.kill()
