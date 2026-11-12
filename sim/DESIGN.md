@@ -309,7 +309,30 @@ is measured on a device:
   what a sensor read, a motor write and a bytecode cost on the device. A tight loop's
   iterations per second on a CB3 sets `usPerBranch`.
 
-A bench session with a CB3, a tape line and a ruler settles all of these.
+A bench session with a CB3, a tape line and a ruler settles all of these. Until then
+(the manager, 2026-11-12: the real CB3 waits for the final testing rounds) the reference
+is CodeSpace's own simulated CodeBot (botsim, `src/entities/CodeBotModels.js` and
+`CodeBotModelController.js` at `~/dev/firia/botsim-ref`), since CodeSpace's lessons are
+tuned to it. What its source says, at its 1 unit = 10 cm:
+
+- **Motors**: target wheel speed = power / 100 x 15 rad/s (`motorMaxAngularVelocity`, "an
+  experimental value"), linear, with no deadband; torque from 1.0 to 1.8 x 1.1 as power
+  rises; 65 mm wheels. So 0.49 m/s at 100%, 0.24 m/s at 50%. Ours: 22 rad/s past a 12%
+  deadband, 0.72 m/s at 100% and 0.31 m/s at 50%. Its acceleration and turning come from
+  Ammo.js (body 40, wheels 5, wheel friction 50, a skid of 0.01): measure, not read.
+- **Line sensors**: a ray straight down from just under the board, about 4 cm to the floor;
+  the reading is 4095 x (1 - r x (1 - d / 10 cm)), r the floor's mean RGB (sRGB, not
+  linear) and d the ray's length. White floor reads about 1640 and black 4095; ours reads
+  white 180 and black 3900. botcore's `ls.check()` threshold is 1000 by default, so on
+  botsim's numbers a plain `check()` would see white as a line: find which thresholds
+  CodeSpace's lessons use before choosing.
+- **Proximity**: switched off in botsim (always 4095, "re-enable when we are using prox
+  sensors in curriculum"). Our proximity table was measured on a real CodeBot for CodeSpace
+  and stays.
+- **Encoders**: from the wheel's angle in the physics engine, 20 slots, edges counted.
+
+Measuring the rest needs botsim running: it has no login-free mode at make.firialabs.com,
+and locally it wants Node 18, react-scripts 3.4.3 and the Firebase emulators.
 
 - **CodeAIR** (`AIR` in `src/sim/world/codeair.js`, constants in `crazyflie.js`): how
   closely it tracks a velocity, height and yaw rate (the lags and gains); how far it drifts
@@ -421,7 +444,7 @@ here, `LATENCY_US`); how many messages the receive queue holds and which it drop
 enforced here; ESP-NOW carries 250 bytes); RSSI between boards on one desk (about -42 dBm
 here, with a little noise); whether `send` with the radio off raises (silent here).
 
-## HANDOFF (2026-11-11, from the radio, courses, stepping, infrared and performance session)
+## HANDOFF (2026-11-12, from the rooms, accessibility and first push session)
 
 **State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
 pushed to origin and tracking `origin/sim` (2026-11-12, David: push and keep pushing as
@@ -461,7 +484,19 @@ cannot be simplified until the normals go (build-models.mjs `flat`). Chromium's 
 throttling and SwiftShader make a pessimistic Chromebook; software GL is the bottleneck,
 not the simulation (simulated time keeps up at 4x).
 
-**Next, in this order (the manager's order, 2026-11-11).**
+**This session learned.** CodeSpace's rooms carry impostors that no picture shows (the
+auditorium's 2 cm rail from the stage over the seats): look at a room in the simulator,
+not only at its numbers. A falling robot's body still overlaps the ledge it left, and
+pushing it out of every box sends it a metre through the stage's stepped apron: land it
+clear along its way. `npm run perf` frame rates swing with the machine's load (another
+session compiling took CodeAIR from 24 to 14): compare against the previous commit back to
+back before believing a miss. GitHub's runner measures 14 frames a second for both boards
+(the report step, allowed to fail); the budget is set on p52-lab. CI runs only on pull
+requests or by hand: `gh workflow run ci.yml --ref sim` ran the whole suite green
+(2026-11-12).
+
+**Next, in this order (the manager's order, 2026-11-12).**
+0. Push after every commit (`git push`; see State).
 1. Once David merges PR #2 (branch `feat/device-targets`, the device target interface:
    `docs/device-targets.md`, `src/device/device-target.js`), and before anything else:
    rebase `sim` onto origin/main and move SimDevice onto that interface
@@ -486,5 +521,14 @@ not the simulation (simulated time keeps up at 4x).
 3. (d) Done: the other rooms behind a room picker ("Where it stands", "Rooms"). The
    room picker's strings join step 2's list (`sim-panel.js`, and the room names in
    `kinds.js` ROOMS).
-4. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
+4. While PR #2 waits: calibrate CodeBot against botsim, not a real CB3 (the real one waits
+   for the final testing rounds, with David). "Calibration" lists what botsim's source
+   gives. Next: decide with the manager whether to adopt botsim's motor curve (15 rad/s,
+   no deadband) and line readings (white about 1640), which changes every distance a
+   lesson drives, and find the line thresholds CodeSpace's lessons pass to `ls.check`
+   (`firialabs:codespace-coauthor` can read the lesson content, which itself stays out of
+   this repo). Measuring acceleration and turning needs botsim running: ask the manager for
+   a CodeSpace test account at make.firialabs.com (no login-free mode), or stand it up
+   locally (Node 18, react-scripts 3.4.3, the Firebase emulators).
+5. Calibration on real devices (the lists in "Calibration", the radio and infrared lists
    in "Where it stands", and the Chromebook checks in sim/README.md "Performance").
