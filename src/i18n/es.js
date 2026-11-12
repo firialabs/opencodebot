@@ -156,6 +156,14 @@ export default {
     <a href="https://docs.firialabs.com/" target="_blank" rel="noreferrer">docs.firialabs.com</a>.</p>
     <p>¿Encontraste un error o quieres un bloque que falta? Las contribuciones son muy
     bienvenidas en GitHub.</p>`,
+  'about.privacyHtml': `
+    <h3>Tu privacidad</h3>
+    <p>{app} no tiene cuentas, ni anuncios, ni rastreo. Tus programas se quedan
+    contigo: en este navegador, en los archivos que guardas y en el dispositivo
+    al que los envías. La aplicación no envía nada sobre ti ni sobre tu trabajo
+    a ningún sitio.</p>
+    <p>Al abrir la página, la aplicación se carga desde el sitio que la aloja,
+    como cualquier página web. Después, funciona sin conexión.</p>`,
 
   // Errores de Python, como los lee un estudiante
   'pyerr.NameError': 'Algo todavía no tiene nombre',

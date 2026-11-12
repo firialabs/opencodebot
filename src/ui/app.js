@@ -286,6 +286,21 @@ export class App {
 
     $('file-input').addEventListener('change', (e) => this._openFile(e.target.files?.[0]))
 
+    // Escape closes an open menu and returns focus to the button that opened it.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return
+      for (const [button, panel] of [
+        [chip, menu],
+        [menuBtn, appMenu],
+      ]) {
+        if (!panel.hidden) {
+          this._togglePopover(button, panel, false)
+          button.focus()
+          e.stopImmediatePropagation()
+        }
+      }
+    })
+
     document.addEventListener('keydown', (e) => {
       const meta = e.ctrlKey || e.metaKey
       if (meta && e.key === 'Enter') {
@@ -300,6 +315,7 @@ export class App {
     })
 
     this._bindSplitter()
+    this._bindTabKeys()
     window.addEventListener('resize', () => {
       this.workspace.resize()
       this.terminal.resize()
@@ -312,11 +328,14 @@ export class App {
     button.setAttribute('aria-expanded', String(open))
   }
 
-  _selectTab(name) {
+  /** Show a tab. `focusPanel` is false when arrowing between tabs. */
+  _selectTab(name, { focusPanel = true } = {}) {
     for (const tab of document.querySelectorAll('.tab')) {
       const active = tab.dataset.tab === name
       tab.classList.toggle('is-active', active)
       tab.setAttribute('aria-selected', String(active))
+      // One tab stop for the whole tab list; arrows move within it.
+      tab.tabIndex = active ? 0 : -1
     }
     for (const panel of document.querySelectorAll('.tab-panel')) {
       panel.classList.toggle('is-active', panel.dataset.panel === name)
@@ -324,7 +343,27 @@ export class App {
     if (name === 'sim') this.device.sim.view?.resize()
     if (name === 'terminal') {
       this.terminal.resize()
-      this.terminal.focus()
+      if (focusPanel) this.terminal.focus()
+    }
+  }
+
+  /** Left/Right (and Home/End) move between tabs, as screen readers expect. */
+  _bindTabKeys() {
+    const tabs = [...document.querySelectorAll('.tab')]
+    for (const tab of tabs) {
+      tab.addEventListener('keydown', (e) => {
+        const i = tabs.indexOf(tab)
+        const next = {
+          ArrowRight: tabs[(i + 1) % tabs.length],
+          ArrowLeft: tabs[(i - 1 + tabs.length) % tabs.length],
+          Home: tabs[0],
+          End: tabs[tabs.length - 1],
+        }[e.key]
+        if (!next) return
+        e.preventDefault()
+        this._selectTab(next.dataset.tab, { focusPanel: false })
+        next.focus()
+      })
     }
   }
 
@@ -332,29 +371,53 @@ export class App {
     const splitter = $('splitter')
     const workarea = document.querySelector('.workarea')
     let dragging = false
+    const vertical = () => window.matchMedia('(max-width: 880px)').matches
 
-    const apply = (event) => {
+    /** Size the side pane in pixels, clamped, and report it as a percentage. */
+    const setSide = (px) => {
       const rect = workarea.getBoundingClientRect()
-      const vertical = window.matchMedia('(max-width: 880px)').matches
-      if (vertical) {
-        const height = Math.min(Math.max(rect.bottom - event.clientY, 120), rect.height - 140)
+      let pct
+      if (vertical()) {
+        const height = Math.min(Math.max(px, 120), rect.height - 140)
         workarea.style.gridTemplateRows = `1fr 6px ${height}px`
+        pct = 100 - (height / rect.height) * 100
       } else {
-        const width = Math.min(Math.max(rect.right - event.clientX, 220), rect.width - 280)
+        const width = Math.min(Math.max(px, 220), rect.width - 280)
         workarea.style.setProperty('--side-w', `${width}px`)
+        pct = 100 - (width / rect.width) * 100
       }
+      // The value is the blocks area's share, which is what moving it changes.
+      splitter.setAttribute('aria-valuenow', String(Math.round(pct)))
       this.workspace.resize()
       this.terminal.resize()
+    }
+    const sideNow = () => {
+      const side = $('side-pane').getBoundingClientRect()
+      return vertical() ? side.height : side.width
     }
 
     splitter.addEventListener('pointerdown', (e) => {
       dragging = true
       splitter.setPointerCapture(e.pointerId)
     })
-    splitter.addEventListener('pointermove', (e) => dragging && apply(e))
+    splitter.addEventListener('pointermove', (e) => {
+      if (!dragging) return
+      const rect = workarea.getBoundingClientRect()
+      setSide(vertical() ? rect.bottom - e.clientY : rect.right - e.clientX)
+    })
     splitter.addEventListener('pointerup', () => {
       dragging = false
     })
+
+    // Arrow keys move the divider, so it works without a mouse.
+    splitter.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 120 : 40
+      const grow = vertical() ? { ArrowUp: step, ArrowDown: -step } : { ArrowLeft: step, ArrowRight: -step }
+      if (!(e.key in grow)) return
+      e.preventDefault()
+      setSide(sideNow() + grow[e.key])
+    })
+    requestAnimationFrame(() => setSide(sideNow()))
   }
 
   // -------------------------------------------------------- device chip
@@ -585,7 +648,7 @@ export class App {
         showModal({ title: t('help.title'), bodyHtml: t('help.bodyHtml') })
         break
       case 'about':
-        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') })
+        showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') + t('about.privacyHtml') })
         break
       default:
         if (action.startsWith('lang:') && action.slice(5) !== language) setLanguage(action.slice(5))

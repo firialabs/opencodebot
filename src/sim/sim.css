@@ -32,8 +32,8 @@
 .sim-boards { text-decoration: none; margin-left: auto; }
 .sim-boards + .sim-reset { margin-left: 0; }
 
-.btn-sim { background: var(--lilac); box-shadow: 0 3px 0 #8f7fd1; }
-.btn-sim:active:not(:disabled) { box-shadow: 0 0 0 #8f7fd1; }
+.btn-sim { background: var(--lilac-strong); box-shadow: 0 3px 0 var(--lilac-strong-dark); }
+.btn-sim:active:not(:disabled) { box-shadow: 0 0 0 var(--lilac-strong-dark); }
 .btn-sim[data-connected='true'] { background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--line-strong); }
 .sim-group[hidden], .sim-bar [hidden] { display: none; }
 .sim-group label { display: inline-flex; align-items: center; gap: 2px; }

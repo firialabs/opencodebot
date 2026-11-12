@@ -17,7 +17,7 @@
         <div class="brand">
           <img class="brand-mascot" src="./icons/firia-bot.svg" alt="" width="27" height="48" />
           <div class="brand-text">
-            <span class="brand-name" data-i18n="app.name"></span>
+            <h1 class="brand-name" data-i18n="app.name"></h1>
             <span class="brand-tag" data-i18n="app.tagline"></span>
           </div>
         </div>
@@ -37,7 +37,7 @@
             <span class="device-chip-label" id="device-chip-label" data-i18n="chip.pick"></span>
             <span class="device-chip-caret" aria-hidden="true">▾</span>
           </button>
-          <div id="device-menu" class="device-menu" role="listbox" hidden></div>
+          <div id="device-menu" class="device-menu" role="listbox" data-i18n-attr="aria-label=chip.menuHead" hidden></div>
         </div>
 
         <div class="topbar-actions">
@@ -54,7 +54,7 @@
             <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text" data-i18n="btn.stop"></span>
           </button>
           <div class="menu-wrap">
-            <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" data-i18n-attr="title=btn.more">⋯</button>
+            <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" data-i18n-attr="title=btn.more;aria-label=btn.more">⋯</button>
             <div id="app-menu" class="app-menu" role="menu" hidden>
               <button role="menuitem" data-action="new" data-i18n="menu.new"></button>
               <button role="menuitem" data-action="open" data-i18n="menu.open"></button>
@@ -88,36 +88,41 @@
           </div>
         </section>
 
-        <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"
+        <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-controls="side-pane" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"
              data-i18n-attr="aria-label=splitter.label"></div>
 
         <section class="side-pane" id="side-pane">
-          <div class="tabs" role="tablist">
-            <button class="tab is-active" role="tab" data-tab="terminal" aria-selected="true">
-              <span aria-hidden="true">💬</span> <span data-i18n="tab.terminal"></span>
-            </button>
-            <button class="tab" role="tab" data-tab="sim" aria-selected="false">
-              <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
-            </button>
-            <button class="tab" role="tab" data-tab="python" aria-selected="false">
-              <span aria-hidden="true">🐍</span> <span data-i18n="tab.python"></span>
-            </button>
+          <div class="tabs">
+            <div class="tablist" role="tablist" data-i18n-attr="aria-label=tab.listLabel">
+              <button class="tab is-active" role="tab" id="tab-terminal" data-tab="terminal" aria-selected="true"
+                      aria-controls="panel-terminal">
+                <span aria-hidden="true">💬</span> <span data-i18n="tab.terminal"></span>
+              </button>
+              <button class="tab" role="tab" id="tab-sim" data-tab="sim" aria-selected="false"
+                      aria-controls="panel-sim" tabindex="-1">
+                <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
+              </button>
+              <button class="tab" role="tab" id="tab-python" data-tab="python" aria-selected="false"
+                      aria-controls="panel-python" tabindex="-1">
+                <span aria-hidden="true">🐍</span> <span data-i18n="tab.python"></span>
+              </button>
+            </div>
             <div class="tabs-spacer"></div>
-            <button id="btn-clear-term" class="icon-btn" data-i18n-attr="title=term.clear">🧹</button>
+            <button id="btn-clear-term" class="icon-btn" data-i18n-attr="title=term.clear;aria-label=term.clear">🧹</button>
           </div>
 
-          <div class="tab-panel is-active" data-panel="terminal">
+          <div class="tab-panel is-active" data-panel="terminal" id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal">
             <div id="terminal-host" class="terminal-host"></div>
             <div class="terminal-foot" id="terminal-foot">
               <span class="term-hint" data-i18n-html="term.hintHtml"></span>
             </div>
           </div>
 
-          <div class="tab-panel" data-panel="sim">
+          <div class="tab-panel" data-panel="sim" id="panel-sim" role="tabpanel" aria-labelledby="tab-sim">
             <div id="sim-host" class="sim-host"></div>
           </div>
 
-          <div class="tab-panel" data-panel="python">
+          <div class="tab-panel" data-panel="python" id="panel-python" role="tabpanel" aria-labelledby="tab-python">
             <div class="python-bar">
               <span class="python-bar-msg" id="python-bar-msg" data-i18n="text.barBlocks"></span>
               <button id="btn-mode" class="btn btn-small" type="button" data-i18n="text.toText"></button>
@@ -132,7 +137,7 @@
 
       <footer class="statusbar">
         <span class="status-chip" id="status-chip" data-state="idle" data-i18n="status.offline"></span>
-        <span class="status-msg" id="status-msg" data-i18n="status.start"></span>
+        <span class="status-msg" id="status-msg" role="status" data-i18n="status.start"></span>
         <span class="status-spacer"></span>
         <span class="status-note" id="browser-note"></span>
       </footer>

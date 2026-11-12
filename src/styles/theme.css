@@ -23,10 +23,20 @@
   --coral-dark: #e8604c;
   --coral-soft: #ffeeeb;
   --mango: #ffa94d;
+  /* Button fills that carry white text at 4.5:1 or better (WCAG AA). The
+     lighter brand tints above stay for backgrounds and accents. */
+  --sky-strong: #0a78b4;
+  --sky-strong-dark: #075c8a;
+  --green-strong: #357f31;
+  --green-strong-dark: #255a22;
+  --coral-strong: #c4442f;
+  --coral-strong-dark: #943222;
+  --lilac-strong: #7a5cc4;
+  --lilac-strong-dark: #5b4396;
 
   /* Neutrals */
   --ink: #4c4d4f;
-  --ink-soft: #7c7e82;
+  --ink-soft: #66686b; /* 4.6:1 on --paper-2 and --line, for small text */
   --ink-faint: #a9abaf;
   --line: #ece9e1;
   --line-strong: #dcd8cd;

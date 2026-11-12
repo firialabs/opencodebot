@@ -76,7 +76,7 @@ npm run build    # writes dist/
 npm run preview  # serve dist/ locally
 ```
 
-`npm test` runs three suites, none of which need hardware:
+`npm test` runs every suite in `tests/`, none of which need hardware. Among them:
 
 - **`tests/protocol.mjs`** — the debugger-output filter, and a round-trip of the
   file transfer through a real Python interpreter, byte-comparing what the
@@ -86,6 +86,11 @@ npm run preview  # serve dist/ locally
 - **`tests/subpath.mjs`** — serves `dist/` from a sub-path the way GitHub Pages
   does, then pulls the network and reloads, so the "works offline" promise
   cannot quietly break.
+- **`tests/privacy.mjs`**: walks the app (the palette, a run, the simulator in
+  every room, the boards page) recording every request, from the page, its
+  workers and its service worker, and fails on any that goes anywhere but the
+  site the app came from. About promises nothing leaves the browser; this
+  keeps that true.
 
 ### Hosting on GitHub Pages
 
