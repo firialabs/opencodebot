@@ -4,7 +4,7 @@ import { State, createDevice, deviceKindFromUrl } from '../device/device-target.
 import '../device/device-manager.js'
 import '../device/loopback-device.js'
 import { SUPPORTED_TARGETS, getTarget } from '../device/targets.js'
-import { BlockWorkspace, STARTER_PROJECTS } from '../workspace/workspace.js'
+import { BlockWorkspace, STARTER_PROJECTS, DEFAULT_PROJECT_NAME, fileNameFor } from '../workspace/workspace.js'
 import { generatePython, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
@@ -161,6 +161,27 @@ export class App {
     $('btn-run').addEventListener('click', () => this._run())
     $('btn-stop').addEventListener('click', () => this._stop())
     $('btn-clear-term').addEventListener('click', () => this.terminal.clear())
+    $('btn-new').addEventListener('click', () => this._newProject())
+
+    // Project name: edit in place. Enter or leaving the field saves it,
+    // Escape puts the old name back.
+    const nameField = $('project-name')
+    nameField.value = this.workspace.name
+    nameField.addEventListener('change', () => {
+      this.workspace.rename(nameField.value)
+      nameField.value = this.workspace.name
+    })
+    nameField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') nameField.blur()
+      if (e.key === 'Escape') {
+        nameField.value = this.workspace.name
+        nameField.blur()
+      }
+    })
+    this.workspace.addEventListener('rename', () => {
+      nameField.value = this.workspace.name
+      document.title = `${this.workspace.name} · OpenCodeBot`
+    })
 
     // Tabs
     for (const tab of document.querySelectorAll('.tab')) {
@@ -399,16 +420,9 @@ export class App {
 
   async _menuAction(action) {
     switch (action) {
-      case 'new': {
-        const ok = await showModal({
-          title: 'Start a new project?',
-          bodyHtml: '<p>Your current blocks will be cleared. This cannot be undone.</p>',
-          confirmText: 'Yes, clear it',
-          cancelText: 'Keep my blocks',
-        })
-        if (ok) this.workspace.clear()
+      case 'new':
+        this._newProject()
         break
-      }
       case 'open':
         $('file-input').click()
         break
@@ -436,8 +450,28 @@ export class App {
     }
   }
 
+  /** Start over, asking first if there is anything to lose. */
+  async _newProject() {
+    if (!this.workspace.isEmpty) {
+      const ok = await showModal({
+        title: 'Start a new project?',
+        bodyHtml:
+          '<p>Your current blocks will be cleared. This cannot be undone.</p>' +
+          '<p>To keep them, press <b>Keep my blocks</b>, then Save project from the ⋯ menu.</p>',
+        confirmText: 'Yes, start over',
+        cancelText: 'Keep my blocks',
+      })
+      if (!ok) return
+    }
+    this.workspace.clear()
+    this.workspace.rename(DEFAULT_PROJECT_NAME)
+    this.terminal.say('New project. Have fun!')
+    $('project-name').focus()
+    $('project-name').select()
+  }
+
   _saveFile() {
-    const name = `${(getTarget(this.workspace.targetId)?.name || 'project').toLowerCase()}-blocks.ocb`
+    const name = fileNameFor(this.workspace.name, 'ocb')
     download(name, JSON.stringify(this.workspace.toProject(), null, 2), 'application/json')
     toast({ kind: 'info', title: 'Project saved', detail: `Look in your Downloads folder for ${name}.` })
   }

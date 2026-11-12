@@ -27,6 +27,7 @@ export const HELP_HTML = `
     <li><strong>Talk to device</strong> is a live Python prompt on the device. Type in it!
       Press <kbd>Tab</kbd> to complete a name and <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop a program.</li>
     <li><strong>Python</strong> shows exactly the code your blocks make.</li>
+    <li><strong>🆕 New</strong> starts over. Click the project name next to it to rename your project.</li>
   </ul>
   <h3>Shortcuts</h3>
   <ul>

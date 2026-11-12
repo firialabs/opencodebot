@@ -6,11 +6,28 @@ import * as Blockly from 'blockly/core'
 import { toolboxFor, cuteTheme } from '../blocks/index.js'
 
 const STORAGE_KEY = 'opencodebot.project.v1'
+export const DEFAULT_PROJECT_NAME = 'My project'
+
+/** Tidy a project name: one line, no runs of spaces, never empty. */
+export function cleanProjectName(name) {
+  const tidy = String(name ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)
+  return tidy || DEFAULT_PROJECT_NAME
+}
+
+/** A file name made from a project name, safe on every operating system. */
+export function fileNameFor(name, extension) {
+  const base = cleanProjectName(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${base || 'project'}.${extension}`
+}
 
 export class BlockWorkspace extends EventTarget {
   constructor(container, targetId = null) {
     super()
     this.targetId = targetId
+    this.name = DEFAULT_PROJECT_NAME
     this.workspace = Blockly.inject(container, {
       toolbox: toolboxFor(targetId),
       theme: cuteTheme,
@@ -51,11 +68,20 @@ export class BlockWorkspace extends EventTarget {
     this.dispatchEvent(new CustomEvent('change'))
   }
 
+  rename(name) {
+    const next = cleanProjectName(name)
+    if (next === this.name) return
+    this.name = next
+    this.dispatchEvent(new CustomEvent('rename'))
+    this.dispatchEvent(new CustomEvent('change'))
+  }
+
   /** A project is the blocks plus the board they were written for. */
   toProject() {
     return {
       format: 'opencodebot',
       version: 1,
+      name: this.name,
       device: this.targetId,
       blocks: Blockly.serialization.workspaces.save(this.workspace),
     }
@@ -64,6 +90,8 @@ export class BlockWorkspace extends EventTarget {
   loadProject(project) {
     if (!project?.blocks) throw new Error('That file does not look like an OpenCodeBot project.')
     if (project.device) this.setTarget(project.device)
+    this.name = cleanProjectName(project.name)
+    this.dispatchEvent(new CustomEvent('rename'))
     Blockly.serialization.workspaces.load(project.blocks, this.workspace)
     this.dispatchEvent(new CustomEvent('change'))
   }
