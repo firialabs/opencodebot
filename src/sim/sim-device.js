@@ -1,9 +1,8 @@
-// A simulated board, behind the same face as DeviceManager (the USB board):
-// connect, disconnect, run, stop, sendRaw; isConnected, targetId, target,
-// state; the events 'state', 'device', 'data', 'notice', 'progress' and
-// 'program-error'. The app treats it as one more device. Its own event 'line'
-// gives the program's line while paused ({ line }, null when it runs on).
-import { State } from '../device/device-manager.js'
+// A simulated board: a DeviceTarget (docs/device-targets.md) of kind 'sim',
+// which the app treats as one more device. Beyond the interface, connect()
+// takes the board to simulate, and its own event 'line' gives the program's
+// line while paused ({ line }, null when it runs on).
+import { State, registerDeviceKind } from '../device/device-target.js'
 import { getTarget } from '../device/targets.js'
 import { KINDS, ROOMS } from './kinds.js'
 import { Describer } from './describe.js'
@@ -13,6 +12,7 @@ const enc = new TextEncoder()
 export class SimDevice extends EventTarget {
   constructor() {
     super()
+    this.kind = 'sim'
     this.isSimulator = true
     this.state = State.OFFLINE
     this.targetId = null
@@ -114,8 +114,6 @@ export class SimDevice extends EventTarget {
     this._setState(State.OFFLINE, 'Simulator closed.')
   }
 
-  async forget() {}
-
   // stepFirst: pause at the program's first line, to step it by line.
   async run(source, { stepFirst = false } = {}) {
     if (!this.worker) return false
@@ -132,6 +130,15 @@ export class SimDevice extends EventTarget {
     const done = new Promise((r) => (this._stopped = r))
     this._post({ t: 'stop' })
     await done
+    return true
+  }
+
+  // Save a file on the simulated board's drive; programs run after can open it.
+  async writeFile(name, contents) {
+    if (!this.worker) return false
+    const saved = new Promise((r) => ((this._saved ??= new Map()).set(name, r)))
+    this._post({ t: 'file', name, contents })
+    await saved
     return true
   }
 
@@ -177,8 +184,6 @@ export class SimDevice extends EventTarget {
     this._post({ t: 'stdin', text })
   }
 
-  parkActuators() {}
-
   _post(m) {
     this.worker?.postMessage(m)
   }
@@ -197,6 +202,7 @@ export class SimDevice extends EventTarget {
         break
       }
       case 'screen': this.view?.screen?.(m.px); break
+      case 'saved': this._saved?.get(m.name)?.(); this._saved?.delete(m.name); break
       case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
       case 'state':
         if (m.state === 'paused') this._setState(State.RUNNING, m.line ? `Paused at line ${m.line}.` : 'Paused.')
@@ -290,3 +296,5 @@ class Speaker {
     this.ctx?.close()
   }
 }
+
+registerDeviceKind('sim', () => new SimDevice(), { label: 'Simulator' })

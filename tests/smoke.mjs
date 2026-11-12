@@ -34,7 +34,7 @@ async function reachable(url) {
 const server = await ensureServer()
 
 const problems = []
-const browser = await chromium.launch()
+const browser = await chromium.launch(process.env.OCB_CHROMIUM ? { executablePath: process.env.OCB_CHROMIUM } : {})
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 page.on('pageerror', (e) => problems.push(`page error: ${e.message}`))
 page.on('console', (m) => {
@@ -123,6 +123,52 @@ for (const device of DEVICES) {
   } else {
     console.log('flyout: background is fully opaque')
   }
+}
+
+// Jill's reports (Oct 23): else-if must be addable straight from the block,
+// and CodeBot needs line sensor LED and "was pressed" blocks. Check the
+// Python each one produces, not just that it produces something.
+{
+  const result = await page.evaluate(() => {
+    const { Blockly, generatePython } = window.openCodeBotInternals
+    const ws = new Blockly.Workspace()
+    const out = {}
+    const ifBlock = ws.newBlock('controls_if')
+    out.hasPlus = !!ifBlock.getField('PLUS')
+    ifBlock.plus?.()
+    ifBlock.plus?.()
+    out.ifPython = generatePython(ws, null)
+    ifBlock.dispose(false)
+    const expect = {
+      codebot_ls_led: 'leds.ls_num(',
+      codebot_ls_leds_all: 'leds.ls(',
+      codebot_prox_led: 'leds.prox_num(',
+      codebot_pwr_led: 'leds.pwr(',
+      codebot_button_was: 'buttons.was_pressed(',
+      codebot_usb_led: 'leds.usb(',
+      codebot_prox_range: 'prox.range()[',
+      codebot_on_usb: 'system.pwr_is_usb()',
+      codebot_temp: 'system.temp_F()',
+    }
+    out.missing = []
+    for (const [type, call] of Object.entries(expect)) {
+      const block = ws.newBlock(type)
+      if (block.outputConnection) {
+        const print = ws.newBlock('ocb_print')
+        print.getInput('TEXT').connection.connect(block.outputConnection)
+      }
+      const code = generatePython(ws, 'codebot')
+      if (!code.includes(call)) out.missing.push(`${type} should call ${call}`)
+      ws.clear()
+    }
+    ws.dispose()
+    return out
+  })
+  if (!result.hasPlus) problems.push('if ▸ no + button to add an else if')
+  const elifs = (result.ifPython.match(/^elif /gm) || []).length
+  if (elifs !== 2) problems.push(`if ▸ expected 2 elif branches after pressing + twice, got ${elifs}`)
+  else console.log('if: + adds elif branches')
+  for (const m of result.missing) problems.push(`codebot ▸ ${m}`)
 }
 
 await browser.close()

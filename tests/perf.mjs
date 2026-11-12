@@ -44,7 +44,7 @@ const gz = (url) => {
 }
 
 const browser = await chromium.launch({
-  ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
+  ...(process.env.OCB_CHROMIUM ? { executablePath: process.env.OCB_CHROMIUM } : {}),
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 })
 const misses = []

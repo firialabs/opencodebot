@@ -38,6 +38,7 @@ export class Engine {
   constructor(opts) {
     this.o = opts
     this.world = opts.world
+    this.userFiles = {}            // saved to the board's drive (writeFile), on every VM
     this.speed = opts.speed ?? 1
     this.usPerBranch = opts.usPerBranch ?? 5   // an ESP32-S2 at 240 MHz; to be measured
     this.hookPeriod = opts.hookPeriod ?? 1000
@@ -247,6 +248,7 @@ export class Engine {
       if (dir) mp.FS.mkdirTree(dir)
       mp.FS.writeFile('/lib/' + name, src)
     }
+    for (const [name, src] of Object.entries(this.userFiles)) mp.FS.writeFile('/' + name, src)
     const bridge = this.o.bridge(this)
     const guarded = {}
     for (const [k, f] of Object.entries(bridge)) {

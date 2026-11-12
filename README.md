@@ -141,6 +141,10 @@ a block is about fifteen lines in one file.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+This project uses three kinds of terms:
 
-Firia Labs, CodeBot, CodeX, CodeAIR and CodeSpace are trademarks of Firia Labs.
+| What | Terms |
+|---|---|
+| **Code** (everything not listed below) | MIT. See [LICENSE](LICENSE). |
+| **Artwork, 3D models and environments** (the simulator's assets live in `sim/assets/`, with their own `LICENSE`) | [Creative Commons Attribution-NonCommercial 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (CC BY-NC 4.0) |
+| **Firia Labs names, logos and the mascot** (including everything in `brand/` and the `firia-bot` icons in `public/icons/`) | Trademarks of Firia Labs. Neither licence above covers them. See [TRADEMARKS.md](TRADEMARKS.md). |

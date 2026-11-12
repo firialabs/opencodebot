@@ -27,7 +27,22 @@ jobs:
       - run: npm ci
 
       - name: Install the browser the tests drive
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
+
+      # System libraries for that browser. The runner image already has
+      # Chrome and its libraries, so this is a top-up: retry when the Ubuntu
+      # mirror is flaky, and do not fail the build over it. If a library
+      # really is missing, the tests themselves will say so.
+      - name: Top up the browser's system libraries
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          for attempt in 1 2 3; do
+            npx playwright install-deps chromium && exit 0
+            echo "install-deps failed (attempt $attempt), retrying"
+            sleep $((attempt * 10))
+          done
+          exit 1
 
       - run: npm run build
 

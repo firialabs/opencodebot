@@ -15,6 +15,14 @@ const SIDES = [
   ['right', 'RIGHT'],
 ]
 
+const LINE_SENSORS = [
+  ['far left (0)', '0'],
+  ['left (1)', '1'],
+  ['middle (2)', '2'],
+  ['right (3)', '3'],
+  ['far right (4)', '4'],
+]
+
 const AXES = [
   ['side to side (x)', '0'],
   ['front to back (y)', '1'],
@@ -128,7 +136,7 @@ defineBlocks([
   {
     json: {
       type: 'codebot_led',
-      message0: '💡 turn LED %1 %2',
+      message0: '💡 turn top LED %1 %2',
       args0: [
         {
           type: 'field_dropdown',
@@ -150,7 +158,7 @@ defineBlocks([
   {
     json: {
       type: 'codebot_leds_all',
-      message0: '💡 turn all LEDs %1',
+      message0: '💡 turn all top LEDs %1',
       args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', '0xFF'], ['off', '0x00']] }],
       previousStatement: null,
       nextStatement: null,
@@ -165,7 +173,7 @@ defineBlocks([
   {
     json: {
       type: 'codebot_leds_pattern',
-      message0: '💡 show LED pattern %1',
+      message0: '💡 show top LED pattern %1',
       args0: [{ type: 'field_input', name: 'BITS', text: '10101010' }],
       previousStatement: null,
       nextStatement: null,
@@ -179,17 +187,95 @@ defineBlocks([
     },
   },
 
+  {
+    json: {
+      type: 'codebot_ls_led',
+      message0: '💡 turn line sensor LED %1 %2',
+      args0: [
+        { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
+        { type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'Switch one of the five LEDs above the line sensors, on the front of the robot.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.ls_num(${block.getFieldValue('NUM')}, ${block.getFieldValue('ON')})\n`
+    },
+  },
+  {
+    json: {
+      type: 'codebot_ls_leds_all',
+      message0: '💡 turn all line sensor LEDs %1',
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', '0b11111'], ['off', '0b00000']] }],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'All five line sensor LEDs at once.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.ls(${block.getFieldValue('ON')})\n`
+    },
+  },
+  {
+    json: {
+      type: 'codebot_prox_led',
+      message0: '💡 turn %1 proximity LED %2',
+      args0: [
+        { type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] },
+        { type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'Switch the LED next to a proximity sensor.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.prox_num(${block.getFieldValue('SIDE')}, ${block.getFieldValue('ON')})\n`
+    },
+  },
+  {
+    json: {
+      type: 'codebot_pwr_led',
+      message0: '💡 turn power LED %1',
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] }],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'The power light, next to the on/off switch.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.pwr(${block.getFieldValue('ON')})\n`
+    },
+  },
+  {
+    json: {
+      type: 'codebot_usb_led',
+      message0: '💡 turn USB LED %1',
+      args0: [{ type: 'field_dropdown', name: 'ON', options: [['on', 'True'], ['off', 'False']] }],
+      previousStatement: null,
+      nextStatement: null,
+      style: 'lights_blocks',
+      tooltip: 'The light next to the USB socket.',
+    },
+    python: (block) => {
+      bot()
+      return `leds.usb(${block.getFieldValue('ON')})\n`
+    },
+  },
+
   // ------------------------------------------------------------ sensors
   {
     json: {
       type: 'codebot_line_sees',
       message0: '👀 line sensor %1 sees a line',
       args0: [
-        {
-          type: 'field_dropdown',
-          name: 'NUM',
-          options: [['far left (0)', '0'], ['left (1)', '1'], ['middle (2)', '2'], ['right (3)', '3'], ['far right (4)', '4']],
-        },
+        { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
       ],
       output: 'Boolean',
       style: 'sensors_blocks',
@@ -205,11 +291,7 @@ defineBlocks([
       type: 'codebot_line_value',
       message0: '👀 line sensor %1 reading',
       args0: [
-        {
-          type: 'field_dropdown',
-          name: 'NUM',
-          options: [['far left (0)', '0'], ['left (1)', '1'], ['middle (2)', '2'], ['right (3)', '3'], ['far right (4)', '4']],
-        },
+        { type: 'field_dropdown', name: 'NUM', options: LINE_SENSORS },
       ],
       output: 'Number',
       style: 'sensors_blocks',
@@ -236,6 +318,20 @@ defineBlocks([
   },
   {
     json: {
+      type: 'codebot_prox_range',
+      message0: '📡 proximity reading on the %1',
+      args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['left', '0'], ['right', '1']] }],
+      output: 'Number',
+      style: 'sensors_blocks',
+      tooltip: 'A number from 0 to 100 from the proximity sensor on that side.',
+    },
+    python: (block) => {
+      bot()
+      return [`prox.range()[${block.getFieldValue('SIDE')}]`, Order.MEMBER]
+    },
+  },
+  {
+    json: {
       type: 'codebot_button',
       message0: '🔘 button %1 is pressed',
       args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
@@ -246,6 +342,20 @@ defineBlocks([
     python: (block) => {
       bot()
       return [`buttons.is_pressed(${block.getFieldValue('NUM')})`, Order.FUNCTION_CALL]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_button_was',
+      message0: '🔘 button %1 was pressed',
+      args0: [{ type: 'field_dropdown', name: 'NUM', options: [['0', '0'], ['1', '1']] }],
+      output: 'Boolean',
+      style: 'sensors_blocks',
+      tooltip: 'True if the button was pressed since the last time you checked, even if it is up now.',
+    },
+    python: (block) => {
+      bot()
+      return [`buttons.was_pressed(${block.getFieldValue('NUM')})`, Order.FUNCTION_CALL]
     },
   },
   {
@@ -287,6 +397,33 @@ defineBlocks([
     python: () => {
       bot()
       return ['system.pwr_volts()', Order.FUNCTION_CALL]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_on_usb',
+      message0: '🔌 powered by USB',
+      output: 'Boolean',
+      style: 'sensors_blocks',
+      tooltip: 'True when the power switch is set to USB rather than batteries.',
+    },
+    python: () => {
+      bot()
+      return ['system.pwr_is_usb()', Order.FUNCTION_CALL]
+    },
+  },
+  {
+    json: {
+      type: 'codebot_temp',
+      message0: '🌡️ temperature in %1',
+      args0: [{ type: 'field_dropdown', name: 'UNIT', options: [['°F', 'temp_F'], ['°C', 'temp_C']] }],
+      output: 'Number',
+      style: 'sensors_blocks',
+      tooltip: 'How warm the robot is.',
+    },
+    python: (block) => {
+      bot()
+      return [`system.${block.getFieldValue('UNIT')}()`, Order.FUNCTION_CALL]
     },
   },
 

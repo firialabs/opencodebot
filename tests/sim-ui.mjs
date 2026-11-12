@@ -39,8 +39,8 @@ if (!(await reachable(new globalThis.URL('sim-assets/env/gym/world.json', URL).h
 }
 
 const problems = []
-// CHROME_PATH: use an installed Chromium when Playwright's own is missing.
-const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
+// OCB_CHROMIUM: use an installed Chromium when Playwright's own is missing.
+const browser = await chromium.launch(process.env.OCB_CHROMIUM ? { executablePath: process.env.OCB_CHROMIUM } : {})
 // One context, so a second page is another tab of the same browser.
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 const page = await context.newPage()

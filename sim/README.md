@@ -86,7 +86,7 @@ starts the simulator in the built app in headless Chromium, runs every block's
 Python on its device, the starter project with the Run button and the REPL,
 flies CodeAIR, and has a CodeX remote on the boards page reach a CodeAIR there
 and the app's CodeX in another tab. If Playwright's own browser is
-missing, point `CHROME_PATH` at an installed Chromium.
+missing, point `OCB_CHROMIUM` at an installed Chromium (every browser test reads it).
 
 CI runs both, in `npm test`, on every pull request and before every deploy
 (`.github/workflows/`): about 1.5 minutes here, under 3 with every core

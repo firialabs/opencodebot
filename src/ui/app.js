@@ -1,5 +1,8 @@
 /** Wires the workspace, the board and the chrome around them together. */
-import { DeviceManager, State } from '../device/device-manager.js'
+import { State, createDevice, deviceKindFromUrl } from '../device/device-target.js'
+// Each import registers a kind of device. Add a simulator the same way.
+import '../device/device-manager.js'
+import '../device/loopback-device.js'
 import { SUPPORTED_TARGETS, getTarget } from '../device/targets.js'
 import { BlockWorkspace, STARTER_PROJECTS } from '../workspace/workspace.js'
 import { generatePython, generateWithLines, highlightPython, devicesUsed } from '../blocks/index.js'
@@ -7,7 +10,7 @@ import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
 import { HELP_HTML, ABOUT_HTML, welcomeHtml } from './copy.js'
 import { DeviceSwitch } from '../sim/device-switch.js'
-import { SimDevice } from '../sim/sim-device.js'
+import { SimDevice } from '../sim/sim-device.js'   // registers the 'sim' kind
 import { SimPanel } from '../sim/sim-panel.js'
 
 const SEEN_WELCOME = 'opencodebot.welcomed.v1'
@@ -17,7 +20,10 @@ const $ = (id) => document.getElementById(id)
 
 export class App {
   constructor() {
-    this.device = new DeviceSwitch(new DeviceManager(), new SimDevice())
+    // The kind the page was opened with (?device=) is the board; the simulator
+    // sits beside it, behind Simulate. ?device=sim opens in the simulator.
+    const kind = deviceKindFromUrl()
+    this.device = new DeviceSwitch(createDevice(kind === 'sim' ? 'serial' : kind), createDevice('sim'))
     this.simPanel = new SimPanel($('sim-host'), this.device.sim, {
       onStart: () => this._toggleSimulate(),
       onStepStart: () => this._run({ stepFirst: true }),
@@ -45,7 +51,8 @@ export class App {
     this._maybeWelcome()
 
     // A board that is already plugged in and paired can just come back.
-    this.device.link.openPaired?.().catch(() => {})
+    this.device.autoConnect().catch(() => {})
+    if (kind === 'sim') this._toggleSimulate()
   }
 
   _greet() {

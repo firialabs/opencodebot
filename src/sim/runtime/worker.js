@@ -142,6 +142,10 @@ self.onmessage = async (e) => {
           await engine.replInput(m.text)
         }
         break
+      case 'file':
+        engine.userFiles[m.name] = m.contents
+        post({ t: 'saved', name: m.name })
+        break
       case 'stop': engine.stop(); break
       case 'pause': engine.pause(); break
       case 'resume': engine.resume(); break

@@ -1,22 +1,23 @@
-// One device for the app, which is either the board on the USB cable or the
-// simulator. It has DeviceManager's face and passes on the events of
+// One device for the app: a DeviceTarget (docs/device-targets.md) that is
+// either the board (whatever kind the page was opened with: the USB board, or
+// the loopback in tests) or the simulator, and passes on the events of
 // whichever is in use, so the rest of the app does not care which it is.
-const EVENTS = ['state', 'device', 'data', 'notice', 'progress', 'program-error']
+import { EVENTS } from '../device/device-target.js'
 
 export class DeviceSwitch extends EventTarget {
-  constructor(usb, sim) {
+  constructor(board, sim) {
     super()
-    this.usb = usb
+    this.board = board
     this.sim = sim
-    this.active = usb
-    for (const backend of [usb, sim]) {
+    this.active = board
+    for (const backend of [board, sim]) {
       for (const type of EVENTS) {
         backend.addEventListener(type, (e) => {
           // A board plugged in while simulating takes over: it is what the
           // student is holding.
-          if (backend === usb && backend !== this.active && type === 'device' && e.detail?.targetId) {
+          if (backend === board && backend !== this.active && type === 'device' && e.detail?.targetId) {
             this.sim.disconnect()
-            this.active = usb
+            this.active = board
           }
           if (backend === this.active) this.dispatchEvent(new CustomEvent(type, { detail: e.detail }))
         })
@@ -25,31 +26,33 @@ export class DeviceSwitch extends EventTarget {
   }
 
   get simulating() { return this.active === this.sim && this.sim.isConnected }
-  get link() { return this.usb.link }
-  get supported() { return this.usb.supported }
+  get kind() { return this.active.kind }
+  get supported() { return this.board.supported }
   get isConnected() { return this.active.isConnected }
   get targetId() { return this.active.targetId }
   get target() { return this.active.target }
   get state() { return this.active.state }
   get firmware() { return this.active.firmware }
-  get busy() { return this.active.busy }
 
   async connect() {
     if (this.simulating) await this.sim.disconnect()
-    this.active = this.usb
-    return this.usb.connect()
+    this.active = this.board
+    return this.board.connect()
+  }
+
+  async autoConnect() {
+    return this.board.autoConnect?.() ?? false
   }
 
   async simulate(targetId) {
-    if (this.usb.isConnected) await this.usb.disconnect()
+    if (this.board.isConnected) await this.board.disconnect()
     this.active = this.sim
     return this.sim.connect(targetId)
   }
 
   disconnect() { return this.active.disconnect() }
-  forget() { return this.active.forget() }
   run(source, opts) { return this.active.run(source, opts) }
   stop(opts) { return this.active.stop(opts) }
   sendRaw(data) { return this.active.sendRaw(data) }
-  parkActuators() { return this.active.parkActuators() }
+  writeFile(name, contents) { return this.active.writeFile(name, contents) }
 }
