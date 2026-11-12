@@ -117,11 +117,44 @@ src/
     theme.js           colours and shapes
   workspace/   the Blockly workspace, saving and starter projects
   ui/          terminal, toasts, dialogs and the app shell
+  i18n/        every string the app shows, one table per language
 ```
 
 Running a program does what CodeSpace does: interrupt to a prompt, drop into the
 raw REPL, write `main.py` a kilobyte at a time, then soft-reboot so the board
 runs it. On boards whose firmware halts at a debug prompt, it then says "go".
+
+## Strings and languages
+
+Every string the app shows is in one table per language, in `src/i18n/`. English
+(`en.js`) is the reference: every key is there first.
+
+**Adding a string.** Give it a key in `en.js`, near the strings it sits with, and use
+it with `t()`:
+
+```js
+import { t } from '../i18n/index.js'
+toast({ title: t('saved.title'), detail: t('saved.detail', { file: name }) })
+```
+
+- **Placeholders** go in braces (`'Saved {file}.'`), and numbers in them are formatted
+  for the language. `{app}` is always the product's name, which lives in one place,
+  `app.name`.
+- **Counts:** a string that depends on one is `{ one: '…', other: '…' }`, chosen by
+  `{count}`. Join a list of names with `listOf()`.
+- **HTML:** a key ending in `Html` holds HTML, and its placeholders are escaped.
+- **The page's markup:** in `index.html`, mark an element with `data-i18n="key"` for its
+  text, `data-i18n-html` for HTML, or `data-i18n-attr="title=key;aria-label=key"` for
+  attributes.
+
+**Adding a language.** Copy `en.js` to `<code>.js` (say `es.js`), translate the values
+and leave the keys, then add it to `TABLES` in `src/i18n/index.js`. A key the new
+table leaves out falls back to English, so a partial translation works. The language
+comes from `?lang=es` in the address, then a saved choice (`setLanguage`), then the
+browser's own languages. Changing it reloads the page.
+
+Not in the table yet: the blocks' own labels and tooltips (`src/blocks/`), which go
+through Blockly's message system next.
 
 ## Contributing
 

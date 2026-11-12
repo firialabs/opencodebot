@@ -1,4 +1,5 @@
 /** Toasts and the one modal dialog, kept deliberately small and warm. */
+import { t } from '../i18n/index.js'
 
 const EMOJI = { info: '💚', warn: '💛', error: '🧡' }
 const LIFETIME = { info: 4000, warn: 7000, error: 9000 }
@@ -30,7 +31,7 @@ export function toast({ kind = 'info', title, detail } = {}) {
  *          cancelText?: string}} options
  * @returns {Promise<boolean>} true when confirmed
  */
-export function showModal({ title, bodyHtml, confirmText = 'Got it', cancelText }) {
+export function showModal({ title, bodyHtml, confirmText = t('modal.ok'), cancelText }) {
   const dialog = document.getElementById('modal')
   dialog.innerHTML = `
     <form method="dialog" class="modal-inner">

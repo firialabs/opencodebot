@@ -3,6 +3,8 @@
  * has to scroll past blocks their hardware cannot do.
  */
 
+import { t } from '../i18n/index.js'
+
 const num = (value) => ({ shadow: { type: 'math_number', fields: { NUM: value } } })
 const str = (text) => ({ shadow: { type: 'text', fields: { TEXT: text } } })
 const col = (name = 'RED') => ({ shadow: { type: 'ocb_color', fields: { COLOR: name } } })
@@ -74,20 +76,20 @@ const lists = [
 
 const generalTail = [
   SEP,
-  category('🤔 Logic', 'logic_category', logic),
-  category('🔁 Loops', 'loops_category', loops),
-  category('🔢 Math', 'math_category', math),
-  category('🔤 Text', 'text_category', text),
-  category('📋 Lists', 'lists_category', lists),
+  category(t('cat.logic'), 'logic_category', logic),
+  category(t('cat.loops'), 'loops_category', loops),
+  category(t('cat.math'), 'math_category', math),
+  category(t('cat.text'), 'text_category', text),
+  category(t('cat.lists'), 'lists_category', lists),
   SEP,
-  { kind: 'category', name: '📦 Variables', categorystyle: 'variables_category', custom: 'VARIABLE' },
-  { kind: 'category', name: '🧰 Functions', categorystyle: 'functions_category', custom: 'PROCEDURE' },
+  { kind: 'category', name: t('cat.variables'), categorystyle: 'variables_category', custom: 'VARIABLE' },
+  { kind: 'category', name: t('cat.functions'), categorystyle: 'functions_category', custom: 'PROCEDURE' },
 ]
 
 // ---------------------------------------------------------------- CodeX
 
 const codexCategories = [
-  category('🖥️ Screen', 'screen_category', [
+  category(t('cat.screen'), 'screen_category', [
     block('codex_show', { THING: str('Hi!') }),
     block('codex_print', { THING: str('Hello'), COLOR: col('WHITE') }),
     block('codex_clear'),
@@ -98,7 +100,7 @@ const codexCategories = [
     block('codex_set_pixel', { X: num(120), Y: num(120), COLOR: col('WHITE') }),
     block('codex_brightness', { PCT: num(80) }),
   ]),
-  category('✨ Lights', 'lights_category', [
+  category(t('cat.lights'), 'lights_category', [
     block('codex_pixel_set', { COLOR: col('PINK') }),
     block('codex_pixels_fill', { COLOR: col('PURPLE') }),
     block('codex_pixels_off'),
@@ -106,13 +108,13 @@ const codexCategories = [
     block('ocb_color'),
     block('ocb_rgb', { R: num(255), G: num(120), B: num(200) }),
   ]),
-  category('🎵 Sound', 'sound_category', [
+  category(t('cat.sound'), 'sound_category', [
     block('codex_note'),
     block('codex_tone', { FREQ: num(440), SECS: num(0.5) }),
     block('codex_song'),
     block('codex_sound_off'),
   ]),
-  category('👀 Sensors', 'sensors_category', [
+  category(t('cat.sensors'), 'sensors_category', [
     block('codex_button_pressed'),
     block('codex_button_was_pressed'),
     block('codex_accel'),
@@ -120,7 +122,7 @@ const codexCategories = [
     block('codex_battery'),
     block('codex_on_usb'),
   ]),
-  category('🛜 Radio', 'radio_category', [
+  category(t('cat.radio'), 'radio_category', [
     block('radio_on'),
     block('radio_send', { MSG: str('hello') }),
     block('radio_on_message'),
@@ -131,13 +133,13 @@ const codexCategories = [
 // -------------------------------------------------------------- CodeBot
 
 const codebotCategories = [
-  category('🚗 Drive', 'move_category', [
+  category(t('cat.drive'), 'move_category', [
     block('codebot_drive', { POWER: num(60) }),
     block('codebot_drive_for', { POWER: num(60), SECS: num(1) }),
     block('codebot_motor', { POWER: num(60) }),
     block('codebot_stop'),
   ]),
-  category('✨ Lights', 'lights_category', [
+  category(t('cat.lights'), 'lights_category', [
     block('codebot_led'),
     block('codebot_leds_all'),
     block('codebot_leds_pattern'),
@@ -147,7 +149,7 @@ const codebotCategories = [
     block('codebot_pwr_led'),
     block('codebot_usb_led'),
   ]),
-  category('👀 Sensors', 'sensors_category', [
+  category(t('cat.sensors'), 'sensors_category', [
     block('codebot_line_sees'),
     block('codebot_line_value'),
     block('codebot_prox'),
@@ -160,7 +162,7 @@ const codebotCategories = [
     block('codebot_on_usb'),
     block('codebot_temp'),
   ]),
-  category('🎵 Sound', 'sound_category', [
+  category(t('cat.sound'), 'sound_category', [
     block('codebot_tone_for', { FREQ: num(440), SECS: num(0.3) }),
     block('codebot_tone', { FREQ: num(440) }),
     block('codebot_quiet'),
@@ -170,7 +172,7 @@ const codebotCategories = [
 // -------------------------------------------------------------- CodeAIR
 
 const codeairCategories = [
-  category('🚁 Fly', 'move_category', [
+  category(t('cat.fly'), 'move_category', [
     block('codeair_safe_flight'),
     block('codeair_take_off'),
     block('codeair_move'),
@@ -179,7 +181,7 @@ const codeairCategories = [
     block('codeair_hover', { SECS: num(2) }),
     block('codeair_land'),
   ]),
-  category('✨ Lights', 'lights_category', [
+  category(t('cat.lights'), 'lights_category', [
     block('codeair_pixel_set', { COLOR: col('CYAN') }),
     block('codeair_pixels_fill', { COLOR: col('GREEN') }),
     block('codeair_pixels_off'),
@@ -188,17 +190,17 @@ const codeairCategories = [
     block('ocb_color'),
     block('ocb_rgb', { R: num(255), G: num(120), B: num(200) }),
   ]),
-  category('🎵 Sound', 'sound_category', [
+  category(t('cat.sound'), 'sound_category', [
     block('codeair_beep', { FREQ: num(880), MS: num(250) }),
     block('codeair_quiet'),
   ]),
-  category('👀 Sensors', 'sensors_category', [
+  category(t('cat.sensors'), 'sensors_category', [
     block('codeair_button'),
     block('codeair_button_was'),
     block('codeair_battery'),
     block('codeair_on_usb'),
   ]),
-  category('🛜 Radio', 'radio_category', [
+  category(t('cat.radio'), 'radio_category', [
     block('radio_on'),
     block('radio_send', { MSG: str('hello') }),
     block('radio_on_message'),
@@ -218,7 +220,7 @@ export function toolboxFor(targetId) {
   return {
     kind: 'categoryToolbox',
     contents: [
-      category('🧩 Basics', 'basics_category', basics),
+      category(t('cat.basics'), 'basics_category', basics),
       ...(deviceCats.length ? [SEP, ...deviceCats] : []),
       ...generalTail,
     ],
