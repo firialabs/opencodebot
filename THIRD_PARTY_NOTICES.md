@@ -188,7 +188,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 - **Files:** `src/sim/world/fonts/codex6x8.js`, read from CodeX's firmware image by
   `sim/tools/extract-codex-font.mjs`.
 - **Origin:** CodeX's firmware carries Adafruit GFX's classic 5x7 font (`glcdfont.c`),
-  all but one glyph unchanged (`~` is redrawn).
+  its 94 printable glyphs from space to `}` unchanged (`~` is a degree sign, and 0x7F a
+  solid block).
 - **Licence:** BSD, from the Adafruit GFX Library
   (<https://github.com/adafruit/Adafruit-GFX-Library>).
 
