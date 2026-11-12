@@ -118,6 +118,7 @@ const codexCategories = [
     block('codex_accel'),
     block('codex_light'),
     block('codex_battery'),
+    block('codex_on_usb'),
   ]),
   category('🛜 Radio', 'radio_category', [
     block('radio_on'),
@@ -144,16 +145,20 @@ const codebotCategories = [
     block('codebot_ls_leds_all'),
     block('codebot_prox_led'),
     block('codebot_pwr_led'),
+    block('codebot_usb_led'),
   ]),
   category('👀 Sensors', 'sensors_category', [
     block('codebot_line_sees'),
     block('codebot_line_value'),
     block('codebot_prox'),
+    block('codebot_prox_range'),
     block('codebot_button'),
     block('codebot_button_was'),
     block('codebot_accel'),
     block('codebot_encoder'),
     block('codebot_volts'),
+    block('codebot_on_usb'),
+    block('codebot_temp'),
   ]),
   category('🎵 Sound', 'sound_category', [
     block('codebot_tone_for', { FREQ: num(440), SECS: num(0.3) }),

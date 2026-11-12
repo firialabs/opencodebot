@@ -447,4 +447,17 @@ defineBlocks([
       return ['power.get_battery_voltage()', Order.FUNCTION_CALL]
     },
   },
+  {
+    json: {
+      type: 'codex_on_usb',
+      message0: '🔌 plugged into USB',
+      output: 'Boolean',
+      style: 'sensors_blocks',
+      tooltip: 'True when the CodeX is running from the USB cable, not its batteries.',
+    },
+    python: () => {
+      codex()
+      return ['power.is_usb()', Order.FUNCTION_CALL]
+    },
+  },
 ])
