@@ -322,7 +322,7 @@ A bench session with a CB3, a tape line and a ruler settles all of these.
 
 ## Where it stands
 
-Built, on branch `sim` (local commits; pushing waits for David):
+Built, on branch `sim` (pushed to firialabs/opencodebot):
 
 - The runtime: MicroPython with JSPI, every clock on simulated time, pause, step, stop
   (with a grace period for programs that swallow the interrupt), a REPL between programs,
@@ -424,12 +424,12 @@ here, with a little noise); whether `send` with the radio off raises (silent her
 ## HANDOFF (2026-11-11, from the radio, courses, stepping, infrared and performance session)
 
 **State.** Branch `sim` in `~/dev/firia/botblocks-sim` (a clone of firialabs/opencodebot),
-local commits only (last `d1ffeec` before this handoff); nothing is pushed. David has given
-the manager a standing go to push, but p52-lab has no credential that can write to
-firialabs/opencodebot yet; the manager is sorting that out. Until the manager says so, commit
-locally. CodeBot, CodeX and CodeAIR run in the app and headless, with radio and infrared
-between boards, line courses, stepping by line, and a performance budget ("Where it
-stands"). All tests pass: `npm test` (the simulator's suites are in it, and so in CI) and
+pushed to origin and tracking `origin/sim` (2026-11-12, David: push and keep pushing as
+the work goes). The SSH key on p52-lab is a read-only deploy key, so origin's push URL is
+HTTPS, through `gh` (logged in as david-firia; its credential helper is in the global git
+config): a plain `git push` works. CodeBot, CodeX and CodeAIR run in the app and headless,
+in four rooms, with radio and infrared between boards, line courses, stepping by line, a
+keyboard and screen-reader path, and a performance budget ("Where it stands"). All tests pass: `npm test` (the simulator's suites are in it, and so in CI) and
 `npm run perf`. The manager has approved the design; assets are CC BY-NC 4.0 and may be
 published; the devices' own Python may ship; CodeSpace's lesson content (its curriculum,
 such as its CodeX remote for xfly) may not. Commits are authored as David
