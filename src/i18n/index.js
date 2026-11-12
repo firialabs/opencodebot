@@ -13,18 +13,31 @@
  * load time (the toolbox, the device list) need no rebuilding. A key missing
  * from a language falls back to English, and a key missing from English shows
  * as the key itself, so a gap is visible rather than blank.
+ *
+ * `?lang=en-XA` is a pseudo-language for testing: English with every letter
+ * accented and each string in ⟦ ⟧. Text that shows up plain was not looked up
+ * here (tests/pseudo.mjs checks the whole app this way).
  */
 import en from './en.js'
+import es from './es.js'
 
-const TABLES = { en }
+const TABLES = { en, es }
 const SAVED = 'opencodebot.lang.v1'
+export const PSEUDO = 'en-XA'
 
+/** The languages a person can pick, each named in its own language. */
 export const LANGUAGES = Object.keys(TABLES)
 export const language = pick()
+const table = TABLES[language] ?? en
 
 const plural = new Intl.PluralRules(language)
 const number = new Intl.NumberFormat(language)
 const list = new Intl.ListFormat(language, { type: 'conjunction' })
+
+/** A language's own name for itself, from its table: "Español". */
+export function languageName(lang) {
+  return TABLES[lang]?.['lang.name'] ?? lang
+}
 
 /** A number with exactly `digits` decimals, as the language writes it: "0.5". */
 export function fixed(value, digits) {
@@ -47,6 +60,7 @@ function pick() {
   wanted.push(...(globalThis.navigator?.languages ?? []))
   for (const tag of wanted) {
     if (!tag) continue
+    if (tag === PSEUDO) return tag
     if (TABLES[tag]) return tag
     const base = tag.split('-')[0]
     if (TABLES[base]) return base
@@ -56,10 +70,14 @@ function pick() {
 
 /** Save a language for next time and reload into it. */
 export function setLanguage(lang) {
+  const url = new URL(location.href)
+  url.searchParams.delete('lang') // or the address would win over the choice
   try {
     localStorage.setItem(SAVED, lang)
-  } catch { /* storage blocked: the choice lasts this page only */ }
-  location.reload()
+  } catch {
+    url.searchParams.set('lang', lang) // storage blocked: carry it in the address
+  }
+  location.assign(url)
 }
 
 /**
@@ -68,11 +86,12 @@ export function setLanguage(lang) {
  * escaped. `{app}` is always the product's name.
  */
 export function t(key, params = {}) {
-  let s = TABLES[language][key] ?? en[key] ?? key
+  let s = table[key] ?? en[key] ?? key
   if (typeof s === 'object') s = s[plural.select(params.count ?? 0)] ?? s.other
+  if (language === PSEUDO && s !== key) s = pseudo(s)
   const html = key.endsWith('Html')
   return s.replace(/\{(\w+)\}/g, (whole, name) => {
-    const v = name === 'app' && !(name in params) ? (TABLES[language]['app.name'] ?? en['app.name']) : params[name]
+    const v = name === 'app' && !(name in params) ? t('app.name') : params[name]
     if (v === undefined) return whole
     const text = typeof v === 'number' ? number.format(v) : String(v)
     return html ? escapeHtml(text) : text
@@ -100,6 +119,26 @@ export function translatePage(root = document) {
       if (attr && key) el.setAttribute(attr, t(key))
     }
   }
+}
+
+const ACCENTED = {
+  a: 'å', b: 'ƀ', c: 'ç', d: 'ð', e: 'é', f: 'ƒ', g: 'ĝ', h: 'ĥ', i: 'î', j: 'ĵ', k: 'ķ', l: 'ļ', m: 'ṁ',
+  n: 'ñ', o: 'ö', p: 'þ', q: 'ǫ', r: 'ŕ', s: 'š', t: 'ţ', u: 'û', v: 'ṽ', w: 'ŵ', x: 'ẋ', y: 'ý', z: 'ž',
+  A: 'Å', B: 'Ɓ', C: 'Ç', D: 'Ð', E: 'É', F: 'Ƒ', G: 'Ĝ', H: 'Ĥ', I: 'Î', J: 'Ĵ', K: 'Ķ', L: 'Ļ', M: 'Ṁ',
+  N: 'Ñ', O: 'Ö', P: 'Þ', Q: 'Ǫ', R: 'Ŕ', S: 'Š', T: 'Ţ', U: 'Û', V: 'Ṽ', W: 'Ŵ', X: 'Ẋ', Y: 'Ý', Z: 'Ž',
+}
+
+/**
+ * A string in the pseudo-language: every letter accented, the whole in ⟦ ⟧.
+ * What the code fills in or reads is left alone: {placeholders}, Blockly's %1
+ * and %{BKY_...}, HTML tags and entities.
+ */
+export function pseudo(s) {
+  if (typeof s !== 'string' || !s.trim()) return s
+  const body = s.replace(/(\{\w+\}|%\{\w+\}|%\d+|<[^>]*>|&#?\w+;)|([A-Za-z])/g, (m, keep, letter) =>
+    keep ?? ACCENTED[letter],
+  )
+  return `⟦${body}⟧`
 }
 
 function escapeHtml(s) {

@@ -8,7 +8,7 @@ import { BlockWorkspace, STARTER_PROJECTS, DEFAULT_PROJECT_NAME, fileNameFor } f
 import { generatePython, generateWithLines, highlightPython, devicesUsed } from '../blocks/index.js'
 import { TerminalPanel } from './terminal.js'
 import { toast, showModal } from './notify.js'
-import { t, listOf } from '../i18n/index.js'
+import { t, listOf, LANGUAGES, language, languageName, setLanguage } from '../i18n/index.js'
 import { DeviceSwitch } from '../sim/device-switch.js'
 import { SimDevice } from '../sim/sim-device.js'   // registers the 'sim' kind
 import { SimPanel } from '../sim/sim-panel.js'
@@ -46,6 +46,7 @@ export class App {
 
     this._greet()
     this._renderDevicePicker()
+    this._renderLanguages()
     this._refreshDeviceChip()
     this._refreshPython()
     this._checkBrowser()
@@ -586,6 +587,22 @@ export class App {
       case 'about':
         showModal({ title: t('about.title'), bodyHtml: t('about.bodyHtml') })
         break
+      default:
+        if (action.startsWith('lang:') && action.slice(5) !== language) setLanguage(action.slice(5))
+    }
+  }
+
+  /** One item per language in the ⋯ menu, each named in its own language. */
+  _renderLanguages() {
+    const group = $('lang-menu')
+    for (const lang of LANGUAGES) {
+      const item = document.createElement('button')
+      item.setAttribute('role', 'menuitemradio')
+      item.setAttribute('aria-checked', String(lang === language))
+      item.dataset.action = `lang:${lang}`
+      item.lang = lang
+      item.textContent = languageName(lang)
+      group.append(item)
     }
   }
 

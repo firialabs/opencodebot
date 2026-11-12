@@ -223,6 +223,9 @@ kbd {
 }
 .app-menu button:hover { background: var(--green-soft); }
 .app-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 8px; }
+.app-menu .menu-head { padding: 6px 12px 2px; font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.app-menu [role='menuitemradio'] { padding-left: 30px; position: relative; }
+.app-menu [aria-checked='true']::before { content: '✓'; position: absolute; left: 12px; color: var(--green-deep); }
 
 /* -------------------------------------------------------------- workarea */
 .workarea {
