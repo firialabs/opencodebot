@@ -34,9 +34,9 @@ export const CB3 = {
   motorStallAmps: 1.5,        // so the winding is 4 ohms
   motorNoLoadAmps: 0.16,      // what it draws spinning free: its own friction
   wheelInertia: 1.4e-4,       // kg m^2 per wheel: a 130-size rotor's 0.6 g cm^2 through 48:1 (assumed)
-  // The H-bridge: its control (two direction pins and a PWM per motor, one
-  // standby) is the TB6612FNG's, whose two switches in the motor's path are
-  // 0.5 ohm together. (inferred from the interface: the part is not named)
+  // The H-bridge: a TB6612FNG (the schematic), its motor supply straight from
+  // the battery. Its two switches in the motor's path are 0.5 ohm together
+  // (the datasheet's typical).
   bridgeOhms: 0.5,
   // Body. (assumed: mass, inertia, the skid's share of the weight, the frictions)
   mass: 0.40,                 // kg, with batteries
@@ -49,15 +49,17 @@ export const CB3 = {
 
   // Line sensors: 0 is the robot's left, 4 its right. Each is a QRE1113GR, a
   // 940 nm infrared emitter (40 mA at botcore's default power, 20 mA at the
-  // lower) beside a phototransistor on a pull-up into the ADC: reflected light
-  // pulls the reading down from dark, linearly, until the phototransistor
-  // saturates. (assumed: the levels, which turn on the pull-up and each part's
-  // gain; the floor's visible reflectance stands in for its infrared one)
+  // lower: one or two 20 mA driver pins) beside a phototransistor on a 47k
+  // pull-up into the ADC (the schematic): reflected light pulls the reading
+  // down from dark, linearly, until the phototransistor saturates. 47k takes
+  // only 70 uA to pull it all the way, so white saturates a typical part at
+  // full power. (assumed: the sensors' height and each part's gain, which set
+  // the span; the floor's visible reflectance stands in for its infrared one)
   lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.116, left]),
   lineSpot: 0.004,            // radius of the floor area each sensor sees (assumed)
   lineDark: 4080,             // no light back (dark current under 100 nA): a CB2 read 4080, botcore matches the CB3 to it
   lineSaturated: 150,         // the phototransistor fully on: 0.1 V (assumed; the datasheet's most is 0.3 V, about 450)
-  lineSpan: 4400,             // counts pulled down per unit reflectance, emitter at full (assumed)
+  lineSpan: 7700,             // counts pulled down per unit reflectance, emitter at full: a typical part about 3 mm up (assumed)
   lineNoise: 25,
 
   // Proximity: 0 is left, 1 right; they look straight ahead.
@@ -70,7 +72,7 @@ export const CB3 = {
   proxTable: [[0.128, 6.7], [0.148, 12.2], [0.173, 14.7], [0.198, 17.2],
     [0.215, 19.8], [0.232, 22.4], [0.270, 23.3], [0.307, 24.1]],
 
-  encoderSlots: 20,           // a slotted disc on the wheel's shaft, read by an infrared slot sensor
+  encoderSlots: 20,           // a slotted disc on the wheel's shaft, read by an infrared slot sensor (the schematic's note: 200 a second at 10 rev/s)
   encoderNoise: 300,
 
   accelPerG: 16384,           // +-2 g full scale, signed 16-bit
