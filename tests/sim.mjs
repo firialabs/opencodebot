@@ -278,6 +278,8 @@ await test('the REPL runs commands on the simulated board', async () => {
 })
 
 if (haveGym) {
+  // The court's wood reads about 500 to 1000 and its painted lines saturate
+  // the sensor (about 150), so the threshold sits between them.
   await test('gym: the line sensors see the court lines', async () => {
     const r = await runHeadless({
       env: 'gym', spawn: { x: 0.3, y: 0, heading: Math.PI / 2 },
@@ -288,12 +290,13 @@ motors.run(LEFT, 60)
 motors.run(RIGHT, 60)
 seen = 0
 for i in range(600):
-    if ls.check(1500, True)[2]:
+    if ls.check(300, True)[2]:
         seen += 1
     time.sleep(0.01)
 print(seen)`,
     })
-    assert.ok(Number(r.output) > 3, `saw a line ${r.output.trim()} times`)
+    const seen = Number(r.output)
+    assert.ok(seen > 3 && seen < 300, `saw a line ${r.output.trim()} times in 600`)
   })
 } else {
   console.log('  skip  gym tests (no built gym: node sim/tools/build-env.mjs gym)')
@@ -342,14 +345,17 @@ for (const course of ['oval', 'eight', 'gap']) {
   })
 }
 
-await test('on the T it starts on the stem (a 19 mm tape under three sensors), and the crossbar reads on all five', async () => {
+// The stem is 19 mm wide and the sensors 9.7 mm apart, so sensors 1 and 3 sit
+// on its edges, half over white: with the 47k pull-up half a white reflects
+// enough to read white, so only the middle is sure to see the stem.
+await test('on the T it starts on the stem (a 19 mm tape under the middle sensor), and the crossbar reads on all five', async () => {
   const r = await runHeadless({
     course: 'tee', env: 'empty', seconds: 15,
     source: `from botcore import *\nimport time\nprint(ls.check())\nmotors.enable(True)\nmotors.run(LEFT, 50)\nmotors.run(RIGHT, 50)\nwhile not all(ls.check()):\n    time.sleep(0.005)\nmotors.enable(False)\nprint('bar')`,
   })
   assert.equal(r.error, undefined, r.output)
   const [first, last] = r.output.trim().split('\n')
-  assert.equal(first, '(False, True, True, True, False)')
+  assert.match(first, /^\(False, (True|False), True, (True|False), False\)$/)
   assert.equal(last, 'bar')
   assert.ok(Math.abs(r.device.y + 0.116 - 0.5) < 0.03, `stopped with its sensors at y ${(r.device.y + 0.116).toFixed(3)}`)
 })

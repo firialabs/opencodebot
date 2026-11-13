@@ -317,39 +317,65 @@ is measured on a device:
 
 A bench session with a CB3, a tape line, a ruler and a stopwatch settles all of these,
 in the final testing rounds. Until then CodeBot follows its hardware: what botcore does
-with the pins is known exactly, the line sensors' part and its datasheet are known, the
-gearmotors' numbers are the published typical ones for the part, and the rest is
-assumed. The physical CB3 is the reference, not CodeSpace's older simulated
+with the pins is known exactly, the board is known from its published schematic (CodeBot
+Mk 3 "CB3", Rev C, 2022-03-29, linked from Firia Labs' [CodeBot hardware
+reference](https://docs.firialabs.com/codebot/hardware_reference/Schematic.html):
+[PDF](https://docs.firialabs.com/_downloads/d1a72039afaa962e94f77357ed263519/codebot-cb3-SCH-RevC.pdf)),
+the parts' datasheets are known, the gearmotors' numbers are the published typical ones
+for the part, and the rest is assumed. The physical CB3 is the reference, not CodeSpace's older simulated
 CodeBot, whose physics had quirks (a full-power spin slower than a half-power one).
 
-**What is known** (from botcore, the CB3's own module, and the docs):
+**What is known** (from the schematic, botcore, the CB3's own module, and the docs):
 
-- **Motor drive.** `motors.run(n, power)` sets the motor's two direction pins on an I2C
-  expander and its PWM duty to |power| %, at 1 kHz; `motors.enable()` drives the bridge's
-  standby pin. At power 0 both direction pins are low: the bridge lets go and the motor
-  coasts. Between pulses at any other power the bridge shorts the motor (slow decay), so
-  on average it sees duty x battery volts and can brake as well as drive.
-- **Battery.** Four AA cells, 6 V fresh (the docs).
+- **Motor drive.** The H-bridge is a TB6612FNG (the schematic), its motor supply the
+  battery's own rail, so the motors see the battery's voltage less the bridge's drop.
+  `motors.run(n, power)` sets the motor's two direction pins on a PCA9557 I2C expander
+  and its PWM duty to |power| %, at 1 kHz; `motors.enable()` drives the bridge's standby
+  pin, which the bridge pulls down inside, so the motors are off until a program enables
+  them. At power 0 both direction pins are low: the bridge lets go and the motor coasts.
+  Between pulses at any other power the bridge shorts the motor (slow decay), so on
+  average it sees duty x battery volts and can brake as well as drive. Its switches in
+  the motor's path are 0.5 ohm together (`bridgeOhms`, the datasheet's typical, high and
+  low switch, at a motor supply of 5 V or more). Not modelled: its 1.2 A average rating
+  per channel, which a stalled TT motor (1.5 A) exceeds.
+- **Battery.** Four AA cells, 6 V fresh (the docs). The battery reaches the board's rail
+  through a reverse-polarity MOSFET and the power switch, which in its other position
+  feeds the rail from USB instead. `system.pwr_volts()` reads the rail through a 107k over
+  59k divider (the schematic, and botcore's `VOLTAGE_RATIO`), and the simulator's ADC
+  channel is that divider's output.
 - **Wheels and encoders.** 65 mm; track 111 mm. Each wheel's shaft carries a 20-slot
   disc read by a right-angle infrared emitter and phototransistor on the board, so an
   encoder counts 20 slots a turn of the wheel (`encoderSlots`), about 10 mm of travel a
-  slot.
+  slot. The schematic names the pair (an APA3010F3C emitter at 20 mA, an APA3010P3BT
+  phototransistor into a 1k load, so a slot reads high) and notes that at a top speed of
+  10 revolutions a second the pulses come every 5 ms: 200 a second, which is 20 slots at
+  10 turns of the wheel. The disc is on the wheel's shaft, not the motor's (through 48:1
+  that would be 160 turns a second at the TT motor's 200 rpm), and 10 a second is the
+  design's margin: the TT motor turns the wheel about 3.3 times a second, 0.6 m/s.
 - **Gearmotors.** The yellow "TT" hobby gearmotor: plastic gears, 1:48, the output shaft
   through both sides of the gearbox.
 - **Line sensors.** Five onsemi QRE1113GR reflective sensors, read through the ADC; 0 is
   brightest, 4095 darkest; botcore scales the CB3's 16-bit reading by 1.215 and shifts it
-  to 12 bits, matched to a CB2 that read 4080 in the dark. botcore lights an emitter at
-  40 mA by default (power 2) or 20 mA (power 1), and only while it reads. From the
-  QRE1113GR's datasheet: the emitter is infrared at 940 nm; the phototransistor's dark
+  to 12 bits, matched to a CB2 that read 4080 in the dark. The emitters are wired in
+  series pairs from the battery (LS0 with LS3, LS1 with LS4, LS2 alone, in the
+  schematic's numbering, which botcore reverses), each pair sunk by an STP16CPC26
+  constant-current driver whose resistor sets 20 mA a pin, and each pair has two pins
+  tied together. botcore's two bits a pair turn on one pin or both: 20 mA at power 1,
+  40 mA at power 2 (the default), and only while it reads; lighting one sensor of a pair
+  lights the other too. Each phototransistor's collector has a 47k pull-up to 3.3 V and
+  goes straight to the ADC, so reflected light pulls the reading down, and 70 uA through
+  47k pulls it all the way. From the QRE1113GR's datasheet: the emitter is infrared at 940 nm; the phototransistor's dark
   current is at most 100 nA, so with no light back it reads the pull-up's full voltage
   (`lineDark`); fully on, it holds at most 0.3 V, which through botcore's scaling is a
   floor of about 450 or less (`lineSaturated` is at or below it); its current rises with
   the emitter's, so half the emitter current gives about half the pull (the simulator's
   half span at power 1); its response peaks with a reflector 0.6 mm away and falls to
   about 40% at 2 mm, 20% at 3 mm and 10% at 5 mm, so a drop off a table reads dark; and
-  its on-state current is anywhere from 0.1 to 0.9 mA (20 mA emitter, a mirror at 1 mm),
-  so two sensors on one robot can differ several times over in how far white pulls them
-  down.
+  its on-state current is anywhere from 0.1 to 0.9 mA (20 mA emitter, a 90% white card
+  at 1 mm), so two sensors on one robot can differ several times over in how far white
+  pulls them down. Against the 47k pull-up's 70 uA even the weakest part saturates on
+  white at 1 mm, at either power; how far it is from saturating at the real height is
+  in "Line sensor levels" below.
 
 **Typical, unconfirmed**: the gearmotors' figures, published for the yellow 1:48 TT
 motor at 6 V (Adafruit's product 3777, which gives the speed and torque as its
@@ -369,17 +395,6 @@ AA cells less the bridge's and battery's drops.
   a robot on a hard floor starts to creep at about 17% power driving straight and 20%
   spinning. Confirm the lowest power that moves it, both ways.
 
-**What is inferred**:
-
-- **The H-bridge** (`bridgeOhms`, 0.5 ohm through the two switches in the motor's path).
-  The part is not named in the firmware, but botcore drives it through the TB6612FNG's
-  interface: two direction pins and a PWM per motor, and one standby pin. Its behaviour
-  matches the TB6612FNG's truth table (both direction pins low: the outputs let go and
-  the motor coasts; PWM low with a direction set: short brake). 0.5 ohm is that part's
-  typical on-resistance, high and low switch together, at a motor supply of 5 V or more.
-  Confirm the part number. Not modelled: its 1.2 A average rating per channel, which a
-  stalled TT motor (1.5 A) exceeds.
-
 **What is assumed**, each a point to confirm on a real CB3:
 
 - **Inertia** (`wheelInertia`, `mass`, `yawInertia`). The rotor of a 130-size motor (the
@@ -396,14 +411,25 @@ AA cells less the bridge's and battery's drops.
   wheel turns only as the robot moves, so the encoders count the robot's motion.
 - **Stopping.** Coasting at power 0 against friction alone: from full speed it rolls about
   15 cm. Confirm by cutting power at full speed and measuring.
-- **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 4400). The
-  reading falls linearly with the floor's reflectance until the sensor saturates: white
-  paper (0.85) reads about 340, a mid-grey floor (0.5) about 1900, black tape (0.05)
-  about 3860, a drop 4080. `ls.check()`'s default threshold, 1000, falls between white and
-  black, as botcore intends. The span turns on the pull-up resistor (not known) and on each
-  sensor's gain (the datasheet allows nine to one), so it is the one number here a bench
-  must set; `lineSaturated`, 150, is a saturation voltage of 0.1 V, inside the datasheet's
-  0.3 V most. The floor map's visible reflectance (its sRGB channels averaged, as
+- **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 7700). The
+  reading falls linearly with the floor's reflectance until the sensor saturates. The span
+  is the phototransistor's current at full reflectance over the 70 uA that pulls the
+  47k pull-up all the way, times the 3930 counts from dark to saturated. A typical part
+  (0.3 mA, the datasheet's range's middle, at 20 mA and 1 mm, so 0.67 mA at 40 mA and
+  full reflectance) about 3 mm above the floor, where the datasheet's response is about
+  20%, gives 0.13 mA, twice 70 uA: a span of about 7700. So at full power anything paler
+  than a mid-grey (about 0.5) saturates: white paper (0.85) and a mid-grey floor read
+  about 150, a pale wood floor (0.4) about 1000, black tape (0.05) about 3700, a drop
+  4080. At power 1 (half the span) white paper reads about 800. `ls.check()`'s default
+  threshold, 1000, falls between white and black, and so do the older simulator's
+  lessons' thresholds (2000 to 3300) and botcore's own default, 2500. The height (not
+  known) and each sensor's gain (the datasheet allows nine to one) set the span, so it is
+  the number here a bench must set: the weakest part at 3 mm would not saturate on white
+  (span about 2600, white about 1900), the strongest would saturate on all but a dark
+  floor, and at 5 mm each would have half its span. Nearer than 3 mm, black tape itself
+  would pull a typical part down past those lessons' thresholds, so a bench's black tape
+  reading also tells the height. `lineSaturated`, 150, is a saturation voltage of 0.1 V, inside the datasheet's 0.3 V
+  most (and at 70 uA a phototransistor sits well below its rated saturation). The floor map's visible reflectance (its sRGB channels averaged, as
   `sim/tools/build-env.mjs` builds it) stands in for 940 nm infrared, which can differ
   (some black tapes are bright in infrared). Confirm white, black tape, the room floors and
   a drop on each of the five sensors, at the sensors' real height.
