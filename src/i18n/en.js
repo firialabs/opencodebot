@@ -5,7 +5,7 @@
 export default {
   'app.name': 'LabBlocks',
   'app.description': 'Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR.',
-  'app.tagline': 'blocks that fly, roll & glow',
+  'app.tagline': 'Dream it, build it',
   'app.beta': 'Beta',
   'app.betaTitle': 'An early public release: see About',
   // This language's name for itself, shown in the language menu.
