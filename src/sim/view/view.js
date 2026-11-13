@@ -11,6 +11,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CodeBotFigure } from './codebot-figure.js'
 import { CodeAIRFigure } from './codeair-figure.js'
 import { courseMesh } from './course-mesh.js'
+import { PRESETS, AutoRealism } from './realism.js'
+import { settings } from '../settings.js'
 
 const FIGURES = { codebot: CodeBotFigure, codeair: CodeAIRFigure }
 
@@ -23,13 +25,21 @@ export class SimView {
     this.frames = [null, null]      // the two latest snapshots, with arrival times
     this.cameraMode = 'chase'
 
-    const r = (this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }))
-    // Resolution adapts to the machine (_govern): a school Chromebook's GPU
-    // gets fewer pixels rather than fewer frames.
-    this.maxRatio = Math.min(globalThis.devicePixelRatio || 1, 1.5)
-    this.ratio = this.maxRatio
-    r.setPixelRatio(this.ratio)
-    this._gov = { last: 0, sum: 0, n: 0, fastFor: 0 }
+    // Realism (realism.js): chosen in the settings panel, or Auto, which
+    // moves a level at a time from the frame rate it measures. A school
+    // Chromebook's GPU gets fewer pixels and effects rather than fewer frames.
+    this.auto = new AutoRealism(settings.autoLevel ?? 'medium')
+    this.level = settings.realism === 'auto' ? this.auto.level : settings.realism
+    this.fps = null                 // frames a second, the last second drawn; null at rest
+    this._gov = { last: 0, sum: 0, n: 0, drawn: 0 }
+    const r = (this.renderer = new THREE.WebGLRenderer({ antialias: PRESETS[this.level].antialias, powerPreference: 'low-power' }))
+    this._realism()
+    this._onSettings = (e) => {
+      if (e.detail !== 'realism') return
+      if (settings.realism === 'auto') this.auto = new AutoRealism(this.level)
+      this._realism()
+    }
+    settings.addEventListener('change', this._onSettings)
     r.outputColorSpace = THREE.SRGBColorSpace
     r.toneMapping = THREE.ACESFilmicToneMapping
     host.appendChild(r.domElement)
@@ -106,10 +116,8 @@ export class SimView {
     this.room = gltf.scene
     // The rooms are modelled at 1 unit = 10 cm.
     this.room.scale.setScalar(0.1)
-    this.room.traverse((o) => {
-      if (o.isMesh && o.material?.map) o.material.map.anisotropy = 4
-    })
     this.scene.add(this.room)
+    this._realism()
     this.roomId = id
     this._touch()
   }
@@ -128,6 +136,7 @@ export class SimView {
     await fig.load(this.loader, this.assetsBase)
     this.scene.add(fig.root)
     this.figures.set(snap.id, fig)
+    this._realism()
     this._touch()
     fig.update(snap)
     this._placeCamera(snap, true)
@@ -162,6 +171,7 @@ export class SimView {
   }
 
   dispose() {
+    settings.removeEventListener('change', this._onSettings)
     cancelAnimationFrame(this._raf)
     this._resize.disconnect()
     this.controls.dispose()
@@ -216,33 +226,52 @@ export class SimView {
     // interpolation, the chase camera); then rest, and leave the CPU to the
     // program.
     const now = performance.now()
-    if (!moved && now - this._changedAt > SETTLE_MS) { this._gov.last = 0; return }
+    if (!moved && now - this._changedAt > SETTLE_MS) { this._gov.last = 0; this.fps = null; return }
+    // the level's frame cap: a frame comes no sooner than its share of a second
+    const cap = PRESETS[this.level].fps
+    if (cap && this._gov.drawn && now - this._gov.drawn < 1000 / cap - 4) return
+    this._gov.drawn = now
     this.renderer.render(this.scene, this.camera)
     this._govern(now)
   }
 
-  // Every second of continuous drawing: below 24 frames a second, fewer
-  // pixels (down to half); above 50 for three seconds, more again.
+  // Every second of continuous drawing: the frame rate, for the settings
+  // panel, and under Auto the level it calls for.
   _govern(now) {
     const g = this._gov
     if (g.last) { g.sum += now - g.last; g.n++ }
     g.last = now
     if (g.sum < 1000) return
-    const fps = (1000 * g.n) / g.sum
+    this.fps = (1000 * g.n) / g.sum
     g.sum = 0; g.n = 0
-    let ratio = this.ratio
-    if (fps < 24 && ratio > MIN_RATIO) { ratio = Math.max(MIN_RATIO, ratio * 0.8); g.fastFor = 0 }
-    else if (fps > 50 && ratio < this.maxRatio && ++g.fastFor >= 3) { ratio = Math.min(this.maxRatio, ratio * 1.15); g.fastFor = 0 }
+    if (settings.realism !== 'auto') return
+    const level = this.auto.measure(this.fps)
+    if (level === this.level) return
+    this.level = level
+    settings.setAutoLevel(level)
+    this._realism()
+  }
+
+  // Draw at the level chosen: pixels, shadows, glow, texture sharpness.
+  _realism() {
+    if (settings.realism !== 'auto') this.level = settings.realism
+    const p = PRESETS[this.level]
+    const ratio = Math.min(p.ratio, globalThis.devicePixelRatio || 1)
     if (ratio !== this.ratio) {
       this.ratio = ratio
       this.renderer.setPixelRatio(ratio)
-      this.resize()
+      if (this.camera) this.resize()
     }
+    this.scene?.traverse((o) => {
+      if (o.userData.realism) o.visible = p[o.userData.realism]
+      const map = o.isMesh && o.material?.map
+      if (map && map.anisotropy !== p.anisotropy) { map.anisotropy = p.anisotropy; map.needsUpdate = true }
+    })
+    this._touch()
   }
 }
 
 const SETTLE_MS = 1500
-const MIN_RATIO = 0.5
 
 function lerpSnap(a, b, f) {
   let dh = b.heading - a.heading

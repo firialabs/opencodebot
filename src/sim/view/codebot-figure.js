@@ -83,6 +83,7 @@ export class CodeBotFigure {
     )
     shadow.rotation.x = -Math.PI / 2
     shadow.position.set(0.045, 0.0015, 0)
+    shadow.userData.realism = 'shadows'   // drawn at the levels that have them (realism.js)
     this.root.add(shadow)
   }
 

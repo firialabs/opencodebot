@@ -5,6 +5,7 @@ import { COURSES } from './world/courses.js'
 import { KINDS, ROOMS } from './kinds.js'
 import { SimDevice } from './sim-device.js'
 import { holdButton } from './hold-button.js'
+import { SettingsPanel } from './settings-panel.js'
 import { t, tHtml } from '../i18n/index.js'
 
 const CAMERAS = [['chase', '🎥', 'simPanel.camChase'], ['orbit', '🔄', 'simPanel.camOrbit'], ['top', '🗺️', 'simPanel.camTop']]
@@ -52,12 +53,14 @@ export class SimPanel {
         </span>
         <a class="sim-chip sim-boards" data-for="codex codeair" href="./boards.html" target="_blank" rel="noopener" title="${tHtml('simPanel.moreBoardsTitle')}">${tHtml('simPanel.moreBoards')}</a>
         <button type="button" class="icon-btn sim-reset" data-for="codebot codeair" ${both('simPanel.reset')}>↺</button>
+        <button type="button" class="icon-btn sim-gear" ${both('settings.open')}>⚙️</button>
       </div>`
     const q = (s) => host.querySelector(s)
     this.stage = q('.sim-stage')
     this.bar = q('.sim-bar')
     sim.attachView(q('.sim-view'))
     q('.sim-start').addEventListener('click', () => onStart())
+    this.settings = new SettingsPanel(this.stage, q('.sim-gear'), sim)
 
     for (const [mode, icon, key] of CAMERAS) {
       const b = document.createElement('button')
@@ -134,6 +137,8 @@ export class SimPanel {
     this.courseSelect.disabled = this.roomSelect.disabled = this.sim.state === 'running'
     if (on) this.roomSelect.value = this.sim.room ?? KINDS[this.sim.targetId]?.env
     if (!on || this.sim.state !== 'running') this._paused(false)
+    if (!on) this.settings.close({ focus: false })
+    this.settings.refresh()
   }
 
   _camera(mode) {

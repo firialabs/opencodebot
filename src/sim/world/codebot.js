@@ -7,6 +7,7 @@
 // forward; the body frame has +x forward and +y to the robot's left.
 import { sincos, wrapAngle, clamp } from './fmath.js'
 import { Environment } from './environment.js'
+import { Hits } from './hits.js'
 
 // Where things are on the CB3, from its 3D model (BotBody.glb, WheelAssy.glb),
 // in mm in the model's frame: z forward, y up, the origin on the board's top
@@ -123,6 +124,28 @@ export const CB3 = {
   accelPerG: 16384,           // +-2 g full scale, signed 16-bit
   accelNoise: 60,
   gravity: 9.80665,
+
+  // The gearmotors' hum, for the ear only: a voice per turning motor at three
+  // times the motor's revolutions (48 to the wheel's one), about 410 Hz at
+  // full speed, its level up to humLevel with speed: quiet, well under a
+  // CodeAIR's whine.
+  gearRatio: 48,
+  humHarmonic: 3,
+  humLevel: 0.25,
+}
+
+// The motors' hum: { freq, level } for each motor turning.
+export function humVoices(wheel, p = CB3) {
+  const voices = []
+  for (const w of wheel) {
+    const a = Math.abs(w)
+    if (a < 0.5) continue
+    voices.push({
+      freq: Math.round((a * p.gearRatio * p.humHarmonic) / (2 * Math.PI) * 10) / 10,
+      level: Math.round(Math.min(1, a / p.motorNoLoad) * p.humLevel * 1000) / 1000,
+    })
+  }
+  return voices
 }
 
 export class CodeBot {
@@ -171,7 +194,8 @@ export class CodeBot {
     this.power = [0, 0]
     this.enabled = false
     this.blocked = false
-    this.accelBody = [0, 0]                        // filtered body-frame acceleration, m/s^2
+    this.hits = new Hits()                         // knocks, for their sound
+    this.accelBody = [0, 0]                      // filtered body-frame acceleration, m/s^2
     this.volts = this.p.nominalVolts
     this.leds = { user: 0, ls: 0, prox: 0, pwr: true, usb: false }
     this.tone = 0
@@ -254,6 +278,8 @@ export class CodeBot {
     const [s2, c2] = sincos(heading)
     const bx = x + p.bodyCenter * c2, by = y + p.bodyCenter * s2
     const out = Environment.pushOut(bx, by, p.bodyRadius, this.boxes)
+    // running into something (not pressing on against it) thumps
+    if (out.hit && !this.blocked && Math.abs(v0) > 0.05) this.hits.add('thump', Math.abs(v0))
     this.blocked = out.hit
     if (out.hit) {
       x = out.x - p.bodyCenter * c2
@@ -275,6 +301,7 @@ export class CodeBot {
     const ground = this.env.supportAt(x + p.bodyCenter * c2, y + p.bodyCenter * s2, this.z, p.step)
     if (ground < this.z) {
       // It tips off forward (or back, reversing), and lands clear of the ledge.
+      this.hits.add('thump', Math.sqrt(2 * p.gravity * (this.z - ground)))
       this.setLevel(ground)
       const dir = v >= 0 ? 1 : -1
       for (let d = 0; d <= 2 * p.bodyRadius; d += 0.005) {
@@ -397,6 +424,8 @@ export class CodeBot {
       x: this.x, y: this.y, z: this.z, heading: this.heading,
       wheelAngle: [this.wheelAngle[0], this.wheelAngle[1]],
       leds: { ...this.leds }, tone: this.tone, enabled: this.enabled, blocked: this.blocked,
+      whine: humVoices(this.wheel, this.p),
+      hits: this.hits.snapshot(),
     }
   }
 }

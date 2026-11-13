@@ -215,6 +215,30 @@ documents bit-exact cross-platform results in wasm.
   hover about 12 dB under a speaker tone. Headless runs carry the same `whine` in their
   trace, so tests check it follows the motors. Every number is for the ear, to tune
   against a real CodeAIR later.
+- **CodeBot's hum**: the same voices, quieter: one sawtooth per turning gearmotor at three
+  times the motor's revolutions (48 to the wheel's one), about 410 Hz at full speed, its
+  level up to 0.25 with speed (`humVoices` in `world/codebot.js`).
+- **Knocks** (`world/hits.js`): each device keeps its last four knocks, numbered, in its
+  snapshot, so the page plays each new one once however frames fall. A CodeAIR coming
+  down onto the floor or a box top faster than 0.3 m/s *clatters*; into a wall, a box's
+  side faster than 0.1 m/s, or a ceiling, it *thumps*. A CodeBot thumps when it runs into
+  something at more than 0.05 m/s (not while it presses on against it) and when it drops
+  off a ledge. The sounds are synthesized, no samples: a clatter is a hollow knock
+  (noise through a 900 Hz band-pass, 60 ms) then two to six bright ticks (noise through
+  2.2 to 5 kHz band-passes, 20 to 50 ms each) closer and softer as the frame rattles to
+  rest, more and louder the harder it hit (a landing touches at about 1 m/s, a light tap;
+  a fall from a metre hits at 4.4 m/s, the loudest); a thump is low noise (450 Hz
+  low-pass, 80 ms) over a sine falling from 110 to 60 Hz in 120 ms.
+- **Music**: a room may name a track and its credit (`MUSIC` in `kinds.js`); it plays
+  looped while the simulator is in that room, and a pause holds it with everything else.
+  No room has one yet: the haunted house rooms will bring theirs (music by Kid Fears,
+  commissioned by Firia Labs, CC BY-NC 4.0 with the other assets).
+- **Mixing**: four buses, each its own gain, into one output (`sound.js`): Motors (the
+  whine and the hum), Speaker, Effects (the knocks) and Music. The settings panel's
+  sliders set them (square law, so half way sounds about half as loud), with a mute
+  each, kept in the browser (`settings.js`). At the defaults the levels are those the
+  simulator had before it had sliders. Headless runs make no sound; the page's speaker
+  reports its bus levels (`levels()`) for the tests.
 - **Buttons**: clicks on the 3D model or the on-screen panel, and keys.
 
 ## 4. Rendering: Three.js on the main thread
@@ -247,6 +271,38 @@ stays an option if the main thread ever gets busy.
 
 Cameras: an orbit camera, a chase camera that follows the robot, and a top-down view that
 shows the floor lines, which is the view that helps most with line following.
+
+### Realism: what the page draws, never what the world does
+
+Students' machines run from old Chromebooks to gaming PCs, so the settings panel has a
+realism setting: Low, Medium, High, Ultra, or Auto (the default). Each level
+(`view/realism.js`) sets only what the page spends on drawing:
+
+| | Low | Medium | High | Ultra |
+|---|---|---|---|---|
+| device pixels per CSS pixel, at most | 0.6 | 1 | 1.5 | 2 |
+| antialiasing | off | off | on | on |
+| soft shadows under the robots | off | on | on | on |
+| glow around lit NeoPixels | off | on | on | on |
+| texture anisotropy | 1 | 2 | 4 | 8 |
+| frames a second, at most | 30 | 60 | 60 | the screen's |
+
+Antialiasing is fixed when the view is made, so a change to it takes effect at the
+simulator's next start; the rest changes at once. Auto starts where it settled last time
+(Medium the first time), steps down a level after two seconds below 24 frames a second,
+steps up after eight seconds at 95% of the level's frame cap, and never goes back up to a
+level it came down from, so it settles instead of flapping. The panel shows the frame
+rate and the pace, and "Show the frame rate" puts both over the view.
+
+The principle: **realism never touches the world.** The world steps its fixed 1 ms tick
+with the same sensors, physics and seeded noise at every level, in its worker, which
+knows nothing of the picture. Under load the page drops frames first. If the CPU still
+cannot keep up, the engine never lengthens a tick or skips a step: simulated time runs
+slower than wall time (the engine rebases its pacing rather than sprinting to catch up),
+and the status line says so ("Running at 60% of real time"). So a program behaves the
+same on every student's machine, and tests and grading stay reproducible:
+`tests/sim.mjs` runs one program flat out and paced against the wall clock (which hands
+out frames at different moments) and checks the traces are identical.
 
 ## 5. Plugging into LabBlocks
 

@@ -58,6 +58,7 @@ export class CodeAIRFigure {
         const g = new THREE.Mesh(new THREE.SphereGeometry(size * 1.6, 10, 6),
           new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }))
         g.position.copy(mesh.position)
+        g.userData.realism = 'effects'      // drawn at the levels that have them (realism.js)
         this.body.add(g)
         m.userData.halo = g.material
       }
@@ -80,6 +81,7 @@ export class CodeAIRFigure {
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }),
     )
     this.shadow.rotation.x = -Math.PI / 2
+    this.shadow.userData.realism = 'shadows'
     this.root.add(this.shadow)
   }
 

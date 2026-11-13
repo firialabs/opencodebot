@@ -75,6 +75,9 @@ test('every key the code uses is in English', () => {
     ...['east', 'northEast', 'north', 'northWest', 'west', 'southWest', 'south', 'southEast'].map((c) => `compass.${c}`),
     'codex.up', 'codex.left', 'codex.right', 'codex.down',
     'simPanel.camChase', 'simPanel.camOrbit', 'simPanel.camTop',
+    ...['motors', 'speaker', 'effects', 'music'].flatMap((b) => [`settings.${b}`, `settings.${b}Hint`]),
+    ...['low', 'medium', 'high', 'ultra'].map((l) => `settings.level.${l}`),
+    'music.creditKidFears',
     'example.remote', 'example.listener', 'example.codeairRemote', 'example.xfly', 'example.lights',
   ]
   for (const k of built) if (!(k in en)) missing.push(k)

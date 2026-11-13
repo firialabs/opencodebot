@@ -114,6 +114,99 @@ await page.waitForFunction(() => /42/.test(window.__sim.out), null, { timeout: 5
 
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim.png` })
 
+// The settings panel: the gear opens it with focus inside; the keyboard sets
+// a bus's gain, mute zeroes it; realism and the frame-rate readout follow;
+// Music shows only with a track; Escape closes it back to the gear; the
+// choices outlast a reload.
+{
+  await page.click('.sim-gear')
+  const opened = await page.evaluate(() => ({
+    open: !document.querySelector('.sim-settings').hidden,
+    expanded: document.querySelector('.sim-gear').getAttribute('aria-expanded'),
+    focus: document.activeElement?.closest('.sim-vol')?.dataset.bus,
+    music: !document.querySelector('.sim-vol[data-bus="music"]').hidden,
+  }))
+  if (!opened.open || opened.expanded !== 'true' || opened.focus !== 'motors' || opened.music) problems.push(`settings: opened as ${JSON.stringify(opened)}`)
+  const levels = () => page.evaluate(() => window.openCodeBot.device.sim.speaker.levels())
+  const before = await levels()
+  if (Math.abs(before.effects - 0.49) > 1e-3 || Math.abs(before.speaker - 0.64) > 1e-3) problems.push(`settings: default levels ${JSON.stringify(before)}`)
+  await page.focus('.sim-vol[data-bus="effects"] input')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft')
+  await page.click('.sim-vol[data-bus="speaker"] .sim-mute')
+  const after = await levels()
+  if (Math.abs(after.effects - 0.25) > 1e-3 || after.speaker !== 0 || Math.abs(after.motors - before.motors) > 1e-3) problems.push(`settings: after effects 50 and speaker muted, levels ${JSON.stringify(after)}`)
+  if (await page.getAttribute('.sim-vol[data-bus="speaker"] .sim-mute', 'aria-pressed') !== 'true') problems.push('settings: the speaker\'s mute does not say it is pressed')
+  // the knocks play without a fault
+  await page.evaluate(() => { const s = window.openCodeBot.device.sim.speaker; s.clatter(4.4); s.thump(0.5) })
+
+  await page.selectOption('.sim-realism', 'low')
+  await page.check('.sim-show-fps')
+  await page.evaluate(() => window.openCodeBot.device.sim.view.setCamera('orbit'))   // something to draw
+  await page.waitForTimeout(1200)
+  const view = await page.evaluate(() => ({ level: window.openCodeBot.device.sim.view.level, ratio: window.openCodeBot.device.sim.view.ratio, overlay: document.querySelector('.sim-perf').hidden ? null : document.querySelector('.sim-perf').textContent }))
+  if (view.level !== 'low' || view.ratio > 0.6 || !/fps/.test(view.overlay ?? '')) problems.push(`settings: realism low and frame rate shown gave ${JSON.stringify(view)}`)
+
+  // a track (a quarter second of silence) brings the Music row and its credit
+  const wav = (() => {
+    const n = 2000, b = Buffer.alloc(44 + n * 2)
+    b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16)
+    b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(16000, 28)
+    b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40)
+    return `data:audio/wav;base64,${b.toString('base64')}`
+  })()
+  await page.evaluate((url) => window.openCodeBot.device.sim.setMusic(url, 'A test track'), wav)
+  await page.waitForFunction(() => window.openCodeBot.device.sim.speaker.track?.source, null, { timeout: 5000 }).catch(() => problems.push('settings: the music track did not start'))
+  const music = await page.evaluate(() => ({ shown: !document.querySelector('.sim-vol[data-bus="music"]').hidden, credit: document.querySelector('.sim-credit').textContent }))
+  if (!music.shown || music.credit !== 'A test track') problems.push(`settings: with a track, the Music row ${JSON.stringify(music)}`)
+  await page.evaluate(() => window.openCodeBot.device.sim.setMusic(null))
+  if (await page.evaluate(() => !document.querySelector('.sim-vol[data-bus="music"]').hidden)) problems.push('settings: the Music row stayed without a track')
+  await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-settings.png` })
+
+  await page.keyboard.press('Escape')
+  const closed = await page.evaluate(() => ({ hidden: document.querySelector('.sim-settings').hidden, focus: document.activeElement?.classList.contains('sim-gear') }))
+  if (!closed.hidden || !closed.focus) problems.push(`settings: Escape gave ${JSON.stringify(closed)}`)
+
+  // another tab of the same browser starts with the same settings
+  const again = await context.newPage()
+  await again.goto(URL, { waitUntil: 'networkidle' })
+  await again.click('#btn-sim')
+  await again.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+  await again.click('.sim-gear')
+  const kept = await again.evaluate(() => ({
+    effects: document.querySelector('.sim-vol[data-bus="effects"] input').value,
+    speakerMuted: document.querySelector('.sim-vol[data-bus="speaker"] .sim-mute').getAttribute('aria-pressed'),
+    realism: document.querySelector('.sim-realism').value,
+    showFps: document.querySelector('.sim-show-fps').checked,
+    levels: window.openCodeBot.device.sim.speaker.levels(),
+  }))
+  if (kept.effects !== '50' || kept.speakerMuted !== 'true' || kept.realism !== 'low' || !kept.showFps || kept.levels.speaker !== 0) problems.push(`settings: not kept across a reload: ${JSON.stringify(kept)}`)
+  // a phone: the panel fits, and nothing scrolls sideways
+  await again.setViewportSize({ width: 360, height: 740 })
+  await again.keyboard.press('Escape')
+  await again.click('.sim-gear')
+  await again.waitForTimeout(300)
+  const fit = await again.evaluate(() => {
+    const el = document.querySelector('.sim-settings')
+    const r = el.getBoundingClientRect()
+    const onTop = [0.1, 0.5, 0.9].every((f) => el.contains(document.elementFromPoint(r.left + r.width * f, r.top + 20)))
+    return { left: r.left, right: r.right, height: r.height, width: innerWidth, scroll: document.documentElement.scrollWidth, onTop }
+  })
+  if (fit.left < 0 || fit.right > fit.width || fit.scroll > fit.width || fit.height < 200 || !fit.onTop) problems.push(`settings: at phone width ${JSON.stringify(fit)}`)
+  await again.screenshot({ path: `${SHOT_DIR}/ocb-sim-settings-phone.png` })
+  await again.close()
+
+  // back to the defaults for what follows
+  await page.click('.sim-gear')
+  await page.click('.sim-vol[data-bus="speaker"] .sim-mute')
+  await page.focus('.sim-vol[data-bus="effects"] input')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight')
+  await page.selectOption('.sim-realism', 'auto')
+  await page.uncheck('.sim-show-fps')
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => window.openCodeBot.device.sim.setCamera('chase'))
+  console.log('sim-ui: the settings panel sets each bus, realism and the frame-rate readout, and keeps them')
+}
+
 // A line course from the picker, and a follower on it, at 4x.
 await page.selectOption('.sim-course', 'oval')
 await page.waitForFunction(() => {

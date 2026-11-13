@@ -10,6 +10,7 @@ import { COURSES, courseShape } from '../src/sim/world/courses.js'
 import { CB3 } from '../src/sim/world/codebot.js'
 import { AIR } from '../src/sim/world/codeair.js'
 import { ROOMS } from '../src/sim/kinds.js'
+import { AutoRealism } from '../src/sim/view/realism.js'
 import { describe, change, compass } from '../src/sim/describe.js'
 import { loadEnvironment } from '../src/sim/headless.js'
 import { Engine } from '../src/sim/runtime/engine.js'
@@ -107,6 +108,22 @@ print(a == b or max(a) - min(a) < 1500)`,
   })
   const e = r.trace.at(-1)
   assert.ok(e.y < 2 && e.y > 1.7, `stopped at y = ${e.y}`)
+  // running into it thumps, once, at about the speed it was going; pressing
+  // on against it is silent
+  const hits = r.device.hits
+  assert.ok(hits.n >= 1 && hits.n <= 2, `${hits.n} knocks against the wall`)
+  assert.equal(hits.list[0].kind, 'thump')
+  assert.ok(hits.list[0].speed > 0.2 && hits.list[0].speed < 0.7, `hit at ${hits.list[0].speed} m/s`)
+})
+
+await test('the gearmotors hum as the wheels turn, and not when they stop', async () => {
+  const r = await runHeadless({ source: 'from botcore import *\nimport time\nmotors.enable(True)\nmotors.run(LEFT, 60)\nmotors.run(RIGHT, 60)\ntime.sleep(1)\nmotors.run(LEFT, 0)\nmotors.run(RIGHT, 0)\ntime.sleep(1)', seconds: 3 })
+  const at = (t) => r.trace.find((s) => Math.abs(s.t - t) < 0.001)
+  const moving = at(0.9).whine
+  assert.equal(moving.length, 2)
+  assert.ok(moving[0].freq > 150 && moving[0].freq < 450, `hums at ${moving[0].freq} Hz`)
+  assert.ok(moving[0].level > 0.05 && moving[0].level <= 0.25, `hum level ${moving[0].level}`)
+  assert.equal(at(1.95).whine.length, 0, 'still humming stopped')
 })
 
 await test('the same seed gives the same run, bit for bit', async () => {
@@ -125,6 +142,28 @@ print(s)`
   assert.equal(a.output, b.output)
   const c = await runHeadless({ source, seed: 8 })
   assert.notDeepEqual(a.trace.at(-1), c.trace.at(-1))
+})
+
+await test('the run does not depend on the pace: flat out and paced against the wall clock give the same trace', async () => {
+  // Paced, the engine waits on the wall clock and hands out frames at its
+  // own moments, as in a browser drawing at any frame rate (realism changes
+  // only that): the world's ticks, and so the run, are the same.
+  const source = `from botcore import *
+import time, random
+motors.enable(True)
+for i in range(20):
+    motors.run(LEFT, random.randint(-100, 100))
+    motors.run(RIGHT, random.randint(-100, 100))
+    n = 0
+    for j in range(300):
+        n += j
+    s = sum(ls.check(0)) + sum(accel.read())
+    time.sleep(0.05)
+print(s)`
+  const fast = await runHeadless({ source, seed: 3, seconds: 3 })
+  const paced = await runHeadless({ source, seed: 3, seconds: 3, speed: 4 })
+  assert.deepEqual(paced.trace, fast.trace)
+  assert.equal(paced.output, fast.output)
 })
 
 await test('a tight loop costs simulated time', async () => {
@@ -381,6 +420,18 @@ await flightTest('take off, hold, and land, with its own motion commander', asyn
   assert.ok(r.trace.find((s) => s.z > 0.01).t > 2.1)
 })
 
+await flightTest('dropped, it clatters on the floor, hardest first; a landing is softer or silent', async () => {
+  const r = await air('import time\ntime.sleep(2)', { seconds: 3, setup: (w, d) => { d.z = 1 } })
+  const hits = r.device.hits.list
+  assert.ok(hits.length >= 1 && hits.every((h) => h.kind === 'clatter'), JSON.stringify(hits))
+  assert.ok(Math.abs(hits[0].speed - Math.sqrt(2 * 9.81)) < 0.4, `hit the floor at ${hits[0].speed} m/s`)
+  assert.ok(hits.every((h, i) => i === 0 || h.speed < hits[i - 1].speed), 'each bounce softer')
+  const landed = await air(PRE + 'fly.take_off(0.5)\nfly.steady(1)\nfly.land()\nfly.steady(1)', { seconds: 15 })
+  const touch = landed.device.hits.list.filter((h) => h.kind === 'clatter')
+  // its landing touches at about 1 m/s: a light tap at the sound's scale
+  assert.ok(touch.every((h) => h.speed < 1.3), `landed at ${JSON.stringify(touch)}`)
+})
+
 await flightTest('the rotors whine as the motors turn: up to take off, steady in a hover, apart in a turn, silent when stopped', async () => {
   const r = await air(PRE + 'time.sleep(0.5)\nfly.take_off(0.5)\nfly.steady(1)\nfly.turn_left(90)\nfly.steady(1)\nfly.land()\ntime.sleep(1.5)')
   const pitch = (s) => s.whine.reduce((a, v) => a + v.freq, 0) / s.whine.length
@@ -584,6 +635,27 @@ if (ROOM_IDS.includes('auditorium')) {
     assert.ok(Math.abs(r.device.z - stage) < 0.01 && !r.device.motors, `ended at ${r.device.z} m, motors ${r.device.motors}`)
   })
 }
+
+console.log('realism')
+
+await test('Auto realism steps down when frames lag, up when they are comfortably fast, and settles without flapping', async () => {
+  const auto = new AutoRealism('medium')
+  for (let i = 0; i < 8; i++) auto.measure(60)
+  assert.equal(auto.level, 'high', 'eight fast seconds at Medium')
+  auto.measure(20)
+  assert.equal(auto.level, 'high', 'one slow second is not enough')
+  auto.measure(20)
+  assert.equal(auto.level, 'medium', 'two slow seconds')
+  for (let i = 0; i < 60; i++) auto.measure(60)
+  assert.equal(auto.level, 'medium', 'went back up to a level it came down from')
+  auto.measure(10); auto.measure(10)
+  assert.equal(auto.level, 'low')
+  for (let i = 0; i < 20; i++) auto.measure(30)
+  assert.equal(auto.level, 'low', 'Low at its cap of 30 may not climb to a level it left')
+  const fresh = new AutoRealism('low')
+  for (let i = 0; i < 8; i++) fresh.measure(29)
+  assert.equal(fresh.level, 'medium', 'Low running at its cap climbs')
+})
 
 console.log('in words, for a screen reader')
 
