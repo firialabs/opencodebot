@@ -8,6 +8,7 @@ import { runHeadless, runHeadlessGroup } from '../src/sim/headless.js'
 import { REMOTE_CODEX, LISTENER_CODEX, LISTENER_CODEAIR, REMOTE_FOR_CODEAIR, XFLY_CODEAIR } from '../src/sim/boards/examples.js'
 import { COURSES, courseShape } from '../src/sim/world/courses.js'
 import { CB3 } from '../src/sim/world/codebot.js'
+import { AIR } from '../src/sim/world/codeair.js'
 import { ROOMS } from '../src/sim/kinds.js'
 import { describe, change, compass } from '../src/sim/describe.js'
 import { loadEnvironment } from '../src/sim/headless.js'
@@ -378,6 +379,29 @@ await flightTest('take off, hold, and land, with its own motion commander', asyn
   assert.ok(r.device.z < 0.001 && !r.device.motors, `ended at ${r.device.z} m, motors ${r.device.motors}`)
   // it waited for the estimator reset (2.1 s) before it left the floor
   assert.ok(r.trace.find((s) => s.z > 0.01).t > 2.1)
+})
+
+await flightTest('the rotors whine as the motors turn: up to take off, steady in a hover, apart in a turn, silent when stopped', async () => {
+  const r = await air(PRE + 'time.sleep(0.5)\nfly.take_off(0.5)\nfly.steady(1)\nfly.turn_left(90)\nfly.steady(1)\nfly.land()\ntime.sleep(1.5)')
+  const pitch = (s) => s.whine.reduce((a, v) => a + v.freq, 0) / s.whine.length
+  const diagonals = ({ whine: w }) => Math.abs(w[0].freq + w[2].freq - w[1].freq - w[3].freq) / 2
+  const at = (t0, t1) => r.trace.filter((s) => s.t >= t0 && s.t < t1)
+  assert.ok(r.trace.filter((s) => !s.motors && s.z === 0 && s.t < 1).every((s) => s.whine.length === 0), 'whined before the motors ran')
+  // spawned facing +y: the turn starts when the heading leaves 90 degrees
+  const turn = r.trace.find((s) => s.heading > Math.PI / 2 + 0.03).t
+  const climbing = r.trace.filter((s) => s.motors && s.z > 0.1 && s.z < 0.4 && s.t < turn)
+  const hover = at(turn - 0.4, turn - 0.05)
+  const landing = r.trace.filter((s) => s.motors && s.z > 0.1 && s.z < 0.4 && s.t > turn)
+  assert.ok(climbing.length && hover.length && landing.length)
+  const mean = (ss, f) => ss.reduce((a, s) => a + f(s), 0) / ss.length
+  const [up, still, down] = [mean(climbing, pitch), mean(hover, pitch), mean(landing, pitch)]
+  assert.ok(Math.abs(still - AIR.whineHz) < 0.05 * AIR.whineHz, `hovers at ${still} Hz`)
+  assert.ok(up > still * 1.04 && down < still * 0.96, `climbs at ${up} Hz, hovers at ${still}, sinks at ${down}`)
+  assert.ok(Math.abs(mean(hover, (s) => s.whine[0].level) - 0.5) < 0.05)
+  // a turn works one diagonal pair against the other
+  const turning = Math.max(...at(turn, turn + 1.5).map(diagonals)), steady = Math.max(...hover.map(diagonals))
+  assert.ok(turning > steady + 20, `diagonals ${turning} Hz apart in the turn, ${steady} Hz in the hover`)
+  assert.equal(r.device.snapshot().whine.length, 0, 'still whining after it landed')
 })
 
 await flightTest('forward and turn go about as far as asked, with some drift', async () => {

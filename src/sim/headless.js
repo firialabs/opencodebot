@@ -139,5 +139,5 @@ async function prepare(opts, seconds = 10, lockstep = null) {
 }
 
 function pick(s) {
-  return { x: s.x, y: s.y, z: s.z, heading: s.heading, leds: s.leds, tone: s.tone, motors: s.motors }
+  return { x: s.x, y: s.y, z: s.z, heading: s.heading, leds: s.leds, tone: s.tone, motors: s.motors, whine: s.whine }
 }

@@ -199,7 +199,22 @@ documents bit-exact cross-platform results in wasm.
   simulated light sources.
 - **Sound**: the speaker and `audio` drive a Web Audio oscillator on the main thread, from
   events in the snapshot stream, timed in simulated time. Microphone input, where an API
-  reads it, comes from the page's microphone with permission, or silence.
+  reads it, comes from the page's microphone with permission, or silence. CodeAIR's speaker
+  is the same square-wave voice as CodeBot's. While a pause holds simulated time, the
+  page's audio is suspended with it.
+- **CodeAIR's whine**: a sound, not an acoustic model. The airframe keeps four rotor speeds
+  (`spinRotors` in `world/codeair.js`, shares of hover speed): collective thrust is the
+  vertical acceleration over the lean, plus a little for climbing (0.8 per m/s) and for
+  speed across the floor (0.1 per m/s), idle (0.5) on the floor; each rotor adds or takes
+  a share to lean (front against back, left against right, 0.05 per rad/s) and to turn
+  (one diagonal pair against the other, 0.02 per rad/s^2). Speed is the square root of
+  thrust, lagging 0.1 s up and 0.25 s down, so the motors spool up and run down. The
+  snapshot carries `whine`, a voice per turning rotor: pitch 560 Hz at hover times its
+  speed (each motor detuned by up to about 1%, so they beat), level the thrust over 2
+  (hover 0.5). It plays as four sawtooth oscillators through one 3.5 kHz low-pass, a
+  hover about 12 dB under a speaker tone. Headless runs carry the same `whine` in their
+  trace, so tests check it follows the motors. Every number is for the ear, to tune
+  against a real CodeAIR later.
 - **Buttons**: clicks on the 3D model or the on-screen panel, and keys.
 
 ## 4. Rendering: Three.js on the main thread
@@ -534,7 +549,8 @@ Built, on branch `sim` (pushed to firialabs/opencodebot):
   `sim/README.md`, "CodeAIR flight"): its own codeair, flight, flightdb, recorder and cflib over a
   virtual Crazyflie and the arcade airframe (section 2); rangers, flow, IMU, barometer,
   magnetometer and state estimate from the room; NeoPixels, blue and status LEDs (an LP5009
-  at its registers), buttons, speaker, battery; the figure leans, spins its propellers and
+  at its registers), buttons, speaker, battery; the rotors whine as they turn (section 3);
+  the figure leans, spins its propellers and
   lights its pixels. A stopped program gets 12 s of simulated time to clean up, so a stop
   inside `with recorder:` lands it, as on the drone.
 
