@@ -46,6 +46,27 @@ export const AIR = {
   shutdownS: 2.0,
   estDriftSigma: 0.004,       // m/sqrt(s), the position estimate's random walk
   volts: 3.9,                 // the battery
+  // The rotors, for their whine only: speeds as shares of the hover speed.
+  idleThrust: 0.5,            // share of hover thrust, motors on and still on the floor
+  climbThrust: 0.8,          // thrust share per m/s of climb (less sinking): climbing takes power
+  speedThrust: 0.1,           // thrust share per m/s across the floor (the lean against drag)
+  rotorLean: 0.05,           // thrust share per rad/s of lean rate, front against back, left against right
+  rotorYaw: 0.02,            // thrust share per rad/s^2 of yaw acceleration, diagonal against diagonal
+  spinUpS: 0.1,             // s, a rotor's lag speeding up
+  spinDownS: 0.25,            // s, and running down with the motors off
+  whineHz: 560,               // Hz, the whine's fundamental at hover
+  whineDetune: [1, 1.007, 0.994, 1.012],   // no two motors quite alike: they beat
+}
+
+// The whine the rotors make: a voice for each, its pitch the rotor's speed
+// and its level the thrust (speed squared), hover 0.5. Silent when stopped.
+export function whineVoices(rotors, p = AIR) {
+  const voices = []
+  rotors.forEach((r, i) => {
+    if (r < 0.02) return
+    voices.push({ freq: Math.round(p.whineHz * r * p.whineDetune[i] * 10) / 10, level: Math.round(Math.min(1, r * r / 2) * 1000) / 1000 })
+  })
+  return voices
 }
 
 export class CodeAIR {
@@ -76,6 +97,7 @@ export class CodeAIR {
     this.rollRate = 0; this.pitchRate = 0
     this.drift = [0, 0, 0]                         // vx, vy (m/s), yaw rate (rad/s)
     this.motors = false
+    this.rotors = [0, 0, 0, 0]                     // front left, front right, rear right, rear left
     this.propAngle = 0
     this.bump = 0                                  // g, a knock the accelerometer feels
     this.tUs = 0
@@ -98,7 +120,7 @@ export class CodeAIR {
     this.tUs += dt * 1e6
     this.cf.step(dt)
     const sp = this.cf.setpointNow(this.tUs)
-    const vx0 = this.vx, vy0 = this.vy, vz0 = this.vz
+    const vx0 = this.vx, vy0 = this.vy, vz0 = this.vz, yaw0 = this.yawRate
     const [s, c] = sincos(this.heading)
     const onFloor = this.rangeDown() <= 1e-6
 
@@ -179,11 +201,37 @@ export class CodeAIR {
     this.pitch += (pitch - this.pitch) * k
     this.roll += (roll - this.roll) * k
     this.bump *= 1 - 30 * dt
+    this.spinRotors(dt, onFloor, (this.yawRate - yaw0) / dt)
 
     // The estimate wanders from the truth while it flies.
     if (this.motors && this.rangeDown() > 0.002) {
       const q = p.estDriftSigma * Math.sqrt(dt)
       this.est.ex += q * this.rng.normal(); this.est.ey += q * this.rng.normal()
+    }
+  }
+
+  // The four rotors' speeds, for the whine: the collective thrust holds it up
+  // and lifts it (vertical acceleration over the lean, and a little more to
+  // climb or to fly along), and each rotor gives a
+  // little more or less to lean it and turn it. Speed is the square root of
+  // thrust; each lags, faster up than down.
+  spinRotors(dt, onFloor, yawAcc) {
+    const p = this.p, r = this.rotors
+    let thrust = [0, 0, 0, 0]
+    if (this.motors) {
+      const lift = onFloor && this.vz <= 0
+        ? p.idleThrust
+        : clamp((p.gravity + this.az) / p.gravity / (Math.cos(this.roll) * Math.cos(this.pitch))
+          + p.climbThrust * this.vz + p.speedThrust * Math.hypot(this.vx, this.vy), 0.3, 2)
+      const dp = p.rotorLean * this.pitchRate          // leaning forward: the rear pair works harder
+      const dr = p.rotorLean * this.rollRate           // leaning left: the right pair
+      const dy = clamp(p.rotorYaw * yawAcc, -0.3, 0.3) // turning left: one diagonal pair
+      thrust = [lift - dp + dr + dy, lift - dp - dr - dy, lift + dp - dr + dy, lift + dp + dr - dy]
+    }
+    for (let i = 0; i < 4; i++) {
+      const target = Math.sqrt(Math.max(0, thrust[i]))
+      r[i] += (target - r[i]) * Math.min(1, dt / (target > r[i] ? p.spinUpS : p.spinDownS))
+      if (!this.motors && r[i] < 0.01) r[i] = 0
     }
   }
 
@@ -320,6 +368,7 @@ export class CodeAIR {
       leds: [...this.leds],
       buttons: [...this.buttons],
       tone: this.tone,
+      whine: whineVoices(this.rotors, this.p),
     }
   }
 }

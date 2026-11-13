@@ -211,18 +211,22 @@ export class SimDevice extends EventTarget {
         this.lastFrame = m.snapshot
         const d = m.snapshot.devices[0]
         this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))
+        this.speaker?.whine(d?.whine ?? [])
         break
       }
       case 'screen': this.view?.screen?.(m.px); break
       case 'saved': this._saved?.get(m.name)?.(); this._saved?.delete(m.name); break
       case 'output': this.dispatchEvent(new CustomEvent('data', { detail: m.bytes })); break
       case 'state':
+        // paused, simulated time stands still, and so does the sound
+        this.speaker?.hold(m.state === 'paused')
         if (m.state === 'paused') this._setState(State.RUNNING, m.line ? t('sim.pausedAt', { line: m.line }) : t('sim.paused'))
         else if (m.state === 'running') this._setState(State.RUNNING, t('sim.running'))
         this._line(m.state === 'paused' ? m.line : null)
         break
       case 'done': {
         const r = m.result
+        this.speaker?.hold(false)
         this._line(null)
         this._stopped?.()
         this._stopped = null
@@ -278,6 +282,44 @@ class Speaker {
     this.out.connect(this.ctx.destination)
     this.voices = []
     this.last = ''
+    // CodeAIR's rotors: a sawtooth each through one low-pass, well under the
+    // speaker (a hovering whine about 12 dB below a tone).
+    this.rotorBus = this.ctx.createBiquadFilter()
+    this.rotorBus.type = 'lowpass'
+    this.rotorBus.frequency.value = 3500
+    const rotorGain = this.ctx.createGain()
+    rotorGain.gain.value = 1.8      // four saws at level 0.5: about a quarter of a tone's RMS
+    this.rotorBus.connect(rotorGain).connect(this.out)
+    this.rotors = []
+  }
+
+  // The whine: { freq, level } for each rotor turning, as the frames bring
+  // them; pitch and level glide between frames.
+  whine(voices) {
+    if (!this.ctx || (!voices.length && !this.rotors.length)) return
+    const t = this.ctx.currentTime
+    while (this.rotors.length < voices.length) {
+      const osc = this.ctx.createOscillator()
+      osc.type = 'sawtooth'
+      const gain = this.ctx.createGain()
+      gain.gain.value = 0
+      osc.connect(gain).connect(this.rotorBus)
+      osc.start()
+      this.rotors.push({ osc, gain, on: false })
+    }
+    this.rotors.forEach((v, i) => {
+      const s = voices[i]
+      if (s) v.osc.frequency.setTargetAtTime(s.freq, t, 0.02)
+      if (s || v.on) v.gain.gain.setTargetAtTime(s ? s.level / 4 : 0, t, 0.02)
+      v.on = !!s
+    })
+  }
+
+  // Paused: the sound stops where it is, and goes on when the program does.
+  hold(on) {
+    if (!this.ctx) return
+    if (on) this.ctx.suspend()
+    else if (this.ctx.state === 'suspended') this.ctx.resume()
   }
 
   play(sounds) {
