@@ -145,9 +145,9 @@ gears' friction, the tyres' rolling resistance and the front skid's sliding as f
 that stops motion but never reverses it, which makes the deadband; the tyres' grip; the
 body as a circle or oriented box against wall segments and prop shapes,
 pushed out along the contact normal; when it is blocked, the wheels stall and the encoders
-stop, as on the real robot. Constants from the CB3 itself: the old simulator's dimensions
-are from the CB2 model (wheel 65 mm, track about 111 mm, line sensors 61 mm ahead at 0,
-plus or minus 9.7 and 19.1 mm) and are re-measured on a CB3 before they are trusted.
+stop, as on the real robot. Constants from the CB3 itself: positions are measured from the
+CB3's 3D model (the axle, the skid, the sensors; "Calibration" lists them), and the robot
+rests tilted on its skid as the real one does.
 
 **CodeAIR.** Arcade flight under a simulated flight controller. On the drone the ESP32's
 Python reaches the STM32 (Crazyflie firmware) only through the C module `crtp`, so the
@@ -369,13 +369,32 @@ CodeBot, whose physics had quirks (a full-power spin slower than a half-power on
   (`lineDark`); fully on, it holds at most 0.3 V, which through botcore's scaling is a
   floor of about 450 or less (`lineSaturated` is at or below it); its current rises with
   the emitter's, so half the emitter current gives about half the pull (the simulator's
-  half span at power 1); its response peaks with a reflector 0.6 mm away and falls to
-  about 40% at 2 mm, 20% at 3 mm and 10% at 5 mm, so a drop off a table reads dark; and
-  its on-state current is anywhere from 0.1 to 0.9 mA (20 mA emitter, a 90% white card
-  at 1 mm), so two sensors on one robot can differ several times over in how far white
-  pulls them down. Against the 47k pull-up's 70 uA even the weakest part saturates on
-  white at 1 mm, at either power; how far it is from saturating at the real height is
-  in "Line sensor levels" below.
+  half span at power 1); over white paper (90%) its response peaks with the paper 0.6 mm
+  away and falls to about 45% at 2 mm, 25% at 3 mm, 13% at 4 mm and 9% at 5 mm (the
+  datasheet's Figure 2, at a 10 mA emitter, each of its two curves, white paper and a
+  mirror, scaled to its own peak), so a drop off a table reads dark; and its on-state
+  current, at a 20 mA emitter over an aluminium mirror 1 mm away, is 0.10 mA at least and
+  0.90 mA typically, with no maximum given. The datasheet gives no absolute current over
+  paper, so how far white pulls a reading down at the CB3's height is not in it; "Line
+  sensor levels" below takes it from CodeSpace's simulator.
+- **Geometry** (`CB3_BODY` in `src/sim/world/codebot.js`, measured from the CB3's 3D
+  model, `sim/assets/BotBody.glb`, which matches the robot). The axle is the TT gearbox's
+  output shaft: 35.5 mm behind the model's origin and 12.7 mm below the board's top face,
+  at the gearbox's mid-height, 11 mm behind its front face. The tyres are 33.4 mm in
+  radius (`WheelAssy.glb`). The robot has no caster: it rests on its wheels and on the
+  battery holder's front bottom edge, a skid rounded to 5.7 mm, 39 mm ahead of the origin
+  and 10 mm below the board. Resting on both, the board pitches nose down by 23.8°
+  (`CB3_PITCH`), and the skid touches the floor 70 mm ahead of the axle (`skidAhead`).
+  The line sensors sit on the board's underside, 59.5 mm ahead of the origin, 95 mm along
+  the board from the axle; with the tilt they are 91 mm ahead of it on the floor, and
+  their faces are 5.5 mm above it (measured on a CB3; the model puts the faces at 4.1 mm
+  and the board's underside there at 5.0 mm: half a degree of tilt, which the tyres'
+  give or the holder's edge could make). They look along the board's down direction, so
+  tilted back 24°, and each sees the floor 2.4 mm behind the point under it: 88.5 mm
+  ahead of the axle (`lineSensors`). The proximity sensors are 94 mm ahead of the axle.
+  The collision circle runs from the board's front edge (96 mm ahead of the axle) to the
+  motors' ends (49 mm behind it). The CB3's own side view shows the same: the nose down
+  on the skid, the wheel's centre about 72 mm behind the skid's contact (70 here).
 
 **Typical, unconfirmed**: the gearmotors' figures, published for the yellow 1:48 TT
 motor at 6 V (Adafruit's product 3777, which gives the speed and torque as its
@@ -392,7 +411,7 @@ AA cells less the bridge's and battery's drops.
   what its gears and brushes take, so this sets their friction: 0.009 N m at the wheel,
   about 12% of the stall torque. With the tyres' rolling resistance
   (`rollingResistance`, 2% of the load) and the skid's sliding it makes the deadband: here
-  a robot on a hard floor starts to creep at about 17% power driving straight and 20%
+  a robot on a hard floor starts to creep at about 17% power driving straight and 18%
   spinning. Confirm the lowest power that moves it, both ways.
 
 **What is assumed**, each a point to confirm on a real CB3:
@@ -405,34 +424,52 @@ AA cells less the bridge's and battery's drops.
   most at a stall; `system.pwr_volts()` reads the sagging value. Confirm with fresh and
   tired cells, and on NiMH (4.8 V), which slows everything about a fifth.
 - **The floor** (`tyreGrip`, 0.8; `skidLoad`, 15% of the weight on the front skid;
-  `skidFriction`, 0.25; `skidAhead`, 10 cm ahead of the axle). The skid resists spinning
+  `skidFriction`, 0.25; where the skid touches, 70 mm ahead of the axle, is measured:
+  "Geometry" above). The skid resists spinning
   more than driving straight, which is why a spin needs more power to start. The grip caps
   a wheel's push, so a full-power start is limited by it. Wheelspin is not modelled: a
   wheel turns only as the robot moves, so the encoders count the robot's motion.
 - **Stopping.** Coasting at power 0 against friction alone: from full speed it rolls about
   15 cm. Confirm by cutting power at full speed and measuring.
-- **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 7700). The
-  reading falls linearly with the floor's reflectance until the sensor saturates. The span
-  is the phototransistor's current at full reflectance over the 70 uA that pulls the
-  47k pull-up all the way, times the 3930 counts from dark to saturated. A typical part
-  (0.3 mA, the datasheet's range's middle, at 20 mA and 1 mm, so 0.67 mA at 40 mA and
-  full reflectance) about 3 mm above the floor, where the datasheet's response is about
-  20%, gives 0.13 mA, twice 70 uA: a span of about 7700. So at full power anything paler
-  than a mid-grey (about 0.5) saturates: white paper (0.85) and a mid-grey floor read
-  about 150, a pale wood floor (0.4) about 1000, black tape (0.05) about 3700, a drop
-  4080. At power 1 (half the span) white paper reads about 800. `ls.check()`'s default
-  threshold, 1000, falls between white and black, and so do the older simulator's
-  lessons' thresholds (2000 to 3300) and botcore's own default, 2500. The height (not
-  known) and each sensor's gain (the datasheet allows nine to one) set the span, so it is
-  the number here a bench must set: the weakest part at 3 mm would not saturate on white
-  (span about 2600, white about 1900), the strongest would saturate on all but a dark
-  floor, and at 5 mm each would have half its span. Nearer than 3 mm, black tape itself
-  would pull a typical part down past those lessons' thresholds, so a bench's black tape
-  reading also tells the height. `lineSaturated`, 150, is a saturation voltage of 0.1 V, inside the datasheet's 0.3 V
-  most (and at 70 uA a phototransistor sits well below its rated saturation). The floor map's visible reflectance (its sRGB channels averaged, as
-  `sim/tools/build-env.mjs` builds it) stands in for 940 nm infrared, which can differ
-  (some black tapes are bright in infrared). Confirm white, black tape, the room floors and
-  a drop on each of the five sensors, at the sensors' real height.
+- **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 3850). The
+  reading falls linearly with the floor's reflectance until the sensor saturates: the
+  span is the phototransistor's current at full reflectance over the 70 uA that pulls the
+  47k pull-up all the way, times the 3930 counts from dark to saturated. The span is
+  CodeSpace's simulator's, the best evidence of the real robot there is: Firia tuned it
+  to read close to a CB3. That simulator reads 4095 x (1 - g x (1 - d / 100 mm)), g the
+  floor's colour (its sRGB channels averaged, as the floor maps here are built) and d the
+  length of a ray down the board's tilted axis to the floor. Its robot rests about 20°
+  nose down on a box for a skid, with d about 7 mm: white (g = 1) reads 286. At the
+  CB3's geometry (5.5 mm, 24°: 6.0 mm along the axis) the same law gives a span of 3850,
+  and that is `lineSpan`. So at full power: a perfect white reads about 230, white paper
+  (0.85, the course mats) about 810, the gymnasium's painted lines (0.80) about 1000 and
+  its wood (0.38 to 0.52) 2100 to 2600, black tape (0.04) about 3930, a drop 4080; each
+  within 50 of CodeSpace's reading for the same floor. `ls.check()`'s default threshold,
+  1000, falls between white paper and black tape, and so do botcore's default, 2500, and
+  the older simulator's lessons' thresholds (2000 to 3300).
+  **The datasheet agrees within its own uncertainty.** A span of 3850 means about 69 uA at
+  full reflectance, 40 mA; over 90% paper at 20 mA, 5.5 mm, that is 31 uA, which on the
+  datasheet's white-paper curve (8% of its peak at 5.5 mm, 88% at 1 mm) is 0.34 mA at
+  1 mm. The datasheet gives no current over paper, only over a mirror (0.10 mA at least,
+  0.90 typical); 0.34 mA over paper is 38% of a typical part's mirror figure and well
+  above the minimum. An earlier version here guessed 0.3 mA over paper at 1 mm, read the
+  datasheet's minimum and typical as a range over white card, and put the sensors 3 mm
+  up: a span of 7700, with white saturating. The same guess at the measured 5.5 mm gives a
+  span of 3400, 11% under CodeSpace's: white paper at about 1200 instead of 810. Two
+  things the datasheet's curve does not cover push the real reading the other way: it is
+  one sensor square over a reflector, while on the CB3 a sensor's neighbours, 9.7 mm away,
+  light the same floor (lit in pairs and, for a read of all five, together), and at 5.5 mm
+  each sees a wide patch of it. Where this departs from CodeSpace, it follows the board:
+  the dark level is botcore's 4080, not 4095; at power 1 the emitters carry half the
+  current, so the span halves (white paper then reads about 2440; CodeSpace ignores the
+  power); each sensor averages a spot (below) rather than reading one ray; and the
+  reading floors at the phototransistor's saturation, `lineSaturated`, 150 (0.1 V,
+  inside the datasheet's 0.3 V most), which nothing paler than white reaches at this
+  span. The floor map's visible reflectance stands in for 940 nm infrared, which can
+  differ (some black tapes are bright in infrared). Confirm on a CB3: white paper, black
+  tape, a room's floor and a drop on each of the five sensors at both powers. Each part's
+  gain is not known (the datasheet gives only a minimum), so the five may spread; a white
+  paper that reads near 1000 on one sensor would be the sign of a weak part.
 - **The line sensor's spot** (`lineSpot`, 4 mm radius). Confirm by sliding a tape edge
   under one sensor and noting where the reading changes.
 - **Not modelled.** The nose lifting as it starts hard (a moment of a higher sensor,
@@ -444,10 +481,11 @@ read it on a CB3, and its range table was measured on one.
 
 **Lessons tuned on the older simulator.** It ran wheels at power x 15 rad/s with no
 deadband (0.49 m/s at 100%, 10% still moving), stopped by a fixed 0.65 m/s² brake, and spun
-119, 220 and 188 deg/s at 25, 50 and 100% (here: about 45, 235 and 600). A lesson that drove
+119, 220 and 188 deg/s at 25, 50 and 100% (here: about 58, 248 and 613). A lesson that drove
 at 10 to 15% now sits in the deadband, and one timed for a spin at full power turns about
-three times as far. Its line sensors read white at 286 (a ray from 7 mm above the floor);
-its lessons' thresholds (2000, 2300, 3300) still fall between white and black here.
+three times as far. Its line sensors are the evidence for the levels here ("Line sensor
+levels"): white reads 286 there and about 230 here, and its lessons' thresholds (2000,
+2300, 3300) fall between white and black in both.
 
 CodeAIR and CodeX have no older simulator to follow. CodeSpace's CodeAIR is the board's 3D model and
 nothing more (no flight, sensors or physics), and its CodeX a model with buttons and no
