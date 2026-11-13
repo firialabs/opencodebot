@@ -19,3 +19,11 @@ export const ROOMS = {
   cafeteria: t('room.cafeteria'),
   auditorium: t('room.auditorium'),
 }
+
+// A room's music, where it has a track: room id -> { file, credit }, the file
+// under sim-assets/ (its licence in sim/assets/LICENSE and
+// THIRD_PARTY_NOTICES.md) and the string key of its credit, which the
+// settings panel shows while it plays, looped, on the Music bus. No room has
+// one yet: the haunted house rooms will bring theirs, e.g.
+//   attic: { file: 'music/attic.mp3', credit: 'music.creditKidFears' }
+export const MUSIC = {}

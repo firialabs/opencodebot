@@ -63,7 +63,8 @@ export const haveFlight = () => !!fetchedFlight()
 // course id from world/courses.js, laid on the floor; the robot starts on it),
 // seconds (simulated deadline), seed, spawn {x, y, heading}, trace (report
 // main.py's lines, as for stepping), setup(world, device) before the
-// run, inputs [{ t: seconds, fn(world, device) }], traceEveryMs.
+// run, inputs [{ t: seconds, fn(world, device) }], traceEveryMs, speed
+// (simulated seconds per wall second; flat out by default).
 export async function runHeadless(opts) {
   const run = await prepare(opts, opts.seconds)
   const t0 = performance.now()
@@ -117,7 +118,7 @@ async function prepare(opts, seconds = 10, lockstep = null) {
     bridge: device.bridge,
     stopGraceUs: device.stopGraceUs,
     files: pythonFiles(device.kind),
-    speed: Infinity,
+    speed: opts.speed ?? Infinity,
     trace: !!opts.trace,
     lockstep, member,
     onOutput: (b) => chunks.push(Buffer.from(b)),

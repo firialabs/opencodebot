@@ -17,6 +17,7 @@ import { Environment } from './environment.js'
 import { Crazyflie } from './crazyflie.js'
 import { Radio } from './radio.js'
 import { Infrared } from './infrared.js'
+import { Hits } from './hits.js'
 
 // Every number is an estimate until it is measured on a CodeAIR (see
 // sim/DESIGN.md, "Calibration").
@@ -100,6 +101,7 @@ export class CodeAIR {
     this.rotors = [0, 0, 0, 0]                     // front left, front right, rear right, rear left
     this.propAngle = 0
     this.bump = 0                                  // g, a knock the accelerometer feels
+    this.hits = new Hits()                         // knocks, for their sound
     this.tUs = 0
     this.est = { x0: x, y0: y, z0: z, h0: heading, ex: 0, ey: 0 }
     // the board
@@ -283,6 +285,7 @@ export class CodeAIR {
           this.vx += -ny * j; this.vy += nx * j
           this.drift[0] *= -e; this.drift[1] *= -e
           this.bump = Math.min(4, this.bump + -vn * 2)
+          if (vn < -0.1) this.hits.add('thump', -vn)
         }
       }
     }
@@ -291,6 +294,8 @@ export class CodeAIR {
   // A vertical knock: speed into the surface `v`, the way back out `dir`
   // (2 up, -2 down: also how hard the accelerometer feels it per m/s).
   knock(v, dir, e) {
+    // down onto something, the frame clatters; up into something, a thump
+    this.hits.add(dir > 0 ? 'clatter' : 'thump', v)
     this.vz = Math.sign(dir) * v * e
     this.bump = Math.min(4, this.bump + v * Math.abs(dir) / 2)
   }
@@ -369,6 +374,7 @@ export class CodeAIR {
       buttons: [...this.buttons],
       tone: this.tone,
       whine: whineVoices(this.rotors, this.p),
+      hits: this.hits.snapshot(),
     }
   }
 }

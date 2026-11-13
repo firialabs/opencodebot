@@ -5,9 +5,10 @@
 import { State, registerDeviceKind } from '../device/device-target.js'
 import { t, language } from '../i18n/index.js'
 import { getTarget } from '../device/targets.js'
-import { KINDS, ROOMS } from './kinds.js'
+import { KINDS, ROOMS, MUSIC } from './kinds.js'
 import { FLIGHT } from 'virtual:sim-flight'
 import { Describer } from './describe.js'
+import { Speaker } from './sound.js'
 
 const enc = new TextEncoder()
 
@@ -75,6 +76,7 @@ export class SimDevice extends EventTarget {
     const ready = new Promise((resolve) => (this._ready = resolve))
     this.worker.postMessage({ t: 'init', kind: targetId, env: room, assetsBase, course: this.course })
     this.speaker = new Speaker()
+    this._roomMusic(room)
 
     if (this.viewHost) {
       if (kind.view === 'codex') {
@@ -120,6 +122,7 @@ export class SimDevice extends EventTarget {
     this.describer = null
     this.speaker?.close()
     this.speaker = null
+    this.setMusic(null)
     this.targetId = null
     this.busy = false
     this.dispatchEvent(new CustomEvent('device', { detail: { targetId: null, target: null } }))
@@ -158,7 +161,11 @@ export class SimDevice extends EventTarget {
   resume() { this._post({ t: 'resume' }) }
   step() { this._post({ t: 'step' }) }
   stepLine() { this._post({ t: 'stepLine' }) }
-  setSpeed(value) { this._post({ t: 'speed', value }) }
+  setSpeed(value) {
+    this.speed = value
+    this._pace = null
+    this._post({ t: 'speed', value })
+  }
   press(n, down) { this._post({ t: 'input', what: 'button', n, down }) }
   tilt(x, y) { this._post({ t: 'input', what: 'tilt', x, y }) }
   setLight(lux) { this._post({ t: 'input', what: 'light', lux }) }
@@ -178,6 +185,22 @@ export class SimDevice extends EventTarget {
     this._post({ t: 'room', env: id })
     this._moved = true              // the camera goes with it, at the next frame
     this.view?.loadRoom(id).catch((err) => console.warn('room', err))
+    this._roomMusic(id)
+  }
+  // A room's music track (kinds.js MUSIC), or none.
+  _roomMusic(id) {
+    const m = MUSIC[id]
+    this.setMusic(m ? new URL(m.file, new URL('sim-assets/', document.baseURI)).href : null, m ? t(m.credit) : null)
+  }
+  // Play a music track (a URL; null for none) on the music bus, looped, with
+  // its credit. The settings panel shows the Music slider and the credit
+  // while there is one ('music' event).
+  setMusic(url, credit = null) {
+    if ((this.music ?? null) === (url ?? null)) return
+    this.music = url ?? null
+    this.musicCredit = url ? credit : null
+    this.speaker?.music(this.music)
+    this.dispatchEvent(new CustomEvent('music', { detail: { url: this.music, credit: this.musicCredit } }))
   }
   // The room a 3D board is in, as a sentence names it; null for CodeX.
   _roomName() {
@@ -209,9 +232,8 @@ export class SimDevice extends EventTarget {
         if (this._moved) { this._moved = false; this.view?.setCamera?.(this.cameraMode) }
         this.describer?.frame(m.snapshot, this._roomName())
         this.lastFrame = m.snapshot
-        const d = m.snapshot.devices[0]
-        this.speaker?.play(d?.sound ?? (d?.tone ? [{ freq: d.tone, wave: 1, level: 1 }] : []))
-        this.speaker?.whine(d?.whine ?? [])
+        this.speaker?.frame(m.snapshot.devices[0])
+        this._measurePace(m.snapshot.t)
         break
       }
       case 'screen': this.view?.screen?.(m.px); break
@@ -220,6 +242,9 @@ export class SimDevice extends EventTarget {
       case 'state':
         // paused, simulated time stands still, and so does the sound
         this.speaker?.hold(m.state === 'paused')
+        this._pace = null
+        this.slow = false
+        this._held = m.state === 'paused'
         if (m.state === 'paused') this._setState(State.RUNNING, m.line ? t('sim.pausedAt', { line: m.line }) : t('sim.paused'))
         else if (m.state === 'running') this._setState(State.RUNNING, t('sim.running'))
         this._line(m.state === 'paused' ? m.line : null)
@@ -227,6 +252,8 @@ export class SimDevice extends EventTarget {
       case 'done': {
         const r = m.result
         this.speaker?.hold(false)
+        this._held = false
+        this.slow = false
         this._line(null)
         this._stopped?.()
         this._stopped = null
@@ -249,6 +276,22 @@ export class SimDevice extends EventTarget {
     }
   }
 
+  // The pace: simulated seconds a wall second, over each second of frames.
+  // A machine that cannot keep up never shortens the world's steps: the
+  // simulation runs slower than real time instead, and the status says so.
+  _measurePace(simUs) {
+    const now = performance.now()
+    const p = (this._pace ??= { wall: now, sim: simUs })
+    if (now - p.wall < 1000) return
+    this.pace = (simUs - p.sim) / 1000 / (now - p.wall)
+    this._pace = { wall: now, sim: simUs }
+    if (this.state !== State.RUNNING || this._held) return
+    const slow = this.pace < 0.85 * (this.speed ?? 1)
+    if (slow === !!this.slow) return
+    this.slow = slow
+    this._setState(State.RUNNING, slow ? t('sim.runningSlow', { percent: Math.round((100 * this.pace) / (this.speed ?? 1)) }) : t('sim.running'))
+  }
+
   _line(line) {
     this.dispatchEvent(new CustomEvent('line', { detail: { line } }))
   }
@@ -264,90 +307,6 @@ export class SimDevice extends EventTarget {
 
   _notice(kind, title, detail) {
     this.dispatchEvent(new CustomEvent('notice', { detail: { kind, title, detail } }))
-  }
-}
-
-// The board's speaker: the voices the device is sounding, each an
-// oscillator at its frequency and level. Created on the click that starts the
-// simulator, which browsers require before they make sound.
-const WAVES = ['sine', 'square', 'sawtooth', 'triangle', 'square', 'sine', 'sawtooth']
-
-class Speaker {
-  constructor() {
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext
-    if (!AC) return
-    this.ctx = new AC()
-    this.out = this.ctx.createGain()
-    this.out.gain.value = 0.08
-    this.out.connect(this.ctx.destination)
-    this.voices = []
-    this.last = ''
-    // CodeAIR's rotors: a sawtooth each through one low-pass, well under the
-    // speaker (a hovering whine about 12 dB below a tone).
-    this.rotorBus = this.ctx.createBiquadFilter()
-    this.rotorBus.type = 'lowpass'
-    this.rotorBus.frequency.value = 3500
-    const rotorGain = this.ctx.createGain()
-    rotorGain.gain.value = 1.8      // four saws at level 0.5: about a quarter of a tone's RMS
-    this.rotorBus.connect(rotorGain).connect(this.out)
-    this.rotors = []
-  }
-
-  // The whine: { freq, level } for each rotor turning, as the frames bring
-  // them; pitch and level glide between frames.
-  whine(voices) {
-    if (!this.ctx || (!voices.length && !this.rotors.length)) return
-    const t = this.ctx.currentTime
-    while (this.rotors.length < voices.length) {
-      const osc = this.ctx.createOscillator()
-      osc.type = 'sawtooth'
-      const gain = this.ctx.createGain()
-      gain.gain.value = 0
-      osc.connect(gain).connect(this.rotorBus)
-      osc.start()
-      this.rotors.push({ osc, gain, on: false })
-    }
-    this.rotors.forEach((v, i) => {
-      const s = voices[i]
-      if (s) v.osc.frequency.setTargetAtTime(s.freq, t, 0.02)
-      if (s || v.on) v.gain.gain.setTargetAtTime(s ? s.level / 4 : 0, t, 0.02)
-      v.on = !!s
-    })
-  }
-
-  // Paused: the sound stops where it is, and goes on when the program does.
-  hold(on) {
-    if (!this.ctx) return
-    if (on) this.ctx.suspend()
-    else if (this.ctx.state === 'suspended') this.ctx.resume()
-  }
-
-  play(sounds) {
-    if (!this.ctx) return
-    const key = JSON.stringify(sounds)
-    if (key === this.last) return
-    this.last = key
-    const t = this.ctx.currentTime
-    while (this.voices.length < sounds.length) {
-      const osc = this.ctx.createOscillator()
-      const gain = this.ctx.createGain()
-      gain.gain.value = 0
-      osc.connect(gain).connect(this.out)
-      osc.start()
-      this.voices.push({ osc, gain })
-    }
-    this.voices.forEach((v, i) => {
-      const s = sounds[i]
-      if (s) {
-        v.osc.type = WAVES[s.wave] ?? 'triangle'
-        v.osc.frequency.setValueAtTime(Math.min(s.freq, 20000), t)
-      }
-      v.gain.gain.setTargetAtTime(s ? Math.min(1, s.level) : 0, t, 0.005)
-    })
-  }
-
-  close() {
-    this.ctx?.close()
   }
 }
 

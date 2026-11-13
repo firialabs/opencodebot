@@ -12,7 +12,7 @@ teacher uses it, in [TEACHERS.md](TEACHERS.md).
 | `src/sim/runtime/engine.js` | MicroPython on simulated time: charging, pacing, pause, step, stop, the REPL |
 | `src/sim/runtime/worker.js` | the Web Worker: world and engine together; the page's commands in, frames out |
 | `src/sim/runtime/mp/` | the built MicroPython (committed; rebuilt by `npm run sim:runtime`) |
-| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms (`environment.js`: boxes, cylinders, raised floors), floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), maths and randomness |
+| `src/sim/world/` | the world, with no DOM and no renderer: clock, rooms (`environment.js`: boxes, cylinders, raised floors), floor, line courses (`courses.js`), the CodeBot, CodeX and CodeAIR models, CodeX's screen and graphics (`screen.js`, `gfx.js`, its font), CodeAIR's flight controller (`crazyflie.js`), knocks for their sound (`hits.js`), maths and randomness |
 | `src/sim/python/common/` | the CircuitPython layer over MicroPython: `board`, `digitalio`, `analogio`, `pwmio`, `busio`, `microcontroller`, `time`, and Adafruit's `neopixel` |
 | `src/sim/python/radio/` | the radio module CodeX and CodeAIR share; under it `world/radio.js` (a board's radio), `world/infrared.js` (its infrared, under `python/common/pulseio.py`), `runtime/broadcast-air.js` (between workers and tabs) and `runtime/lockstep.js` (headless groups) |
 | `src/sim/python/<device>/` | the device's own Python modules, unchanged, and stand-ins for its C modules; `src/sim/kinds.js` says which folders each device runs, and lists the rooms |
@@ -21,6 +21,9 @@ teacher uses it, in [TEACHERS.md](TEACHERS.md).
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
 | `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
+| `src/sim/settings-panel.js`, `src/sim/settings.js` | the settings panel (the gear): volume and mute per sound bus, realism, the frame-rate readout; the choices, kept in the browser |
+| `src/sim/sound.js` | the sound: four buses (motors, speaker, effects, music), the synthesized knocks, a room's music |
+| `src/sim/view/realism.js` | realism's levels and Auto's rule; what each level draws (never the world) |
 | `src/sim/headless.js` | run a program in Node, no browser: for tests and the cloud; `runHeadlessGroup` runs several boards at once, radios linked |
 | `boards.html`, `src/sim/boards/` | the boards page: several simulated boards, each with its own program, and the radio examples they start with |
 | `sim/runtime/` | the MicroPython variant (`variant/`, with the line trace for stepping), the port patch, a one-hunk `py.patch` (a jump back reports its line again) and `build.sh` |
