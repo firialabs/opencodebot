@@ -1,5 +1,5 @@
 /**
- * What OpenCodeBot knows about each Firia Labs board.
+ * What LabBlocks knows about each Firia Labs board.
  *
  * USB IDs match the CodeSpace device filters. Only boards that expose a
  * USB CDC serial port that Web Serial can open are listed as supported.

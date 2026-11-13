@@ -3,7 +3,7 @@
 // {app} is the product's name; other {placeholders} are filled in by the code.
 // A key ending in Html is HTML. A value of { one, other } is chosen by {count}.
 export default {
-  'app.name': 'OpenCodeBot',
+  'app.name': 'LabBlocks',
   'app.description': 'Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR.',
   'app.tagline': 'blocks that fly, roll & glow',
   'app.beta': 'Beta',

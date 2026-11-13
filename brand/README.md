@@ -30,6 +30,6 @@ on the remaining bounding box with about 12% padding.
 
 Taken from `firia-logo.svg` itself, not from a screenshot:
 
-- `#4EB748` Firia Green — the "FIRIA" wordmark, and the OpenCodeBot title text
+- `#4EB748` Firia Green — the "FIRIA" wordmark, and the LabBlocks title text
 - `#4C4D4F` Dark Gray — "LABS", and the bot's outlines
 - `#F4D036` / `#F4D038` gold — the bot's ears and eyes, and the logo banner
