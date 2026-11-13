@@ -13,8 +13,8 @@ import { Environment } from './environment.js'
 // gearmotor model from the hardware: botcore's H-bridge (sign and 1 kHz PWM,
 // standby to disable), the gearmotors' no-load speed and stall torque, the
 // battery, the robot's mass, and the friction of the gears, the tyres and the
-// skid. Every value marked (assumed) is listed in sim/DESIGN.md "Calibration"
-// to be confirmed on a CB3 in the final testing rounds.
+// skid. Every value marked (assumed) or (typical) is listed in sim/DESIGN.md
+// "Calibration" to be confirmed on a CB3 in the final testing rounds.
 export const CB3 = {
   wheelRadius: 0.0325,        // 65 mm wheels
   track: 0.111,               // wheel centre to wheel centre
@@ -26,14 +26,18 @@ export const CB3 = {
   // Battery: four AA cells in series. (assumed: fresh alkaline)
   nominalVolts: 6.0,
   batteryOhms: 0.6,           // the pack's internal resistance, 0.15 per cell (assumed)
-  // Gearmotors, at the wheel, at 6 V across the motor: a 1:48 hobby gearmotor
-  // driving a 65 mm wheel. (assumed: part, speed, torque and current)
+  // Gearmotors, at the wheel, at 6 V across the motor: the yellow 1:48 "TT"
+  // gearmotor (plastic gears) driving a 65 mm wheel. (typical: published
+  // figures for the TT motor at 6 V, not yet measured on a CB3's own)
   motorNoLoad: 20.9,          // rad/s, no load (200 rpm)
   motorStallTorque: 0.078,    // N m (0.8 kg cm)
   motorStallAmps: 1.5,        // so the winding is 4 ohms
-  gearFriction: 0.006,        // N m at the wheel, gears and brushes, against any motion (assumed)
+  motorNoLoadAmps: 0.16,      // what it draws spinning free: its own friction
   wheelInertia: 1.4e-4,       // kg m^2 per wheel: a 130-size rotor's 0.6 g cm^2 through 48:1 (assumed)
-  bridgeOhms: 1.0,            // the H-bridge's two switches in the motor's path (assumed)
+  // The H-bridge: its control (two direction pins and a PWM per motor, one
+  // standby) is the TB6612FNG's, whose two switches in the motor's path are
+  // 0.5 ohm together. (inferred from the interface: the part is not named)
+  bridgeOhms: 0.5,
   // Body. (assumed: mass, inertia, the skid's share of the weight, the frictions)
   mass: 0.40,                 // kg, with batteries
   yawInertia: 2.0e-3,         // kg m^2 about the axle's midpoint
@@ -43,15 +47,16 @@ export const CB3 = {
   skidFriction: 0.25,         // the skid sliding on the floor, any direction
   skidAhead: 0.10,            // m ahead of the axle
 
-  // Line sensors: 0 is the robot's left, 4 its right. Each is an infrared
-  // emitter and a phototransistor on a pull-up into the ADC: reflected light
+  // Line sensors: 0 is the robot's left, 4 its right. Each is a QRE1113GR, a
+  // 940 nm infrared emitter (40 mA at botcore's default power, 20 mA at the
+  // lower) beside a phototransistor on a pull-up into the ADC: reflected light
   // pulls the reading down from dark, linearly, until the phototransistor
-  // saturates. (assumed: the levels; the floor's visible reflectance stands in
-  // for its infrared one)
+  // saturates. (assumed: the levels, which turn on the pull-up and each part's
+  // gain; the floor's visible reflectance stands in for its infrared one)
   lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.116, left]),
   lineSpot: 0.004,            // radius of the floor area each sensor sees (assumed)
-  lineDark: 4080,             // no light back: a CB2 read 4080, botcore matches the CB3 to it
-  lineSaturated: 150,         // the phototransistor fully on (assumed)
+  lineDark: 4080,             // no light back (dark current under 100 nA): a CB2 read 4080, botcore matches the CB3 to it
+  lineSaturated: 150,         // the phototransistor fully on: 0.1 V (assumed; the datasheet's most is 0.3 V, about 450)
   lineSpan: 4400,             // counts pulled down per unit reflectance, emitter at full (assumed)
   lineNoise: 25,
 
@@ -65,7 +70,7 @@ export const CB3 = {
   proxTable: [[0.128, 6.7], [0.148, 12.2], [0.173, 14.7], [0.198, 17.2],
     [0.215, 19.8], [0.232, 22.4], [0.270, 23.3], [0.307, 24.1]],
 
-  encoderSlots: 20,
+  encoderSlots: 20,           // a slotted disc on the wheel's shaft, read by an infrared slot sensor
   encoderNoise: 300,
 
   accelPerG: 16384,           // +-2 g full scale, signed 16-bit
@@ -86,17 +91,20 @@ export class CodeBot {
   }
 
   // The motor's constants from its datasheet numbers. At the wheel, a motor
-  // gives torque kt * i - gearFriction, and i = (V - ke * w) / R. Stall (w = 0)
-  // and no load (torque 0) at the nominal voltage fix kt and ke.
+  // gives torque kt * i - gearFriction, and i = (V - ke * w) / R. Spinning free
+  // it draws just the current its own friction takes (gearFriction = kt * i0);
+  // that, stall (w = 0) and no load (torque 0) at the nominal voltage fix kt,
+  // ke and the friction.
   static driveConstants(p) {
     const motorOhms = p.nominalVolts / p.motorStallAmps
-    const kt = ((p.motorStallTorque + p.gearFriction) * motorOhms) / p.nominalVolts
-    const ke = (p.nominalVolts - (p.gearFriction * motorOhms) / kt) / p.motorNoLoad
+    const kt = p.motorStallTorque / (p.motorStallAmps - p.motorNoLoadAmps)
+    const gearFriction = kt * p.motorNoLoadAmps
+    const ke = (p.nominalVolts - p.motorNoLoadAmps * motorOhms) / p.motorNoLoad
     const weight = p.mass * p.gravity
     const r2 = p.wheelRadius * p.wheelRadius
     const b = p.track / 2
     return {
-      kt, ke,
+      kt, ke, gearFriction,
       ohms: motorOhms + p.bridgeOhms,
       massV: p.mass + (2 * p.wheelInertia) / r2,                  // forward, wheels' inertia included
       inertiaW: p.yawInertia + (2 * p.wheelInertia * b * b) / r2, // turning, likewise
@@ -165,7 +173,7 @@ export class CodeBot {
     // each wheel's gears and rolling resistance against that wheel's speed over
     // the floor, and the skid against its own sliding. A few passes settle them.
     const iv = 1 / k.massV, iw = 1 / k.inertiaW
-    const wheelMax = (p.gearFriction / r + p.rollingResistance * k.wheelLoad) * dt
+    const wheelMax = (k.gearFriction / r +p.rollingResistance * k.wheelLoad) * dt
     const skidMax = p.skidFriction * k.skidLoad * dt
     const a = p.skidAhead
     const wheelMass = 1 / (iv + b * b * iw)

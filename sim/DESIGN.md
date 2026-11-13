@@ -317,8 +317,9 @@ is measured on a device:
 
 A bench session with a CB3, a tape line, a ruler and a stopwatch settles all of these,
 in the final testing rounds. Until then CodeBot follows its hardware: what botcore does
-with the pins is known exactly, and the parts' numbers are assumed from the kind of part
-the robot carries. The physical CB3 is the reference, not CodeSpace's older simulated
+with the pins is known exactly, the line sensors' part and its datasheet are known, the
+gearmotors' numbers are the published typical ones for the part, and the rest is
+assumed. The physical CB3 is the reference, not CodeSpace's older simulated
 CodeBot, whose physics had quirks (a full-power spin slower than a half-power one).
 
 **What is known** (from botcore, the CB3's own module, and the docs):
@@ -329,28 +330,62 @@ CodeBot, whose physics had quirks (a full-power spin slower than a half-power on
   coasts. Between pulses at any other power the bridge shorts the motor (slow decay), so
   on average it sees duty x battery volts and can brake as well as drive.
 - **Battery.** Four AA cells, 6 V fresh (the docs).
-- **Wheels.** 65 mm; track 111 mm; encoder discs of 20 slots a turn of the wheel.
-- **Line sensors.** An infrared emitter and a reflective sensor each, read through the
-  ADC; 0 is brightest, 4095 darkest; botcore scales the CB3's 16-bit reading by 1.215 and
-  shifts it to 12 bits, matched to a CB2 that read 4080 in the dark.
+- **Wheels and encoders.** 65 mm; track 111 mm. Each wheel's shaft carries a 20-slot
+  disc read by a right-angle infrared emitter and phototransistor on the board, so an
+  encoder counts 20 slots a turn of the wheel (`encoderSlots`), about 10 mm of travel a
+  slot.
+- **Gearmotors.** The yellow "TT" hobby gearmotor: plastic gears, 1:48, the output shaft
+  through both sides of the gearbox.
+- **Line sensors.** Five onsemi QRE1113GR reflective sensors, read through the ADC; 0 is
+  brightest, 4095 darkest; botcore scales the CB3's 16-bit reading by 1.215 and shifts it
+  to 12 bits, matched to a CB2 that read 4080 in the dark. botcore lights an emitter at
+  40 mA by default (power 2) or 20 mA (power 1), and only while it reads. From the
+  QRE1113GR's datasheet: the emitter is infrared at 940 nm; the phototransistor's dark
+  current is at most 100 nA, so with no light back it reads the pull-up's full voltage
+  (`lineDark`); fully on, it holds at most 0.3 V, which through botcore's scaling is a
+  floor of about 450 or less (`lineSaturated` is at or below it); its current rises with
+  the emitter's, so half the emitter current gives about half the pull (the simulator's
+  half span at power 1); its response peaks with a reflector 0.6 mm away and falls to
+  about 40% at 2 mm, 20% at 3 mm and 10% at 5 mm, so a drop off a table reads dark; and
+  its on-state current is anywhere from 0.1 to 0.9 mA (20 mA emitter, a mirror at 1 mm),
+  so two sensors on one robot can differ several times over in how far white pulls them
+  down.
+
+**Typical, unconfirmed**: the gearmotors' figures, published for the yellow 1:48 TT
+motor at 6 V (Adafruit's product 3777, which gives the speed and torque as its
+specification and the currents as measured on one motor; others publish similar
+figures). They are the motor's at its own terminals, so the simulator's 6 V is four fresh
+AA cells less the bridge's and battery's drops.
+
+- **No-load speed** (`motorNoLoad`, 200 rpm, 20.9 rad/s): the specification's minimum,
+  200 rpm ±10% at 6 V (one motor measured 250 rpm). On the robot, the top speed: 0.60 m/s
+  here at 100%, fresh batteries.
+- **Stall torque and current** (`motorStallTorque`, 0.8 kg cm, 0.078 N m;
+  `motorStallAmps`, 1.5 A, so a 4 ohm winding).
+- **No-load current** (`motorNoLoadAmps`, 0.16 A). Spinning free the motor draws only
+  what its gears and brushes take, so this sets their friction: 0.009 N m at the wheel,
+  about 12% of the stall torque. With the tyres' rolling resistance
+  (`rollingResistance`, 2% of the load) and the skid's sliding it makes the deadband: here
+  a robot on a hard floor starts to creep at about 17% power driving straight and 20%
+  spinning. Confirm the lowest power that moves it, both ways.
+
+**What is inferred**:
+
+- **The H-bridge** (`bridgeOhms`, 0.5 ohm through the two switches in the motor's path).
+  The part is not named in the firmware, but botcore drives it through the TB6612FNG's
+  interface: two direction pins and a PWM per motor, and one standby pin. Its behaviour
+  matches the TB6612FNG's truth table (both direction pins low: the outputs let go and
+  the motor coasts; PWM low with a direction set: short brake). 0.5 ohm is that part's
+  typical on-resistance, high and low switch together, at a motor supply of 5 V or more.
+  Confirm the part number. Not modelled: its 1.2 A average rating per channel, which a
+  stalled TT motor (1.5 A) exceeds.
 
 **What is assumed**, each a point to confirm on a real CB3:
 
-- **The gearmotors** (`motorNoLoad`, `motorStallTorque`, `motorStallAmps`). A 1:48 hobby
-  gearmotor of the kind that takes a 65 mm wheel: 200 rpm with no load, 0.8 kg cm
-  (0.078 N m) stalled and 1.5 A stalled, all at 6 V. Confirm the part number, then its
-  datasheet; on the robot, the top speed (0.60 m/s here at 100%, fresh batteries).
-- **Gear and brush friction** (`gearFriction`, 0.006 N m at the wheel, about 8% of the
-  stall torque). With the tyres' rolling resistance (`rollingResistance`, 2% of the load)
-  and the skid's sliding it makes the deadband: here a robot on a hard floor starts to
-  creep at about 14% power driving straight and 20% spinning. Confirm the lowest power
-  that moves it, both ways.
-- **Inertia** (`wheelInertia`, `mass`, `yawInertia`). The rotor of a 130-size motor seen
-  through 48:1 (1.4e-4 kg m² a wheel), a 0.40 kg robot with batteries, 2.0e-3 kg m² about
-  the axle. Together they set how fast it gets going: 63% of full speed in about 150 ms.
-  Confirm the robot's weight, and its time to speed.
-- **The H-bridge** (`bridgeOhms`, 1 ohm through the two switches in the motor's path).
-  Confirm the driver's part number.
+- **Inertia** (`wheelInertia`, `mass`, `yawInertia`). The rotor of a 130-size motor (the
+  TT motor's size) seen through 48:1 (1.4e-4 kg m² a wheel), a 0.40 kg robot with
+  batteries, 2.0e-3 kg m² about the axle. Together they set how fast it gets going: 63% of
+  full speed in about 160 ms. Confirm the robot's weight, and its time to speed.
 - **The battery's sag** (`batteryOhms`, 0.6 ohm, 0.15 a cell). It sags with the current,
   most at a stall; `system.pwr_volts()` reads the sagging value. Confirm with fresh and
   tired cells, and on NiMH (4.8 V), which slows everything about a fifth.
@@ -360,15 +395,18 @@ CodeBot, whose physics had quirks (a full-power spin slower than a half-power on
   a wheel's push, so a full-power start is limited by it. Wheelspin is not modelled: a
   wheel turns only as the robot moves, so the encoders count the robot's motion.
 - **Stopping.** Coasting at power 0 against friction alone: from full speed it rolls about
-  20 cm. Confirm by cutting power at full speed and measuring.
+  15 cm. Confirm by cutting power at full speed and measuring.
 - **Line sensor levels** (`lineDark`, 4080; `lineSaturated`, 150; `lineSpan`, 4400). The
   reading falls linearly with the floor's reflectance until the sensor saturates: white
   paper (0.85) reads about 340, a mid-grey floor (0.5) about 1900, black tape (0.05)
   about 3860, a drop 4080. `ls.check()`'s default threshold, 1000, falls between white and
-  black, as botcore intends. The floor map's visible reflectance (its sRGB channels
-  averaged, as `sim/tools/build-env.mjs` builds it) stands in for infrared, which can differ
-  (some black tapes are bright in infrared). The emitter at half power halves the span.
-  Confirm white, black tape, the room floors and a drop, at the sensors' real height.
+  black, as botcore intends. The span turns on the pull-up resistor (not known) and on each
+  sensor's gain (the datasheet allows nine to one), so it is the one number here a bench
+  must set; `lineSaturated`, 150, is a saturation voltage of 0.1 V, inside the datasheet's
+  0.3 V most. The floor map's visible reflectance (its sRGB channels averaged, as
+  `sim/tools/build-env.mjs` builds it) stands in for 940 nm infrared, which can differ
+  (some black tapes are bright in infrared). Confirm white, black tape, the room floors and
+  a drop on each of the five sensors, at the sensors' real height.
 - **The line sensor's spot** (`lineSpot`, 4 mm radius). Confirm by sliding a tape edge
   under one sensor and noting where the reading changes.
 - **Not modelled.** The nose lifting as it starts hard (a moment of a higher sensor,
@@ -380,7 +418,7 @@ read it on a CB3, and its range table was measured on one.
 
 **Lessons tuned on the older simulator.** It ran wheels at power x 15 rad/s with no
 deadband (0.49 m/s at 100%, 10% still moving), stopped by a fixed 0.65 m/s² brake, and spun
-119, 220 and 188 deg/s at 25, 50 and 100% (here: about 60, 240 and 600). A lesson that drove
+119, 220 and 188 deg/s at 25, 50 and 100% (here: about 45, 235 and 600). A lesson that drove
 at 10 to 15% now sits in the deadband, and one timed for a spin at full power turns about
 three times as far. Its line sensors read white at 286 (a ray from 7 mm above the floor);
 its lessons' thresholds (2000, 2300, 3300) still fall between white and black here.

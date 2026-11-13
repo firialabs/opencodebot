@@ -336,8 +336,8 @@ for (const course of ['oval', 'eight', 'gap']) {
     const r = await runHeadless({ source: FOLLOW, course, env: haveGym ? 'gym' : 'empty', seconds: 20, traceEveryMs: 100 })
     assert.ok(!r.error, r.output)
     const dist = r.trace.reduce((a, p, i) => (i ? a + Math.hypot(p.x - r.trace[i - 1].x, p.y - r.trace[i - 1].y) : 0), 0)
-    // 20 s at mostly 40% (0.18 m/s), less what the turns take
-    assert.ok(dist > 3.3, `went ${dist.toFixed(1)} m`)
+    // 20 s at mostly 40% (0.17 m/s), less what the turns take
+    assert.ok(dist > 3.0, `went ${dist.toFixed(1)} m`)
     assert.ok(offTape(r, course) < 0.03, `off the tape ${(offTape(r, course) * 100).toFixed(0)}% of the time`)
   })
 }
