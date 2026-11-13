@@ -17,7 +17,7 @@ const DEVICE_IMPORT = {
 
 const NEED_FOR_DEVICE = { codex: 'codex', codebot: 'botcore', codeair: 'codeair' }
 
-const BANNER = '# Made with OpenCodeBot 💚 — blocks in, Python out.'
+const BANNER = '# Made with LabBlocks 💚 — blocks in, Python out.'
 
 export function generatePython(workspace, targetId) {
   resetNeeds()

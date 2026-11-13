@@ -1,6 +1,6 @@
 # Third-party notices
 
-OpenCodeBot's own code is under the MIT licence ([LICENSE](LICENSE)), and its artwork
+LabBlocks' own code is under the MIT licence ([LICENSE](LICENSE)), and its artwork
 and 3D models under CC BY-NC 4.0 (`sim/assets/LICENSE`). This file lists what the
 repository and the built site carry from others, under their own terms. The built site
 serves this file at `licenses/`, and the GPL's text with it when the build includes

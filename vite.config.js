@@ -75,8 +75,8 @@ export default defineConfig({
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^boards$/],
       },
       manifest: {
-        name: 'OpenCodeBot',
-        short_name: 'OpenCodeBot',
+        name: 'LabBlocks',
+        short_name: 'LabBlocks',
         description: 'Friendly block coding for Firia Labs CodeBot, CodeX, and CodeAIR.',
         theme_color: '#4EB748',
         background_color: '#FFFDF7',

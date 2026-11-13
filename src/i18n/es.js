@@ -1,7 +1,7 @@
 // Spanish (español). Keys missing here fall back to English (en.js).
 // Machine-drafted: needs a review by a native speaker who teaches.
 export default {
-  'app.name': 'OpenCodeBot',
+  'app.name': 'LabBlocks',
   'app.description': 'Programación con bloques fácil para CodeBot, CodeX y CodeAIR de Firia Labs.',
   'app.tagline': 'bloques que vuelan, ruedan y brillan',
   'app.beta': 'Beta',

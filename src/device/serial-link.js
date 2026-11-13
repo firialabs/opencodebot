@@ -3,7 +3,7 @@
  * and out, and notice when it is unplugged.
  *
  * Adapted from the WebSerialControl used by Firia Labs CodeSpace, trimmed to
- * what OpenCodeBot needs and generalised to accept any of our boards.
+ * what LabBlocks needs and generalised to accept any of our boards.
  */
 import { ALL_USB_FILTERS, targetIdForPort } from './targets.js'
 

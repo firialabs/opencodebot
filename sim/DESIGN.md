@@ -1,6 +1,6 @@
-# BotBlocks simulator: design
+# LabBlocks simulator: design
 
-A browser simulator of Firia Labs' devices inside BotBlocks (Open CodeBot): CodeBot in a
+A browser simulator of Firia Labs' devices inside LabBlocks: CodeBot in a
 gymnasium first, then CodeX, then CodeAIR. A student's program runs unchanged on the
 simulator and on the hardware, and the whole product can be tested in the cloud with no USB
 device.
@@ -24,7 +24,7 @@ module runs in Node with no renderer for automated tests.
 ```
  main thread                              worker
  +-----------------------------+          +--------------------------------------+
- | BotBlocks UI, editors       |  run,    | MicroPython (wasm, JSPI)             |
+ | LabBlocks UI, editors       |  run,    | MicroPython (wasm, JSPI)             |
  | SimDevice (device target)   |--stop,-->|   student program                    |
  |                             |  pause,  |   frozen shims: botcore, codex, ...  |
  | Three.js renderer           |  step,   |        | calls      ^ sensor values   |
@@ -233,7 +233,7 @@ stays an option if the main thread ever gets busy.
 Cameras: an orbit camera, a chase camera that follows the robot, and a top-down view that
 shows the floor lines, which is the view that helps most with line following.
 
-## 5. Plugging into BotBlocks
+## 5. Plugging into LabBlocks
 
 The app's UI talks to one DeviceManager: `connect`, `disconnect`, `run(source)`, `stop`,
 `sendRaw`, `isConnected`, `targetId`, `state`, and the events `state`, `device`, `data`,
@@ -274,7 +274,7 @@ once it has been chosen.
 2. World: the CodeBot model, the gymnasium's world JSON and reflectance map, the sensors,
    the `botcore` shim. Headless tests drive real student programs.
 3. Rendering: Three.js view of the gymnasium and CodeBot, cameras, LEDs, sound.
-4. BotBlocks: SimDevice, the connect choice, the view panel; blocks and Python editors run
+4. LabBlocks: SimDevice, the connect choice, the view panel; blocks and Python editors run
    on the simulated CodeBot. Calibrate against a real CB3.
 5. CodeX: `codex` shim, Canvas and Bitmap over a framebuffer, the screen panel, full screen
    with keyboard buttons.
