@@ -278,8 +278,8 @@ await test('the REPL runs commands on the simulated board', async () => {
 })
 
 if (haveGym) {
-  // The court's wood reads about 500 to 1000 and its painted lines saturate
-  // the sensor (about 150), so the threshold sits between them.
+  // The court's wood reads about 2100 to 2600 and its painted lines about
+  // 1000 (as in CodeSpace's simulator), so the threshold sits between them.
   await test('gym: the line sensors see the court lines', async () => {
     const r = await runHeadless({
       env: 'gym', spawn: { x: 0.3, y: 0, heading: Math.PI / 2 },
@@ -290,7 +290,7 @@ motors.run(LEFT, 60)
 motors.run(RIGHT, 60)
 seen = 0
 for i in range(600):
-    if ls.check(300, True)[2]:
+    if ls.check(1500, True)[2]:
         seen += 1
     time.sleep(0.01)
 print(seen)`,
@@ -328,7 +328,8 @@ while True:
 // the speed at 30%, not on following.
 function offTape(r, course) {
   const floor = r.world.env.floor
-  const sensor = (p) => [p.x + 0.116 * Math.cos(p.heading), p.y + 0.116 * Math.sin(p.heading)]
+  const ahead = CB3.lineSensors[2][0]
+  const sensor = (p) => [p.x + ahead * Math.cos(p.heading), p.y + ahead * Math.sin(p.heading)]
   const overGap = ([x, y]) => course === 'gap' && Math.abs(x) < 0.1 && Math.abs(y - 0.5) < 0.05
   const counted = r.trace.filter((p) => !overGap(sensor(p)))
   const off = counted.filter((p) => floor.reflectance(...sensor(p), 0.03) > 0.6)
@@ -346,18 +347,19 @@ for (const course of ['oval', 'eight', 'gap']) {
 }
 
 // The stem is 19 mm wide and the sensors 9.7 mm apart, so sensors 1 and 3 sit
-// on its edges, half over white: with the 47k pull-up half a white reflects
-// enough to read white, so only the middle is sure to see the stem.
-await test('on the T it starts on the stem (a 19 mm tape under the middle sensor), and the crossbar reads on all five', async () => {
+// on its edges, about half over tape: they read near 2300, dark by ls.check()'s
+// default 1000, so three sensors see the stem.
+await test('on the T it starts on the stem (a 19 mm tape under three sensors), and the crossbar reads on all five', async () => {
   const r = await runHeadless({
     course: 'tee', env: 'empty', seconds: 15,
     source: `from botcore import *\nimport time\nprint(ls.check())\nmotors.enable(True)\nmotors.run(LEFT, 50)\nmotors.run(RIGHT, 50)\nwhile not all(ls.check()):\n    time.sleep(0.005)\nmotors.enable(False)\nprint('bar')`,
   })
   assert.equal(r.error, undefined, r.output)
   const [first, last] = r.output.trim().split('\n')
-  assert.match(first, /^\(False, (True|False), True, (True|False), False\)$/)
+  assert.equal(first, '(False, True, True, True, False)')
   assert.equal(last, 'bar')
-  assert.ok(Math.abs(r.device.y + 0.116 - 0.5) < 0.03, `stopped with its sensors at y ${(r.device.y + 0.116).toFixed(3)}`)
+  const sensorsY = r.device.y + CB3.lineSensors[2][0]
+  assert.ok(Math.abs(sensorsY - 0.5) < 0.03, `stopped with its sensors at y ${sensorsY.toFixed(3)}`)
 })
 
 console.log('CodeAIR')
@@ -470,8 +472,8 @@ await test('a table leg (an upright cylinder) stops a CodeBot, and its proximity
   assert.ok(d > 0.25 && d < 0.4, `saw it at ${d} m`)
   bot.enable(true); bot.setPower(0, 60); bot.setPower(1, 60)
   world.advance(4e6)
-  // stopped with its body (radius 77 mm, centred 43.5 mm ahead of the axle) against the leg
-  const front = bot.y + 0.0435 + 0.077
+  // stopped with its body (its collision circle, ahead of the axle) against the leg
+  const front = bot.y + CB3.bodyCenter + CB3.bodyRadius
   assert.ok(bot.blocked && front > 0.47 && front < 0.49, `body front at ${front}, blocked ${bot.blocked}`)
   assert.ok(Math.abs(bot.x) < 0.02, `pushed aside to ${bot.x}`)
 })

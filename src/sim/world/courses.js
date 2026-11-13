@@ -5,11 +5,12 @@
 // A course's spawn puts the CodeBot on the line, heading along it, with its
 // line sensors over the tape.
 import { t } from '../../i18n/index.js'
+import { CB3 } from './codebot.js'
 
 export const TAPE_WIDTH = 0.019        // 3/4 inch electrical tape
 export const TAPE_REFLECTANCE = 0.04
 export const MAT_REFLECTANCE = 0.85
-const SENSORS_AHEAD = 0.116            // the CB3's line sensors, ahead of its centre
+const SENSORS_AHEAD = CB3.lineSensors[2][0]   // where the CB3's line sensors see, ahead of its axle
 
 function arc(cx, cy, r, a0, a1, n = 48) {
   const pts = []

@@ -1,17 +1,18 @@
 // CodeBot as drawn: the CB3 body and wheels, its LEDs lit from the snapshot,
 // and a soft shadow under it.
 //
-// The body model is in 10 cm units, front toward +z, left toward +x, its motor
-// shaft (the axle) 56 mm behind its origin and 12.5 mm below it. The figure's
-// root sits at the world pose: the axle's midpoint on the floor, facing +x.
+// The body model is in 10 cm units, front toward +z, left toward +x; the axle
+// and the resting tilt are the world model's (CB3_BODY). The figure's root
+// sits at the world pose: the axle's midpoint on the floor, facing +x.
 import * as THREE from 'three'
+import { CB3_BODY, CB3_PITCH } from '../world/codebot.js'
 
 const U = 0.1                 // model units to metres
-const AXLE_Z = -0.56          // model units
-const AXLE_Y = -0.125
-const WHEEL_R = 0.0325
+const AXLE_Z = CB3_BODY.axle[0] / 100    // model units
+const AXLE_Y = CB3_BODY.axle[1] / 100
+const WHEEL_R = CB3_BODY.tyreRadius / 1000
 const TRACK = 0.111
-const PITCH = 0.3             // rad, front down to the skid
+const PITCH = CB3_PITCH       // rad, front down to the skid
 
 // LED positions in model units (x left, z forward), from the CB3 layout.
 const USER = [23.9, 18.9, 13.8, 8.7, 3.6, -3.6, -8.7, -13.8].map((x, i) => [x / 100, 0.023, i])

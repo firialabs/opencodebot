@@ -8,8 +8,46 @@
 import { sincos, wrapAngle, clamp } from './fmath.js'
 import { Environment } from './environment.js'
 
-// Physical parameters. Positions are from the CB3 3D model (BotBody.glb: its
-// motor shaft is the axle, 56 mm behind the model's origin). The drive is a DC
+// Where things are on the CB3, from its 3D model (BotBody.glb, WheelAssy.glb),
+// in mm in the model's frame: z forward, y up, the origin on the board's top
+// face near its middle. Points in a side view (z, y).
+export const CB3_BODY = {
+  // The axle: the TT gearbox's output shaft, at the gearbox's mid-height and
+  // 11 mm behind its front face (the model's gearbox spans 24 to 64 mm behind
+  // the origin; the two screws 56 mm back hold it to the board).
+  axle: [-35.5, -12.7],
+  tyreRadius: 33.4,
+  // The skid: the battery holder's front bottom edge, rounded 5.7 mm.
+  skid: [39.4, -9.95],
+  skidRadius: 5.7,
+  // The line sensors' faces, on the board's underside (it is 1.8 mm thick).
+  lineSensor: [59.5, -2.8],
+  // The proximity sensors, on its top face at the front.
+  proxSensor: [59.6, 5],
+}
+
+// Resting on its wheels and the skid, the board pitches nose down by the angle
+// at which the floor touches both the tyres and the skid's rounded edge.
+function restingPitch({ axle, tyreRadius, skid, skidRadius }) {
+  const dz = skid[0] - axle[0], dy = skid[1] - axle[1]
+  return Math.asin((tyreRadius - skidRadius) / Math.hypot(dz, dy)) + Math.atan2(dy, dz)
+}
+export const CB3_PITCH = restingPitch(CB3_BODY)
+
+// A model point's place with the robot at rest: [ahead of the axle, above the
+// floor], in metres.
+export function cb3Rest([z, y], body = CB3_BODY, pitch = CB3_PITCH) {
+  const dz = z - body.axle[0], dy = y - body.axle[1]
+  const [s, c] = [Math.sin(pitch), Math.cos(pitch)]
+  return [(dz * c + dy * s) / 1000, (body.tyreRadius - dz * s + dy * c) / 1000]
+}
+
+// The line sensors look along the board's down direction, tilted back by the
+// pitch, so each sees the floor a little behind the point under it.
+const LINE_HEIGHT = 0.0055     // the sensors' faces above the floor: measured on a CB3
+const LINE_AHEAD = cb3Rest(CB3_BODY.lineSensor)[0] - LINE_HEIGHT * Math.tan(CB3_PITCH)
+
+// Physical parameters. Positions are from the CB3 3D model (above). The drive is a DC
 // gearmotor model from the hardware: botcore's H-bridge (sign and 1 kHz PWM,
 // standby to disable), the gearmotors' no-load speed and stall torque, the
 // battery, the robot's mass, and the friction of the gears, the tyres and the
@@ -18,8 +56,10 @@ import { Environment } from './environment.js'
 export const CB3 = {
   wheelRadius: 0.0325,        // 65 mm wheels
   track: 0.111,               // wheel centre to wheel centre
-  bodyRadius: 0.077,          // collision circle, around the body centre
-  bodyCenter: 0.0435,         // body centre ahead of the axle (153 mm long body)
+  // Collision circle: in plan, from the board's front edge (96 mm ahead of the
+  // axle) to the motors' ends (49 mm behind it), and the tyres' outer faces.
+  bodyRadius: 0.073,
+  bodyCenter: 0.0235,         // its centre, ahead of the axle
   height: 0.05,               // the band in which it meets obstacles
   step: 0.01,                 // a ledge this low it drives over; higher, it drives off
 
@@ -45,25 +85,30 @@ export const CB3 = {
   rollingResistance: 0.02,    // of each wheel's load
   skidLoad: 0.15,             // share of the weight on the front skid
   skidFriction: 0.25,         // the skid sliding on the floor, any direction
-  skidAhead: 0.10,            // m ahead of the axle
+  skidAhead: cb3Rest(CB3_BODY.skid)[0],  // where the skid touches the floor: 70 mm ahead of the axle (the model)
 
   // Line sensors: 0 is the robot's left, 4 its right. Each is a QRE1113GR, a
   // 940 nm infrared emitter (40 mA at botcore's default power, 20 mA at the
   // lower: one or two 20 mA driver pins) beside a phototransistor on a 47k
   // pull-up into the ADC (the schematic): reflected light pulls the reading
-  // down from dark, linearly, until the phototransistor saturates. 47k takes
-  // only 70 uA to pull it all the way, so white saturates a typical part at
-  // full power. (assumed: the sensors' height and each part's gain, which set
-  // the span; the floor's visible reflectance stands in for its infrared one)
-  lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [0.116, left]),
+  // down from dark, linearly, until the phototransistor saturates (47k takes
+  // only 70 uA to pull it all the way). The board rests nose down on its skid,
+  // 24 degrees, with the sensors' faces 5.5 mm above the floor (measured on a
+  // CB3; the model gives 4 to 5), looking down and back along the tilt. The
+  // span is CodeSpace's simulator's, which was tuned to the real robot, at
+  // that geometry: a perfect white reads about 230, white paper about 810,
+  // black tape about 3930. sim/DESIGN.md "Line sensor levels". (assumed:
+  // each part's gain; the floor's visible reflectance stands in for its
+  // infrared one)
+  lineSensors: [0.0191, 0.0097, 0, -0.0097, -0.0191].map((left) => [LINE_AHEAD, left]),
   lineSpot: 0.004,            // radius of the floor area each sensor sees (assumed)
   lineDark: 4080,             // no light back (dark current under 100 nA): a CB2 read 4080, botcore matches the CB3 to it
   lineSaturated: 150,         // the phototransistor fully on: 0.1 V (assumed; the datasheet's most is 0.3 V, about 450)
-  lineSpan: 7700,             // counts pulled down per unit reflectance, emitter at full: a typical part about 3 mm up (assumed)
+  lineSpan: 3850,             // counts pulled down per unit reflectance, emitter at full (CodeSpace's, at 6 mm along the sensor's axis)
   lineNoise: 25,
 
   // Proximity: 0 is left, 1 right; they look straight ahead.
-  proxSensors: [[0.1156, 0.0358], [0.1156, -0.0358]],
+  proxSensors: [0.0358, -0.0358].map((left) => [cb3Rest(CB3_BODY.proxSensor)[0], left]),
   proxHeight: 0.03,
   proxHalfAngle: 0.26,        // rad, half the beam's spread
   proxRays: 7,
