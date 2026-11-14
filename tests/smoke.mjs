@@ -96,9 +96,9 @@ for (const device of DEVICES) {
   await page.screenshot({ path: `${SHOT_DIR}/ocb-${device}.png` })
 }
 
-// The flyout is a separate SVG layered over the workspace: if its backing
-// path is even slightly translucent, the student's program ghosts through
-// the whole palette.
+// The open palette is grey and partly see-through (Blockly's high-contrast
+// look): it must stand apart from the near-white grid, so neither white nor
+// clear, while the program shows faintly underneath.
 {
   await page.evaluate(() => {
     const row = [...document.querySelectorAll('.blocklyToolboxCategory')].find((r) =>
@@ -111,17 +111,17 @@ for (const device of DEVICES) {
     const bg = document.querySelector('.blocklyFlyoutBackground')
     if (!bg) return null
     const style = getComputedStyle(bg)
-    return { fillOpacity: style.fillOpacity, opacity: style.opacity }
+    const [r, g, b] = style.fill.match(/\d+/g).map(Number)
+    return { alpha: Number(style.fillOpacity) * Number(style.opacity), light: Math.max(r, g, b) }
   })
   if (!flyout) {
     problems.push('flyout ▸ no background path found — did the flyout open?')
-  } else if (flyout.fillOpacity !== '1' || flyout.opacity !== '1') {
-    problems.push(
-      `flyout ▸ background is translucent (fill-opacity ${flyout.fillOpacity}, ` +
-        `opacity ${flyout.opacity}) — the workspace will show through the palette`,
-    )
+  } else if (flyout.light > 230) {
+    problems.push(`flyout ▸ background is near-white (${flyout.light}): it blends into the grid`)
+  } else if (flyout.alpha < 0.7 || flyout.alpha >= 1) {
+    problems.push(`flyout ▸ background opacity ${flyout.alpha}: want grey that is partly see-through (0.7 to under 1)`)
   } else {
-    console.log('flyout: background is fully opaque')
+    console.log(`flyout: grey, opacity ${flyout.alpha}`)
   }
 }
 
