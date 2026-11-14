@@ -3,7 +3,7 @@
 export default {
   'app.name': 'LabBlocks',
   'app.description': 'Programación con bloques fácil para CodeBot, CodeX y CodeAIR de Firia Labs.',
-  'app.tagline': 'bloques que vuelan, ruedan y brillan',
+  'app.tagline': 'Suéñalo, constrúyelo',
   'app.beta': 'Beta',
   'app.betaTitle': 'Una primera versión pública: consulta Acerca de',
   // El nombre de este idioma en su propio idioma, en el menú de idiomas.
