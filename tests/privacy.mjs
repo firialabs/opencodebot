@@ -76,7 +76,8 @@ await page.waitForFunction(() => window.openCodeBot.device.state === 'ready')
 await page.click('#btn-run')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'running')
 await page.click('#btn-stop')
-await page.click('.tab[data-tab="python"]')
+await page.click('#btn-view') // the Python, in place of the blocks
+await page.click('#btn-view') // and back
 
 // The simulator, in every room it has.
 await page.click('#btn-sim')

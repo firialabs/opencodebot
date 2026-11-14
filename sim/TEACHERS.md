@@ -29,7 +29,7 @@ Under the picture, from left to right:
 - **〰️ Line course** (CodeBot): black tape on a white mat, laid on the floor.
 - **⏸ Pause, ⏭ Step, ⤵ Step one line**: pause the program; run it a moment; run
   it to its next line and stop there. Stepping by line marks the line in the
-  Python tab and its block, which helps a student see what each block does.
+  Python view (🐍 Python, bottom left) and on its block, which helps a student see what each block does.
 - **Speed**: half speed to watch closely, up to four times to get on with it.
 - **BTN 0, BTN 1**: the board's buttons. Hold them as on the board.
 - **↺**: put the board back at its start.

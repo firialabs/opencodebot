@@ -36,9 +36,12 @@ export default {
   // El área de trabajo
   'blocks.hint': '¡Arrastra bloques desde la izquierda para armar tu programa!',
   'splitter.label': 'Cambiar el tamaño de los paneles. Usa las flechas.',
-  'tab.listLabel': 'Vistas del dispositivo y de Python',
+  'tab.listLabel': 'Vistas del dispositivo',
   'tab.terminal': 'Consola',
-  'tab.python': 'Python',
+  'view.toPython': '🐍 Python',
+  'view.toBlocks': '🧩 Bloques',
+  'view.toPythonLabel': 'Mostrar el Python en lugar de los bloques',
+  'view.toBlocksLabel': 'Mostrar los bloques en lugar del Python',
   'term.clear': 'Limpiar la terminal',
   'term.hintHtml': 'Escribe aquí para hablar con tu dispositivo. <kbd>Ctrl</kbd>+<kbd>C</kbd> detiene un programa.',
   'term.greeting': '¡Hola! Esta es una consola de Python en vivo en tu dispositivo.',
@@ -78,15 +81,14 @@ export default {
   'pick.switchBodyHtml': '<p>Tu proyecto usa bloques de {names}, que un {device} no puede ejecutar.</p><p>¿Quieres empezar un proyecto nuevo, o conservar estos bloques y cambiar de todos modos?</p>',
   'pick.startFresh': 'Empezar de nuevo',
   'pick.keep': 'Conservar mis bloques',
-  // Bloques o Python escrito (la pestaña Python)
+  // Bloques o Python escrito (la vista de Python)
   'text.barBlocks': 'Estas son las líneas de Python que forman tus bloques.',
   'text.barText': 'Estás escribiendo Python. Ejecutar envía este código.',
   'text.toText': '✏️ Editar como Python',
   'text.toBlocks': '🧩 Volver a los bloques',
   'text.editorLabel': 'Programa de Python',
   'text.editorHelp': 'Tab agrega sangría. Presiona Esc y luego Tab para salir del editor.',
-  'text.coverTitle': '🐍 Ahora estás escribiendo Python',
-  'text.coverBody': 'Tu programa está en la pestaña Python. Ejecutar envía el código que escribiste.',
+  'text.viewLabel': 'El Python que forman tus bloques',
   'text.startedTitle': 'Ahora estás escribiendo Python',
   'text.startedDetail': 'Ejecutar envía el código que escribes. Tus bloques se guardan para cuando regreses.',
   'text.backTitle': '¿Volver a los bloques?',
@@ -104,7 +106,7 @@ export default {
   'pySaved.detail': 'Busca main.py en tu carpeta de Descargas.',
   'pyCopied.title': '¡Python copiado!',
   'pyCopyFailed.title': 'No se pudo copiar',
-  'pyCopyFailed.detail': 'Mejor selecciona el código en la pestaña Python.',
+  'pyCopyFailed.detail': 'Mejor presiona 🐍 Python y selecciona el código ahí.',
   'help.title': 'Ayuda y atajos',
   'about.title': 'Acerca de {app}',
   'saved.title': 'Proyecto guardado',
@@ -120,7 +122,7 @@ export default {
   'welcome.bodyHtml': `
     <p>¡Hola! Con {app} puedes crear programas para tu dispositivo de Firia Labs
     uniendo bloques. No necesitas escribir nada, pero el Python de verdad
-    siempre está en la pestaña <strong>Python</strong> si quieres echar un vistazo.</p>
+    siempre está a un clic de <strong>🐍 Python</strong> (abajo a la izquierda) si quieres echar un vistazo.</p>
     <ol>
       <li><strong>Elige tu dispositivo</strong> arriba: CodeBot, CodeX o CodeAIR.</li>
       <li><strong>Conéctalo</strong> con un cable USB y presiona <strong>Conectar</strong>.</li>
@@ -152,9 +154,10 @@ export default {
         y donde aparecen los mensajes de tu programa. ¡Escribe en ella!
         Presiona <kbd>Tab</kbd> para completar un nombre y <kbd>Ctrl</kbd>+<kbd>C</kbd> para detener un programa.</li>
       <li><strong>Simulador</strong> muestra el dispositivo simulado mientras funciona.</li>
-      <li><strong>Python</strong> muestra exactamente el código que forman tus bloques. Presiona
-        <strong>✏️ Editar como Python</strong> para escribir el tuyo; <strong>🧩 Volver a los bloques</strong>
-        te regresa a tus bloques (los cambios que escribiste no se convierten otra vez en bloques).</li>
+      <li><strong>🐍 Python</strong>, abajo a la izquierda, muestra exactamente el código que forman
+        tus bloques, en lugar de los bloques; <strong>🧩 Bloques</strong> los trae de vuelta. Presiona
+        <strong>✏️ Editar como Python</strong> ahí para escribir el tuyo; al volver a los bloques se
+        pierden los cambios que escribiste (no se convierten otra vez en bloques), así que pregunta antes.</li>
       <li><strong>🆕 Nuevo</strong> empieza de nuevo. Haz clic en el nombre del proyecto, al lado, para cambiarle el nombre.</li>
     </ul>
     <h3>Atajos</h3>

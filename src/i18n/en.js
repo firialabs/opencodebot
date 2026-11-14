@@ -39,9 +39,12 @@ export default {
   'blocks.hint': 'Drag blocks from the left to build your program!',
   'splitter.label': 'Resize panels. Use the arrow keys.',
   'tab.terminal': 'Talk to device',
-  'tab.python': 'Python',
+  'view.toPython': '🐍 Python',
+  'view.toBlocks': '🧩 Blocks',
+  'view.toPythonLabel': 'Show the Python in place of the blocks',
+  'view.toBlocksLabel': 'Show the blocks in place of the Python',
   'term.clear': 'Clear the terminal',
-  'tab.listLabel': 'Device and Python views',
+  'tab.listLabel': 'Device views',
   'term.hintHtml': 'Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.',
   'term.greeting': 'Hi! This is a live Python prompt on your device.',
   'term.greetingHint': 'Plug a device in, press Connect, and start typing.',
@@ -80,15 +83,14 @@ export default {
   'pick.switchBodyHtml': '<p>Your project uses {names} blocks, which a {device} cannot run.</p><p>Start a fresh project, or keep these blocks and switch anyway?</p>',
   'pick.startFresh': 'Start fresh',
   'pick.keep': 'Keep my blocks',
-  // Blocks or typed Python (the Python tab)
+  // Blocks or typed Python (the Python view)
   'text.barBlocks': 'These are the Python lines your blocks make.',
   'text.barText': 'You are writing Python. Run sends this code.',
   'text.toText': '✏️ Edit as Python',
   'text.toBlocks': '🧩 Back to blocks',
   'text.editorLabel': 'Python program',
   'text.editorHelp': 'Tab indents. Press Escape, then Tab, to leave the editor.',
-  'text.coverTitle': "🐍 You're writing Python now",
-  'text.coverBody': 'Your program lives in the Python tab. Run sends the code you typed.',
+  'text.viewLabel': 'The Python your blocks make',
   'text.startedTitle': "You're writing Python now",
   'text.startedDetail': 'Run sends the code you type. Your blocks are kept for when you go back.',
   'text.backTitle': 'Go back to blocks?',
@@ -106,7 +108,7 @@ export default {
   'pySaved.detail': 'Look in your Downloads folder for main.py.',
   'pyCopied.title': 'Python copied!',
   'pyCopyFailed.title': 'Could not copy',
-  'pyCopyFailed.detail': 'Select the code in the Python tab instead.',
+  'pyCopyFailed.detail': 'Press 🐍 Python and select the code there instead.',
   'help.title': 'Help & shortcuts',
   'about.title': 'About {app}',
   'saved.title': 'Project saved',
@@ -122,7 +124,7 @@ export default {
   'welcome.bodyHtml': `
     <p>Hi! {app} lets you build programs for your Firia Labs device by
     snapping blocks together. No typing required, but the real Python is
-    always right there in the <strong>Python</strong> tab if you want to peek.</p>
+    always one press of <strong>🐍 Python</strong> (bottom left) away if you want to peek.</p>
     <ol>
       <li><strong>Pick your device</strong> at the top: CodeBot, CodeX or CodeAIR.</li>
       <li><strong>Plug it in</strong> with a USB cable and press <strong>Connect</strong>.</li>
@@ -153,9 +155,10 @@ export default {
         and where your program's messages appear. Type in it!
         Press <kbd>Tab</kbd> to complete a name and <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop a program.</li>
       <li><strong>Simulator</strong> shows the simulated device while it runs.</li>
-      <li><strong>Python</strong> shows exactly the code your blocks make. Press
-        <strong>✏️ Edit as Python</strong> to type your own; <strong>🧩 Back to blocks</strong>
-        returns to your blocks (typed changes do not turn back into blocks).</li>
+      <li><strong>🐍 Python</strong>, at the bottom left, shows exactly the code your blocks make,
+        in place of the blocks; <strong>🧩 Blocks</strong> brings them back. Press
+        <strong>✏️ Edit as Python</strong> there to type your own; going back to blocks then
+        drops your typed changes (they do not turn back into blocks), so it asks first.</li>
       <li><strong>🆕 New</strong> starts over. Click the project name next to it to rename your project.</li>
     </ul>
     <h3>Shortcuts</h3>

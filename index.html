@@ -78,11 +78,17 @@
       <main class="workarea">
         <section class="blocks-pane" id="blocks-pane">
           <div id="blockly-root" class="blockly-root"></div>
-          <div class="text-mode-cover" id="text-mode-cover" hidden>
-            <p class="text-mode-title" data-i18n="text.coverTitle"></p>
-            <p data-i18n="text.coverBody"></p>
-            <button id="btn-back-to-blocks" class="btn" type="button" data-i18n="text.toBlocks"></button>
+          <div class="code-pane" id="code-pane" hidden>
+            <div class="python-bar">
+              <span class="python-bar-msg" id="python-bar-msg" data-i18n="text.barBlocks"></span>
+              <button id="btn-mode" class="btn btn-small" type="button" data-i18n="text.toText"></button>
+            </div>
+            <pre id="python-view" class="python-view" tabindex="0" data-i18n-attr="aria-label=text.viewLabel"><code>&nbsp;</code></pre>
+            <textarea id="python-editor" class="python-view python-editor" spellcheck="false" autocapitalize="off"
+                      autocomplete="off" data-i18n-attr="aria-label=text.editorLabel" aria-describedby="python-editor-help" hidden></textarea>
+            <p id="python-editor-help" class="sr-only" data-i18n="text.editorHelp"></p>
           </div>
+          <button id="btn-view" class="btn view-toggle" type="button" aria-controls="code-pane"></button>
           <div class="blocks-hint" id="blocks-hint">
             <img src="./icons/firia-bot-head.svg" alt="" width="44" height="44" />
             <p data-i18n="blocks.hint"></p>
@@ -103,10 +109,6 @@
                       aria-controls="panel-sim" tabindex="-1">
                 <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
               </button>
-              <button class="tab" role="tab" id="tab-python" data-tab="python" aria-selected="false"
-                      aria-controls="panel-python" tabindex="-1">
-                <span aria-hidden="true">🐍</span> <span data-i18n="tab.python"></span>
-              </button>
             </div>
             <div class="tabs-spacer"></div>
             <button id="btn-clear-term" class="icon-btn" data-i18n-attr="title=term.clear;aria-label=term.clear">🧹</button>
@@ -121,17 +123,6 @@
 
           <div class="tab-panel" data-panel="sim" id="panel-sim" role="tabpanel" aria-labelledby="tab-sim">
             <div id="sim-host" class="sim-host"></div>
-          </div>
-
-          <div class="tab-panel" data-panel="python" id="panel-python" role="tabpanel" aria-labelledby="tab-python">
-            <div class="python-bar">
-              <span class="python-bar-msg" id="python-bar-msg" data-i18n="text.barBlocks"></span>
-              <button id="btn-mode" class="btn btn-small" type="button" data-i18n="text.toText"></button>
-            </div>
-            <pre id="python-view" class="python-view"><code>&nbsp;</code></pre>
-            <textarea id="python-editor" class="python-view python-editor" spellcheck="false" autocapitalize="off"
-                      autocomplete="off" data-i18n-attr="aria-label=text.editorLabel" aria-describedby="python-editor-help" hidden></textarea>
-            <p id="python-editor-help" class="sr-only" data-i18n="text.editorHelp"></p>
           </div>
         </section>
       </main>

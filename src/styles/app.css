@@ -358,8 +358,31 @@ kbd {
   white-space: pre;
   tab-size: 4;
 }
-.tab-panel[data-panel='python'] { display: none; flex-direction: column; }
-.tab-panel[data-panel='python'].is-active { display: flex; }
+/* The Python, in the editor area in place of the blocks (never both). */
+.code-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+.code-pane[hidden], .blockly-root[hidden] { display: none; }
+/* Room at the foot for the blocks/Python button. */
+.code-pane .python-view { padding-bottom: 72px; }
+/* Bottom left, under the palette's categories, in both views. */
+.view-toggle {
+  position: absolute;
+  left: 10px;
+  bottom: 12px;
+  z-index: 76; /* over Blockly's toolbox (70) and the hint (75) */
+  height: 40px;
+  padding: 0 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+.view-toggle:hover { background: var(--green-soft); }
 .python-bar {
   display: flex;
   align-items: center;
@@ -383,27 +406,6 @@ kbd {
 }
 .python-editor[hidden], .python-view[hidden] { display: none; }
 
-.text-mode-cover {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 24px;
-  text-align: center;
-  background: rgba(255, 253, 247, 0.94);
-  color: var(--ink);
-}
-.text-mode-cover[hidden] { display: none; }
-/* Blockly's palette sits above the cover; park it while the program is text. */
-.is-text-mode .blocklyToolboxDiv,
-.is-text-mode .blocklyToolbox { opacity: 0.35; pointer-events: none; }
-.text-mode-cover p { margin: 0; max-width: 34ch; line-height: 1.5; }
-.text-mode-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
-.text-mode-cover .btn { margin-top: 12px; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -562,7 +564,8 @@ kbd {
 .blocklyToolboxDiv {
   background: var(--paper-2) !important;
   border-right: 1px solid var(--line);
-  padding: 10px 10px 10px 0 !important;
+  /* The foot leaves room for the blocks/Python button. */
+  padding: 10px 10px 64px 0 !important;
 }
 /* Blockly hard-codes `height: 22px; line-height: 22px` with border-box on
    these rows, so adding vertical padding pushes the text out of the box
