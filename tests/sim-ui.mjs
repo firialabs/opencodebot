@@ -286,10 +286,25 @@ if (!problems.some((p) => p.startsWith('rooms'))) console.log('sim-ui: the room 
   if (problems.length === before) console.log('sim-ui: the view is described, arrows turn the camera, and Space holds a board button')
 }
 
-// Step by line: from a stop the starter project pauses at its first line,
-// marked in the Python tab and on its block; each step moves on a line.
+// The run controls: at rest Run alone; running, Stop and Pause; paused, Step
+// too, and Pause and Step stay until the program stops.
+const shown = () =>
+  page.evaluate(() => ['btn-run', 'btn-stop', 'btn-pause', 'btn-step'].filter((id) => !document.getElementById(id).hidden).join(' '))
+const runPaused = async () => {
+  await page.click('#btn-run')
+  await page.waitForFunction(() => window.openCodeBot.device.state === 'running', null, { timeout: 10000 })
+  const running = await shown()
+  await page.click('#btn-pause')
+  await page.waitForFunction(() => window.openCodeBot.device.sim.paused, null, { timeout: 10000 }).catch(() => {})
+  return running
+}
+
+// Step by line: Run, Pause, then Step: the paused line is marked in the
+// Python and on its block; each step moves on a line.
 await page.evaluate(() => window.openCodeBot.device.sim.setSpeed(1))
-await page.click('.sim-step-line')
+const atRest = await shown()
+const whileRunning = await runPaused()
+const whilePaused = await shown()
 const marked = async () => page.evaluate(() => {
   const el = document.querySelector('#python-view .py-line.is-current')
   const ran = window.openCodeBot._ran
@@ -300,7 +315,7 @@ await page.waitForSelector('#python-view .py-line.is-current', { state: 'attache
 // The imports come first, with no block; step on to the blocks' lines.
 const step = async () => {
   const before = (await marked()).n
-  await page.click('.sim-step-line')
+  await page.click('#btn-step')
   await page.waitForFunction((n) => {
     const el = document.querySelector('#python-view .py-line.is-current')
     return el && Number(el.dataset.n) !== n
@@ -315,6 +330,23 @@ await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-step.png` })
 await page.click('#btn-view') // back to the blocks
 await page.evaluate(() => window.openCodeBot.device.stop())
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+// Resumed, Step stays; stopped, Run alone (a program that runs on, so it is
+// still running when resumed).
+await page.evaluate(() => window.openCodeBot.device.run('import time\nwhile True:\n    time.sleep(0.1)\n'))
+await page.waitForFunction(() => window.openCodeBot.device.state === 'running', null, { timeout: 10000 })
+await page.click('#btn-pause')
+await page.waitForFunction(() => window.openCodeBot.device.sim.paused, null, { timeout: 10000 }).catch(() => {})
+await page.click('#btn-pause') // Resume
+await page.waitForFunction(() => !window.openCodeBot.device.sim.paused, null, { timeout: 5000 }).catch(() => {})
+const resumed = await shown()
+await page.click('#btn-stop')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
+const stopped = await shown()
+const buttons = { atRest, whileRunning, whilePaused, resumed, stopped }
+if (atRest !== 'btn-run' || whileRunning !== 'btn-stop btn-pause' || whilePaused !== 'btn-stop btn-pause btn-step' ||
+    resumed !== 'btn-stop btn-pause btn-step' || stopped !== 'btn-run') {
+  problems.push(`run controls: ${JSON.stringify(buttons)}`)
+} else console.log('sim-ui: Run alone at rest; Stop and Pause running; Step once paused, until stopped')
 if (!first.n || !first.block || !second.n || second.n === first.n || !second.block) {
   problems.push(`step by line: ${JSON.stringify({ first, second })}`)
 } else console.log(`sim-ui: stepped by line, ${first.n} then ${second.n} (${second.text.trim()}), on their blocks`)
@@ -322,7 +354,8 @@ if (!first.n || !first.block || !second.n || second.n === first.n || !second.blo
 // Text mode: Run in the simulator runs the typed Python, not the blocks', and
 // stepping marks the typed line itself (line n is the editor's line n).
 {
-  const typed = "from botcore import *\nprint('typed one')\nx = 2\nprint('typed', x * 3)\n"
+  // The sleep gives Pause a moment to land in.
+  const typed = "from botcore import *\nfrom time import sleep\nsleep(2)\nprint('typed one')\nx = 2\nprint('typed', x * 3)\n"
   await page.click('#btn-view')
   await page.click('#btn-mode')
   await page.fill('#python-editor', typed)
@@ -335,21 +368,20 @@ if (!first.n || !first.block || !second.n || second.n === first.n || !second.blo
     const e = document.getElementById('python-editor')
     return e.value.slice(e.selectionStart, e.selectionEnd)
   })
-  await page.click('.sim-step-line')
-  await page.waitForFunction(() => window.openCodeBot.device.state === 'running', null, { timeout: 10000 })
+  await runPaused()
   await page.waitForFunction(() => {
     const e = document.getElementById('python-editor')
     return e.selectionEnd > e.selectionStart
   }, null, { timeout: 10000 }).catch(() => {})
   const line1 = await selected()
-  await page.click('.sim-step-line')
+  await page.click('#btn-step')
   // The click itself briefly clears the editor's selection (the editor is on
   // screen), so wait for the next line to be marked, not just for a change.
   await page.waitForFunction((was) => {
     const e = document.getElementById('python-editor')
     const now = e.value.slice(e.selectionStart, e.selectionEnd)
     return now && now !== was
-  }, line1, { timeout: 5000 }).catch(() => {})
+  }, line1, { timeout: 10000 }).catch(() => {})
   const line2 = await selected()
   await page.evaluate(() => window.openCodeBot.device.stop())
   await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
@@ -357,7 +389,7 @@ if (!first.n || !first.block || !second.n || second.n === first.n || !second.blo
   await page.click('#btn-mode')
   await page.click('#modal button[value="ok"]')
   await page.waitForFunction(() => window.openCodeBot.workspace.mode === 'blocks', null, { timeout: 5000 })
-  if (!ranTyped || line1 !== 'from botcore import *' || line2 !== "print('typed one')") {
+  if (!ranTyped || line1 !== 'sleep(2)' || line2 !== "print('typed one')") {
     problems.push(`text mode: ${JSON.stringify({ out: out.slice(-200), line1, line2 })}`)
   } else console.log('sim-ui: text mode ran the typed Python, and stepped it line by line in the editor')
 }

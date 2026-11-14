@@ -1,9 +1,9 @@
-// The simulator's panel: the 3D view and its controls (camera, pause, step,
-// speed, the board's buttons). It builds its own DOM inside `host`.
+// The simulator's panel: the 3D view and its controls (camera, room, speed,
+// the board's buttons). Pause and Step are the app's run controls, in the top
+// bar. It builds its own DOM inside `host`.
 import './sim.css'
 import { COURSES } from './world/courses.js'
 import { KINDS, ROOMS } from './kinds.js'
-import { SimDevice } from './sim-device.js'
 import { holdButton } from './hold-button.js'
 import { SettingsPanel } from './settings-panel.js'
 import { t, tHtml } from '../i18n/index.js'
@@ -17,17 +17,13 @@ export function boardButtonsHtml() {
 }
 
 export class SimPanel {
-  constructor(host, sim, { onStart, onStepStart }) {
+  constructor(host, sim) {
     this.sim = sim
     // title and aria-label from one key
     const both = (key) => `title="${tHtml(key)}" aria-label="${tHtml(key)}"`
     host.innerHTML = `
       <div class="sim-stage" data-off="true">
         <div class="sim-view"></div>
-        <div class="sim-off">
-          <p>${SimDevice.canSimulate('codeair') ? tHtml('simPanel.intro') : tHtml('simPanel.introNoFlight')}</p>
-          <button type="button" class="btn btn-run sim-start">${tHtml('simPanel.start')}</button>
-        </div>
       </div>
       <div class="sim-bar" role="toolbar" aria-label="${tHtml('simPanel.bar')}" hidden>
         <span class="sim-group sim-cameras" data-for="codebot codeair" role="group" aria-label="${tHtml('simPanel.camera')}"></span>
@@ -43,9 +39,6 @@ export class SimPanel {
           <label title="${tHtml('simPanel.lightTitle')}"><span aria-hidden="true">💡</span> <input type="range" class="sim-light" min="0" max="1000" value="250" aria-label="${tHtml('simPanel.light')}"></label>
         </span>
         <span class="sim-group">
-          <button type="button" class="icon-btn sim-pause" ${both('simPanel.pause')}>⏸</button>
-          <button type="button" class="icon-btn sim-step" ${both('simPanel.step')}>⏭</button>
-          <button type="button" class="icon-btn sim-step-line" title="${tHtml('simPanel.stepLineTitle')}" aria-label="${tHtml('simPanel.stepLine')}">⤵</button>
           <select class="sim-speed" ${both('simPanel.speed')}></select>
         </span>
         <span class="sim-group sim-buttons" data-for="codebot codeair" role="group" aria-label="${tHtml('simPanel.buttons')}">
@@ -59,7 +52,6 @@ export class SimPanel {
     this.stage = q('.sim-stage')
     this.bar = q('.sim-bar')
     sim.attachView(q('.sim-view'))
-    q('.sim-start').addEventListener('click', () => onStart())
     this.settings = new SettingsPanel(this.stage, q('.sim-gear'), sim)
 
     for (const [mode, icon, key] of CAMERAS) {
@@ -88,22 +80,6 @@ export class SimPanel {
     for (const v of SPEEDS) speed.add(new Option(t('simPanel.speedValue', { speed: v === 0.5 ? '½' : v }), v, v === 1, v === 1))
     speed.addEventListener('change', () => sim.setSpeed(Number(speed.value)))
 
-    this.paused = false
-    const pause = (this.pauseButton = q('.sim-pause'))
-    pause.addEventListener('click', () => {
-      if (this.paused) sim.resume(); else sim.pause()
-      this._paused(!this.paused)
-    })
-    q('.sim-step').addEventListener('click', () => {
-      this._paused(true)
-      sim.step()
-    })
-    // Step one line: from a stop, the program starts paused at its first line.
-    q('.sim-step-line').addEventListener('click', () => {
-      this._paused(true)
-      if (sim.state === 'running') sim.stepLine()
-      else onStepStart?.()
-    })
     q('.sim-reset').addEventListener('click', () => sim.reset())
     const tilt = () => sim.tilt((Number(q('.sim-tilt-x').value) * Math.PI) / 180, (Number(q('.sim-tilt-y').value) * Math.PI) / 180)
     q('.sim-tilt-x').addEventListener('input', tilt)
@@ -120,15 +96,6 @@ export class SimPanel {
     sim.addEventListener('camera', (e) => this._chips(e.detail))
   }
 
-  // The pause button says what it will do: pause, or resume.
-  _paused(on) {
-    this.paused = on
-    const b = this.pauseButton
-    b.textContent = on ? '▶' : '⏸'
-    b.title = t(on ? 'simPanel.resume' : 'simPanel.pause')
-    b.setAttribute('aria-label', b.title)
-  }
-
   refresh() {
     const on = this.sim.isConnected
     this.stage.dataset.off = String(!on)
@@ -136,7 +103,6 @@ export class SimPanel {
     for (const el of this.bar.querySelectorAll('[data-for]')) el.hidden = !el.dataset.for.split(' ').includes(this.sim.targetId)
     this.courseSelect.disabled = this.roomSelect.disabled = this.sim.state === 'running'
     if (on) this.roomSelect.value = this.sim.room ?? KINDS[this.sim.targetId]?.env
-    if (!on || this.sim.state !== 'running') this._paused(false)
     if (!on) this.settings.close({ focus: false })
     this.settings.refresh()
   }

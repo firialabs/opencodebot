@@ -16,6 +16,7 @@ import { SimPanel } from '../sim/sim-panel.js'
 
 const SEEN_WELCOME = 'opencodebot.welcomed.v1'
 const PICKED_DEVICE = 'opencodebot.device.v1'
+const TERMINAL_PANEL = 'opencodebot.terminalPanel.v1'
 
 const $ = (id) => document.getElementById(id)
 
@@ -25,10 +26,7 @@ export class App {
     // sits beside it, behind Simulate. ?device=sim opens in the simulator.
     const kind = deviceKindFromUrl()
     this.device = new DeviceSwitch(createDevice(kind === 'sim' ? 'serial' : kind), createDevice('sim'))
-    this.simPanel = new SimPanel($('sim-host'), this.device.sim, {
-      onStart: () => this._toggleSimulate(),
-      onStepStart: () => this._run({ stepFirst: true }),
-    })
+    this.simPanel = new SimPanel($('sim-host'), this.device.sim)
     this.pickedTarget = localStorage.getItem(PICKED_DEVICE) || null
 
     this.workspace = new BlockWorkspace($('blockly-root'), this.pickedTarget)
@@ -75,6 +73,7 @@ export class App {
       this._setStatus(state, message)
       this._refreshButtons()
       this._refreshDeviceChip()
+      this._refreshSide()
     })
 
     device.addEventListener('device', (e) => {
@@ -144,7 +143,7 @@ export class App {
       toast({ kind: 'warn', title, detail })
       return
     }
-    this._selectTab('sim')
+    this._roomForSim()
     await this.device.simulate(target)
     this._refreshSimButton()
   }
@@ -166,8 +165,7 @@ export class App {
     if (ok) this.terminal.focus()
   }
 
-  // stepFirst (the simulator): pause at the first line, to step by line.
-  async _run(opts = {}) {
+  async _run() {
     const textMode = this.workspace.mode === 'text'
     if (textMode ? !this.workspace.pythonText.trim() : this.workspace.isEmpty) {
       toast({
@@ -196,7 +194,7 @@ export class App {
       : generateWithLines(this.workspace.workspace, this.workspace.targetId)
     this._ran = { code, blockAt, text: textMode }
     this.terminal.say(t('term.sending'))
-    await this.device.run(code, opts)
+    await this.device.run(code)
   }
 
   // Mark the line a paused program is at (null: none): typed Python's line in
@@ -228,6 +226,19 @@ export class App {
     await this.device.stop()
   }
 
+  // Pause and Step are the simulator's: a real board cannot hold a program
+  // still. Step runs the program on to its next line and pauses there.
+  _togglePause() {
+    const sim = this.device.sim
+    if (!this.device.simulating || this.device.state !== State.RUNNING) return
+    if (sim.paused) sim.resume()
+    else sim.pause()
+  }
+
+  _step() {
+    if (this.device.simulating && this.device.state === State.RUNNING) this.device.sim.stepLine()
+  }
+
   // ------------------------------------------------------------ chrome
 
   _bindChrome() {
@@ -235,7 +246,10 @@ export class App {
     $('btn-sim').addEventListener('click', () => this._toggleSimulate())
     $('btn-run').addEventListener('click', () => this._run())
     $('btn-stop').addEventListener('click', () => this._stop())
+    $('btn-pause').addEventListener('click', () => this._togglePause())
+    $('btn-step').addEventListener('click', () => this._step())
     $('btn-clear-term').addEventListener('click', () => this.terminal.clear())
+    $('btn-term-toggle').addEventListener('click', () => this._setTermOpen(!this.termOpen))
     $('btn-new').addEventListener('click', () => this._newProject())
 
     // Project name: edit in place. Enter or leaving the field saves it,
@@ -257,11 +271,6 @@ export class App {
       nameField.value = this.workspace.name
       document.title = t('project.pageTitle', { name: this.workspace.name })
     })
-
-    // Tabs
-    for (const tab of document.querySelectorAll('.tab')) {
-      tab.addEventListener('click', () => this._selectTab(tab.dataset.tab))
-    }
 
     // Device picker
     const chip = $('device-chip')
@@ -328,9 +337,10 @@ export class App {
     })
 
     this._bindSplitter()
-    this._bindTabKeys()
+    this._bindTermSplitter()
     window.addEventListener('resize', () => {
       this.workspace.resize()
+      this._fitTerm()
       this.terminal.resize()
     })
   }
@@ -341,43 +351,99 @@ export class App {
     button.setAttribute('aria-expanded', String(open))
   }
 
-  /** Show a tab. `focusPanel` is false when arrowing between tabs. */
-  _selectTab(name, { focusPanel = true } = {}) {
-    for (const tab of document.querySelectorAll('.tab')) {
-      const active = tab.dataset.tab === name
-      tab.classList.toggle('is-active', active)
-      tab.setAttribute('aria-selected', String(active))
-      // One tab stop for the whole tab list; arrows move within it.
-      tab.tabIndex = active ? 0 : -1
-    }
-    for (const panel of document.querySelectorAll('.tab-panel')) {
-      panel.classList.toggle('is-active', panel.dataset.panel === name)
-    }
-    if (name === 'sim') this.device.sim.view?.resize()
-    if (name === 'terminal') {
-      this.terminal.resize()
-      if (focusPanel) this.terminal.focus()
-    }
+  // ------------------------------------------------------------ side pane
+
+  /**
+   * The side: the simulator on top while it is on (starting included), the
+   * terminal panel under it. With no simulator the terminal fills the side
+   * and cannot be closed; with one, it can be closed to its header or resized.
+   */
+  _refreshSide() {
+    const sim = this.device.active === this.device.sim && this.device.sim.state !== State.OFFLINE
+    const side = $('side-pane')
+    side.dataset.sim = String(sim)
+    side.dataset.term = this.termOpen ? 'open' : 'closed'
+    $('panel-sim').hidden = !sim
+    $('term-splitter').hidden = !sim || !this.termOpen
+    $('term-body').hidden = sim && !this.termOpen
+    const toggle = $('btn-term-toggle')
+    toggle.hidden = !sim
+    toggle.textContent = this.termOpen ? '▾' : '▴'
+    toggle.setAttribute('aria-expanded', String(this.termOpen))
+    const label = t(this.termOpen ? 'term.hide' : 'term.show')
+    toggle.title = label
+    toggle.setAttribute('aria-label', label)
+    // After the simulator's own panel has caught up (its bar shows once it is ready).
+    requestAnimationFrame(() => this._fitTerm())
   }
 
-  /** Left/Right (and Home/End) move between tabs, as screen readers expect. */
-  _bindTabKeys() {
-    const tabs = [...document.querySelectorAll('.tab')]
-    for (const tab of tabs) {
-      tab.addEventListener('keydown', (e) => {
-        const i = tabs.indexOf(tab)
-        const next = {
-          ArrowRight: tabs[(i + 1) % tabs.length],
-          ArrowLeft: tabs[(i - 1 + tabs.length) % tabs.length],
-          Home: tabs[0],
-          End: tabs[tabs.length - 1],
-        }[e.key]
-        if (!next) return
-        e.preventDefault()
-        this._selectTab(next.dataset.tab, { focusPanel: false })
-        next.focus()
-      })
+  _setTermOpen(open) {
+    this.termOpen = open
+    this._saveTerm()
+    this._refreshSide()
+    requestAnimationFrame(() => this._fitTerm())
+  }
+
+  _saveTerm() {
+    try {
+      localStorage.setItem(TERMINAL_PANEL, JSON.stringify({ open: this.termOpen, height: this.termHeight }))
+    } catch {}
+  }
+
+  /** Clamp the terminal's height to the side as it is now, and resize what is in it. */
+  _fitTerm() {
+    const side = $('side-pane')
+    const room = side.getBoundingClientRect().height
+    const head = document.querySelector('.term-head').getBoundingClientRect().height
+    // The simulator keeps its bar and at least 120 px of view above the divider.
+    const simBar = document.querySelector('.sim-bar')?.getBoundingClientRect().height || 0
+    const least = head + 60
+    const height = Math.round(Math.min(Math.max(this.termHeight, least), Math.max(least, room - 6 - simBar - 120)))
+    side.style.setProperty('--term-h', `${height}px`)
+    if (room > 0) {
+      $('term-splitter').setAttribute('aria-valuenow', String(Math.round(100 - (height / room) * 100)))
     }
+    this.device.sim.view?.resize()
+    this.terminal.resize()
+    return height
+  }
+
+  _bindTermSplitter() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(TERMINAL_PANEL) || '{}')
+      this.termOpen = saved.open !== false
+      this.termHeight = Number(saved.height) || 220
+    } catch {
+      this.termOpen = true
+      this.termHeight = 220
+    }
+    this._refreshSide()
+
+    const splitter = $('term-splitter')
+    const set = (px) => {
+      this.termHeight = px
+      this.termHeight = this._fitTerm()
+      this._saveTerm()
+    }
+    let dragging = false
+    splitter.addEventListener('pointerdown', (e) => {
+      dragging = true
+      splitter.setPointerCapture(e.pointerId)
+    })
+    splitter.addEventListener('pointermove', (e) => {
+      if (dragging) set($('side-pane').getBoundingClientRect().bottom - e.clientY)
+    })
+    splitter.addEventListener('pointerup', () => {
+      dragging = false
+    })
+    // Up makes the terminal taller, Down shorter; Shift moves further.
+    splitter.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 120 : 40
+      const grow = { ArrowUp: step, ArrowDown: -step }[e.key]
+      if (!grow) return
+      e.preventDefault()
+      set(this.termHeight + grow)
+    })
   }
 
   _bindSplitter() {
@@ -431,6 +497,14 @@ export class App {
       setSide(sideNow() + grow[e.key])
     })
     requestAnimationFrame(() => setSide(sideNow()))
+
+    // On a narrow screen the side is a strip under the blocks: the simulator
+    // and the terminal both need more of it, so starting the simulator grows it.
+    this._roomForSim = () => {
+      if (!vertical()) return
+      const want = workarea.getBoundingClientRect().height * 0.6
+      if (sideNow() < want) setSide(want)
+    }
   }
 
   // -------------------------------------------------------- device chip
@@ -523,11 +597,36 @@ export class App {
     this._refreshSimButton()
   }
 
+  /**
+   * At rest only Run shows. Running: Stop, and in the simulator Pause. Once
+   * paused, Pause says Resume and Step shows too; both stay until the
+   * program stops, then it is Run alone again. A button that hides while it
+   * has the keyboard hands it to the one now in its place.
+   */
   _refreshButtons() {
     const connected = this.device.isConnected
-    const loading = this.device.state === State.LOADING
-    $('btn-run').disabled = !connected || loading
-    $('btn-stop').disabled = !connected
+    const running = connected && this.device.state === State.RUNNING
+    const sim = running && this.device.simulating
+    const paused = sim && this.device.sim.paused
+    if (paused) this._stepping = true
+    if (!running) this._stepping = false
+
+    const had = document.activeElement
+    const run = $('btn-run')
+    const stop = $('btn-stop')
+    const pause = $('btn-pause')
+    const step = $('btn-step')
+    run.hidden = running
+    run.disabled = !connected || this.device.state === State.LOADING
+    stop.hidden = !running
+    pause.hidden = !sim
+    step.hidden = !(sim && this._stepping)
+    pause.querySelector('.btn-emoji').textContent = paused ? '▶' : '⏸'
+    pause.querySelector('.btn-text').textContent = t(paused ? 'btn.resume' : 'btn.pause')
+
+    if ([run, stop, pause, step].includes(had) && had.hidden) {
+      ;(running ? (paused ? step : stop) : run).focus()
+    }
   }
 
   _setStatus(state, message) {

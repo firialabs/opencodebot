@@ -205,6 +205,10 @@ kbd {
 .btn-run { background: var(--green-strong); box-shadow: 0 3px 0 var(--green-strong-dark); }
 .btn-stop { background: var(--coral-strong); box-shadow: 0 3px 0 var(--coral-strong-dark); }
 .btn-stop:active:not(:disabled) { box-shadow: 0 0 0 var(--coral-strong-dark); }
+.btn-pause, .btn-step { background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--line-strong); }
+.btn-pause:active:not(:disabled), .btn-step:active:not(:disabled) { box-shadow: 0 0 0 var(--line-strong); }
+.run-controls { display: inline-flex; align-items: center; gap: inherit; }
+.run-controls .btn[hidden] { display: none; }
 
 .btn-ghost {
   background: transparent;
@@ -301,40 +305,48 @@ kbd {
 .splitter:hover::after { background: var(--green); }
 
 /* ------------------------------------------------------------- side pane */
+/* The simulator (while it is on) over the terminal panel; hidden parts take no row. */
 .side-pane {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   background: var(--surface);
   border-left: 1px solid var(--line);
 }
+.side-pane[data-sim='true'][data-term='open'] { grid-template-rows: minmax(0, 1fr) 6px var(--term-h, 220px); }
+.side-pane[data-sim='true'][data-term='closed'] { grid-template-rows: minmax(0, 1fr) auto; }
 
-.tabs {
+.term-splitter { background: var(--line); cursor: row-resize; position: relative; touch-action: none; }
+.term-splitter[hidden] { display: none; }
+.term-splitter::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 4px;
+  border-radius: 3px;
+  background: var(--line-strong);
+}
+.term-splitter:hover { background: var(--green-soft); }
+.term-splitter:hover::after { background: var(--green); }
+
+.term-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.term-head {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px 0;
+  padding: 4px 6px 4px 12px;
   background: var(--paper-2);
   border-bottom: 2px solid var(--line);
 }
-.tabs-spacer { flex: 1; }
-.tablist { display: flex; gap: 4px; }
-.tab {
-  border: 0;
-  background: transparent;
-  padding: 8px 14px;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
-  cursor: pointer;
-  font-weight: 800;
-  font-size: 13.5px;
-  color: var(--ink-soft);
-}
-.tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.6); }
-.tab.is-active { background: var(--surface); color: var(--green-deep); box-shadow: 0 -2px 0 var(--green) inset; }
-
-.tab-panel { display: none; min-height: 0; grid-row: 2; grid-column: 1; }
-.tab-panel.is-active { display: grid; grid-template-rows: 1fr auto; }
+.side-pane[data-sim='true'] .term-head { border-top: 1px solid var(--line); }
+.term-title { margin: 0; font-size: 13.5px; font-weight: 800; color: var(--ink); }
+.term-head-spacer { flex: 1; }
+.term-toggle { font-size: 16px; min-width: 32px; min-height: 32px; color: var(--ink); }
+.term-toggle[hidden] { display: none; }
+.term-body { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.term-body[hidden] { display: none; }
 
 .terminal-host { min-height: 0; background: var(--term-bg); padding: 6px 2px 6px 8px; }
 .terminal-foot {

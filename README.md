@@ -12,7 +12,7 @@ web page and a USB cable.
 install. Chrome or Edge on a computer or Chromebook.
 
 It is a gentle on-ramp, not a replacement: everything it makes is real
-CircuitPython, and the Python is always visible in a tab beside the blocks. When
+CircuitPython, and the Python is one click away, in place of the blocks. When
 a class is ready for the real thing, [CodeSpace](https://firialabs.com) is
 waiting for them.
 
