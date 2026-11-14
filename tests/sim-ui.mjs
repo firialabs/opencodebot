@@ -112,6 +112,17 @@ else console.log('sim-ui: the starter project ran to the end')
 await page.evaluate(() => { window.__sim.out = ''; window.openCodeBot.device.sendRaw('print(6 * 7)\r') })
 await page.waitForFunction(() => /42/.test(window.__sim.out), null, { timeout: 5000 }).catch(() => problems.push('REPL: no answer to print(6 * 7)'))
 
+// A program's print ends its line with CR LF, as a board's console does, so
+// the terminal starts each line at the left (a bare LF would stair-step).
+await page.evaluate(() => { window.__sim.out = '' })
+await page.evaluate(() => window.openCodeBot.device.run("print('one')\nprint('two')\n"))
+await page.waitForFunction(() => /two/.test(window.__sim.out) && window.openCodeBot.device.state === 'ready', null, { timeout: 10000 }).catch(() => {})
+{
+  const out = await page.evaluate(() => window.__sim.out)
+  if (!/one\r\ntwo\r\n/.test(out) || /[^\r]\n/.test(out)) problems.push(`print line endings: ${JSON.stringify(out.slice(0, 120))}`)
+  else console.log('sim-ui: print ends its lines with CR LF')
+}
+
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim.png` })
 
 // The settings panel: the gear opens it with focus inside; the keyboard sets

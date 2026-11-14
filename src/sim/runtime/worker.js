@@ -57,6 +57,29 @@ async function loadEnv(id, base) {
   return new Environment(desc, { ...desc.floor, width: bmp.width, height: bmp.height, data })
 }
 
+// A board's console sends each newline as CR LF, so a terminal starts the next
+// line at the left; the web port's print sends a bare LF. Add the CR where it
+// is missing (remembering the last byte across chunks, so a CR LF split over
+// two chunks is left alone).
+let lastByte = 0
+function cooked(bytes) {
+  let lone = 0
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 10 && (i ? bytes[i - 1] : lastByte) !== 13) lone++
+  }
+  if (!bytes.length) return bytes
+  const prev = lastByte
+  lastByte = bytes[bytes.length - 1]
+  if (!lone) return bytes
+  const out = new Uint8Array(bytes.length + lone)
+  let o = 0
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 10 && (i ? bytes[i - 1] : prev) !== 13) out[o++] = 13
+    out[o++] = bytes[i]
+  }
+  return out
+}
+
 function build(kind, seed) {
   world = new World(env, { seed })
   device = world.add(createDevice(kind, env, world.rng.fork(), spawn))
@@ -67,7 +90,7 @@ function build(kind, seed) {
     stopGraceUs: device.stopGraceUs,
     speed: engine?.speed ?? 1,
     trace: true,                  // main.py's lines, for stepping by line
-    onOutput: (bytes) => post({ t: 'output', bytes }, [bytes.buffer]),
+    onOutput: (bytes) => { const b = cooked(bytes); post({ t: 'output', bytes: b }, [b.buffer]) },
     onFrame: () => frame(true),
     onState: (state, line) => post({ t: 'state', state, line: line ?? null }),
   })
