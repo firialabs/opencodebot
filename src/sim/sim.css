@@ -1,15 +1,10 @@
-/* The simulator panel. */
-.tab-panel[data-panel='sim'].is-active { grid-template-rows: 1fr auto; }
+/* The simulator panel: the view over its bar, above the terminal panel. */
+.sim-region { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.sim-region[hidden] { display: none; }
 .sim-host { display: contents; }
 .sim-stage { position: relative; min-height: 0; overflow: hidden; background: var(--paper-2); }
 .sim-view { position: absolute; inset: 0; }
 .sim-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-.sim-off {
-  position: absolute; inset: 0; display: none;
-  flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-  padding: 24px; text-align: center; color: var(--ink-soft);
-}
-.sim-stage[data-off='true'] .sim-off { display: flex; }
 .sim-stage[data-off='true'] .sim-view { display: none; }
 
 .sim-bar {

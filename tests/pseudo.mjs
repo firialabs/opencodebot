@@ -186,8 +186,6 @@ await sweep('the Python view')
 await page.click('#btn-mode')
 await sweep('writing Python')
 await page.click('#btn-mode')
-await page.click('.tab[data-tab="sim"]')
-await sweep('the Simulator tab')
 
 await page.click('#btn-new')
 await page.waitForFunction(() => document.getElementById('modal')?.open)
@@ -199,6 +197,13 @@ await page.click('#btn-sim')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
 await page.waitForTimeout(500)
 await sweep('simulating')
+// Paused, with Stop, Resume and Step showing.
+await page.evaluate(() => window.openCodeBot.device.run('import time\nwhile True:\n    time.sleep(1)\n'))
+await page.waitForFunction(() => window.openCodeBot.device.state === 'running', null, { timeout: 10000 })
+await page.click('#btn-pause')
+await page.waitForFunction(() => window.openCodeBot.device.sim.paused, null, { timeout: 10000 })
+await sweep('simulating, paused')
+await page.click('#btn-stop')
 
 console.log('languages')
 

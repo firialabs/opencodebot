@@ -16,6 +16,11 @@ export default {
   'btn.disconnect': 'Desconectar',
   'btn.run': 'Ejecutar',
   'btn.stop': 'Detener',
+  'btn.pause': 'Pausa',
+  'btn.resume': 'Continuar',
+  'btn.step': 'Paso',
+  'btn.stepTitle': 'Ejecuta tu programa hasta la siguiente línea y pausa ahí',
+  'run.controlsLabel': 'Ejecutar tu programa',
   'btn.more': 'Más',
   'btn.new': 'Nuevo',
   'btn.newTitle': 'Empezar un proyecto nuevo',
@@ -36,8 +41,10 @@ export default {
   // El área de trabajo
   'blocks.hint': '¡Arrastra bloques desde la izquierda para armar tu programa!',
   'splitter.label': 'Cambiar el tamaño de los paneles. Usa las flechas.',
-  'tab.listLabel': 'Vistas del dispositivo',
-  'tab.terminal': 'Consola',
+  'term.hide': 'Cerrar la terminal',
+  'term.show': 'Abrir la terminal',
+  'term.resizeLabel': 'Cambiar el tamaño de la terminal. Usa las flechas arriba y abajo.',
+  'term.title': 'Consola',
   'view.toPython': '🐍 Python',
   'view.toBlocks': '🧩 Bloques',
   'view.toPythonLabel': 'Mostrar el Python en lugar de los bloques',
@@ -148,12 +155,22 @@ export default {
       <li>Para un programa ya hecho, abre el menú <strong>⋯</strong> y elige
         <strong>Empezar con un ejemplo</strong>.</li>
     </ul>
-    <h3>Las pestañas</h3>
+    <h3>Ejecutar tu programa</h3>
     <ul>
-      <li><strong>Consola</strong> es una consola de Python en vivo en el dispositivo o en el simulador,
+      <li><strong>▶ Ejecutar</strong> envía tu programa al dispositivo y lo inicia. Mientras funciona,
+        <strong>■ Detener</strong> ocupa el lugar de Ejecutar.</li>
+      <li>En el simulador también puedes ponerlo en <strong>⏸ Pausa</strong>. En pausa,
+        <strong>⤵ Paso</strong> lo avanza una línea a la vez, y esa línea se marca en su bloque y en el Python.
+        <strong>▶ Continuar</strong> lo deja seguir. Detenlo para volver a Ejecutar.</li>
+    </ul>
+    <h3>La pantalla</h3>
+    <ul>
+      <li><strong>Consola</strong>, a la derecha, es una consola de Python en vivo en el dispositivo o en el simulador,
         y donde aparecen los mensajes de tu programa. ¡Escribe en ella!
         Presiona <kbd>Tab</kbd> para completar un nombre y <kbd>Ctrl</kbd>+<kbd>C</kbd> para detener un programa.</li>
-      <li><strong>Simulador</strong> muestra el dispositivo simulado mientras funciona.</li>
+      <li>Mientras el simulador está encendido, se muestra encima de la Consola. Arrastra la barra
+        entre ellos (o usa las flechas sobre ella) para cambiar su tamaño, y presiona <strong>▾</strong>
+        para cerrar la Consola hasta su título.</li>
       <li><strong>🐍 Python</strong>, abajo a la izquierda, muestra exactamente el código que forman
         tus bloques, en lugar de los bloques; <strong>🧩 Bloques</strong> los trae de vuelta. Presiona
         <strong>✏️ Editar como Python</strong> ahí para escribir el tuyo; al volver a los bloques se
@@ -338,7 +355,7 @@ export default {
   'btn.simulate': 'Simular',
   'btn.simulateTitle': 'Prueba tu programa en un dispositivo simulado',
   'btn.stopSimulator': 'Detener simulador',
-  'tab.sim': 'Simulador',
+  'sim.regionLabel': 'Simulador',
   'kind.sim': 'Simulador',
   'sim.noneYetDetail': 'Por ahora, el simulador tiene CodeBot, CodeX y CodeAIR.',
   'sim.noneYetDetailNoFlight': 'Por ahora, el simulador tiene CodeBot y CodeX.',
@@ -367,9 +384,6 @@ export default {
   'browser.noSerialHintSim': 'Igual puedes armar bloques, probarlos en el simulador y descargar el Python. Chrome o Edge en una computadora sí se conectan.',
 
   // El panel del simulador
-  'simPanel.intro': 'Prueba tu programa en un CodeBot, CodeX o CodeAIR simulado. ¡No necesitas cable!',
-  'simPanel.introNoFlight': 'Prueba tu programa en un CodeBot o CodeX simulado. ¡No necesitas cable! (La simulación de vuelo de CodeAIR ya viene).',
-  'simPanel.start': '🎮 Iniciar el simulador',
   'simPanel.bar': 'Simulador',
   'simPanel.camera': 'Cámara',
   'simPanel.camChase': 'Seguir',
@@ -386,11 +400,6 @@ export default {
   'simPanel.tiltY': 'Inclinación adelante y atrás, grados',
   'simPanel.lightTitle': 'Luz sobre el sensor (lux)',
   'simPanel.light': 'Luz sobre el sensor, lux',
-  'simPanel.pause': 'Pausa',
-  'simPanel.resume': 'Continuar',
-  'simPanel.step': 'Paso: avanza un momento y luego pausa',
-  'simPanel.stepLineTitle': 'Avanzar una línea: ejecuta tu programa hasta la siguiente línea y pausa ahí',
-  'simPanel.stepLine': 'Avanzar una línea',
   'simPanel.speed': 'Velocidad de simulación',
   'simPanel.speedValue': '{speed}×',
   'simPanel.buttons': 'Los botones de la placa (mantén presionado Espacio o Enter)',

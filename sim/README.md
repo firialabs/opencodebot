@@ -20,7 +20,7 @@ teacher uses it, in [TEACHERS.md](TEACHERS.md).
 | `src/sim/view/` | the pictures: Three.js for the room (`view.js`) with CodeBot and CodeAIR in it (`codebot-figure.js`, `codeair-figure.js`), a flat face for CodeX (`codex-face.js`) |
 | `src/sim/sim-device.js` | the simulator as a device, with the USB DeviceManager's face |
 | `src/sim/device-switch.js` | the app's one device: the USB board or the simulator |
-| `src/sim/sim-panel.js` | the Simulator tab: the view and its controls |
+| `src/sim/sim-panel.js` | the simulator panel, above the terminal: the view and its controls (Pause and Step are the app's run controls) |
 | `src/sim/settings-panel.js`, `src/sim/settings.js` | the settings panel (the gear): volume and mute per sound bus, realism, the frame-rate readout; the choices, kept in the browser |
 | `src/sim/sound.js` | the sound: four buses (motors, speaker, effects, music), the synthesized knocks, a room's music |
 | `src/sim/view/realism.js` | realism's levels and Auto's rule; what each level draws (never the world) |

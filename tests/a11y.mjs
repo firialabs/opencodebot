@@ -175,9 +175,15 @@ await page.waitForFunction(() => window.openCodeBot.device.state === 'ready')
 await page.click('#btn-run')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'running')
 await audit('connected and running')
+check(
+  await page.evaluate(() => ['btn-run', 'btn-pause', 'btn-step'].every((id) => document.getElementById(id).hidden) && !document.getElementById('btn-stop').hidden),
+  'a board running shows Stop only (no Pause or Step off the simulator)',
+)
+check(
+  await page.evaluate(() => document.getElementById('btn-term-toggle').hidden && document.getElementById('panel-sim').hidden),
+  'with no simulator the terminal fills the side and cannot be closed',
+)
 
-await page.click('.tab[data-tab="sim"]')
-await audit('Simulator tab')
 await page.click('#btn-view')
 await audit('the Python view')
 await page.click('#btn-mode')
@@ -233,22 +239,6 @@ check(
   'status messages are announced (role=status)',
 )
 
-// Tabs: arrows move between them, one tab stop for the list.
-await page.focus('#tab-terminal')
-await page.keyboard.press('ArrowRight')
-check(
-  await page.evaluate(
-    () => document.activeElement.id === 'tab-sim' && document.getElementById('tab-sim').ariaSelected === 'true',
-  ),
-  'Right arrow moves to and selects the next tab (Simulator)',
-)
-check(
-  await page.evaluate(() => document.getElementById('tab-terminal').tabIndex === -1),
-  'only the selected tab is in the Tab order',
-)
-await page.keyboard.press('ArrowLeft')
-check(await page.evaluate(() => document.activeElement.id === 'tab-terminal'), 'Left arrow goes back')
-
 // Splitter moves with the keyboard and reports where it is.
 const before = await page.evaluate(() => Number(document.getElementById('splitter').getAttribute('aria-valuenow')))
 await page.focus('#splitter')
@@ -258,7 +248,8 @@ const after = await page.evaluate(() => Number(document.getElementById('splitter
 check(after < before, `arrow keys move the divider (${before} -> ${after})`)
 
 // A block can be added without a mouse: T for the palette, arrows, Enter.
-await page.click('#btn-stop')
+// (Stop shows only while the program runs.)
+if (await page.isVisible('#btn-stop')) await page.click('#btn-stop')
 const blocksBefore = await page.evaluate(() => window.openCodeBot.workspace.workspace.getAllBlocks(false).length)
 await page.evaluate(() => document.querySelector('.blocklyToolboxCategoryContainer')?.focus())
 await page.keyboard.press('ArrowDown') // Drive
@@ -312,6 +303,54 @@ await page.click('#btn-sim')
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
 await page.waitForTimeout(500)
 await audit('simulating')
+
+// The run controls from the keyboard: Run hands focus to Stop; Pause shows
+// Step, which stays (with Pause, now Resume) until the program stops.
+const shown = () =>
+  page.evaluate(() => ['btn-run', 'btn-stop', 'btn-pause', 'btn-step'].filter((id) => !document.getElementById(id).hidden).join(' '))
+check((await shown()) === 'btn-run', `at rest only Run shows (${await shown()})`)
+await page.focus('#btn-run')
+await page.keyboard.press('Enter')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'running')
+check((await shown()) === 'btn-stop btn-pause', `running: Stop and Pause (${await shown()})`)
+check(await page.evaluate(() => document.activeElement.id === 'btn-stop'), 'Run hands the keyboard to Stop')
+await page.focus('#btn-pause')
+await page.keyboard.press('Enter')
+await page.waitForFunction(() => window.openCodeBot.device.sim.paused)
+check((await shown()) === 'btn-stop btn-pause btn-step', `paused: Stop, Resume and Step (${await shown()})`)
+check(await page.evaluate(() => document.querySelector('#btn-pause .btn-text').textContent === 'Resume'), 'paused, Pause says Resume')
+await audit('simulating, paused')
+await page.keyboard.press('Enter') // Resume
+await page.waitForFunction(() => !window.openCodeBot.device.sim.paused)
+check((await shown()) === 'btn-stop btn-pause btn-step', `resumed: Step stays until the program stops (${await shown()})`)
+await page.focus('#btn-stop')
+await page.keyboard.press('Enter')
+await page.waitForFunction(() => window.openCodeBot.device.state === 'ready')
+check((await shown()) === 'btn-run', `stopped: Run alone again (${await shown()})`)
+check(await page.evaluate(() => document.activeElement.id === 'btn-run'), 'Stop hands the keyboard back to Run')
+
+// The terminal panel under the simulator: resized with the arrow keys, closed
+// to its header and opened again with its button.
+const termH = () => page.evaluate(() => Math.round(document.getElementById('panel-terminal').getBoundingClientRect().height))
+const h0 = await termH()
+await page.focus('#term-splitter')
+await page.keyboard.press('ArrowUp')
+await page.keyboard.press('ArrowUp')
+const h1 = await termH()
+check(h1 > h0, `Up arrow makes the terminal taller (${h0} -> ${h1})`)
+check(
+  await page.evaluate(() => document.getElementById('term-splitter').getAttribute('aria-orientation') === 'horizontal'),
+  'the terminal divider is a horizontal separator',
+)
+await page.focus('#btn-term-toggle')
+await page.keyboard.press('Enter')
+check(
+  await page.evaluate(() => document.getElementById('term-body').hidden && document.getElementById('btn-term-toggle').ariaExpanded === 'false'),
+  'the toggle closes the terminal to its header (aria-expanded false)',
+)
+await audit('simulating, terminal closed')
+await page.keyboard.press('Enter')
+check(await page.evaluate(() => !document.getElementById('term-body').hidden), 'and opens it again')
 
 await browser.close()
 server?.kill()

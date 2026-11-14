@@ -47,12 +47,22 @@
           <button id="btn-sim" class="btn btn-sim" data-i18n-attr="title=btn.simulateTitle">
             <span class="btn-emoji" aria-hidden="true">🎮</span><span class="btn-text" data-i18n="btn.simulate"></span>
           </button>
-          <button id="btn-run" class="btn btn-run" disabled>
-            <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text" data-i18n="btn.run"></span>
-          </button>
-          <button id="btn-stop" class="btn btn-stop" disabled>
-            <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text" data-i18n="btn.stop"></span>
-          </button>
+          <!-- At rest only Run shows; running, Stop (and in the simulator Pause);
+               once paused, Step too, until the program stops. -->
+          <div class="run-controls" role="group" data-i18n-attr="aria-label=run.controlsLabel">
+            <button id="btn-run" class="btn btn-run" type="button" disabled>
+              <span class="btn-emoji" aria-hidden="true">▶</span><span class="btn-text" data-i18n="btn.run"></span>
+            </button>
+            <button id="btn-stop" class="btn btn-stop" type="button" hidden>
+              <span class="btn-emoji" aria-hidden="true">■</span><span class="btn-text" data-i18n="btn.stop"></span>
+            </button>
+            <button id="btn-pause" class="btn btn-pause" type="button" hidden>
+              <span class="btn-emoji" aria-hidden="true">⏸</span><span class="btn-text" data-i18n="btn.pause"></span>
+            </button>
+            <button id="btn-step" class="btn btn-step" type="button" data-i18n-attr="title=btn.stepTitle" hidden>
+              <span class="btn-emoji" aria-hidden="true">⤵</span><span class="btn-text" data-i18n="btn.step"></span>
+            </button>
+          </div>
           <div class="menu-wrap">
             <button id="btn-menu" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false" data-i18n-attr="title=btn.more;aria-label=btn.more">⋯</button>
             <div id="app-menu" class="app-menu" role="menu" hidden>
@@ -98,32 +108,31 @@
         <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-controls="side-pane" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"
              data-i18n-attr="aria-label=splitter.label"></div>
 
-        <section class="side-pane" id="side-pane">
-          <div class="tabs">
-            <div class="tablist" role="tablist" data-i18n-attr="aria-label=tab.listLabel">
-              <button class="tab is-active" role="tab" id="tab-terminal" data-tab="terminal" aria-selected="true"
-                      aria-controls="panel-terminal">
-                <span aria-hidden="true">💬</span> <span data-i18n="tab.terminal"></span>
-              </button>
-              <button class="tab" role="tab" id="tab-sim" data-tab="sim" aria-selected="false"
-                      aria-controls="panel-sim" tabindex="-1">
-                <span aria-hidden="true">🎮</span> <span data-i18n="tab.sim"></span>
-              </button>
-            </div>
-            <div class="tabs-spacer"></div>
-            <button id="btn-clear-term" class="icon-btn" data-i18n-attr="title=term.clear;aria-label=term.clear">🧹</button>
-          </div>
-
-          <div class="tab-panel is-active" data-panel="terminal" id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal">
-            <div id="terminal-host" class="terminal-host"></div>
-            <div class="terminal-foot" id="terminal-foot">
-              <span class="term-hint" data-i18n-html="term.hintHtml"></span>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-panel="sim" id="panel-sim" role="tabpanel" aria-labelledby="tab-sim">
+        <!-- The simulator on top while it runs, the terminal panel below it; with
+             no simulator the terminal fills the side. -->
+        <section class="side-pane" id="side-pane" data-sim="false" data-term="open">
+          <section class="sim-region" id="panel-sim" data-i18n-attr="aria-label=sim.regionLabel" hidden>
             <div id="sim-host" class="sim-host"></div>
-          </div>
+          </section>
+
+          <div class="term-splitter" id="term-splitter" role="separator" aria-orientation="horizontal" tabindex="0"
+               aria-controls="panel-terminal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60"
+               data-i18n-attr="aria-label=term.resizeLabel" hidden></div>
+
+          <section class="term-panel" id="panel-terminal" aria-labelledby="term-title">
+            <div class="term-head">
+              <h2 class="term-title" id="term-title"><span aria-hidden="true">💬</span> <span data-i18n="term.title"></span></h2>
+              <span class="term-head-spacer"></span>
+              <button id="btn-clear-term" class="icon-btn" type="button" data-i18n-attr="title=term.clear;aria-label=term.clear">🧹</button>
+              <button id="btn-term-toggle" class="icon-btn term-toggle" type="button" aria-controls="term-body" aria-expanded="true" hidden></button>
+            </div>
+            <div class="term-body" id="term-body">
+              <div id="terminal-host" class="terminal-host"></div>
+              <div class="terminal-foot" id="terminal-foot">
+                <span class="term-hint" data-i18n-html="term.hintHtml"></span>
+              </div>
+            </div>
+          </section>
         </section>
       </main>
 

@@ -157,6 +157,8 @@ export class SimDevice extends EventTarget {
     return true
   }
 
+  // Held still by pause or a step, while its program runs.
+  get paused() { return this.state === State.RUNNING && !!this._held }
   pause() { this._post({ t: 'pause' }) }
   resume() { this._post({ t: 'resume' }) }
   step() { this._post({ t: 'step' }) }

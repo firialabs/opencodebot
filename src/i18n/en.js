@@ -18,6 +18,11 @@ export default {
   'btn.disconnect': 'Disconnect',
   'btn.run': 'Run',
   'btn.stop': 'Stop',
+  'btn.pause': 'Pause',
+  'btn.resume': 'Resume',
+  'btn.step': 'Step',
+  'btn.stepTitle': 'Run your program to its next line, and pause there',
+  'run.controlsLabel': 'Run your program',
   'btn.more': 'More',
   'btn.new': 'New',
   'btn.newTitle': 'Start a new project',
@@ -38,13 +43,15 @@ export default {
   // The work area
   'blocks.hint': 'Drag blocks from the left to build your program!',
   'splitter.label': 'Resize panels. Use the arrow keys.',
-  'tab.terminal': 'Talk to device',
+  'term.title': 'Talk to device',
   'view.toPython': '🐍 Python',
   'view.toBlocks': '🧩 Blocks',
   'view.toPythonLabel': 'Show the Python in place of the blocks',
   'view.toBlocksLabel': 'Show the blocks in place of the Python',
   'term.clear': 'Clear the terminal',
-  'tab.listLabel': 'Device views',
+  'term.hide': 'Close the terminal',
+  'term.show': 'Open the terminal',
+  'term.resizeLabel': 'Resize the terminal. Use the up and down arrow keys.',
   'term.hintHtml': 'Type here to chat with your device. <kbd>Ctrl</kbd>+<kbd>C</kbd> stops a program.',
   'term.greeting': 'Hi! This is a live Python prompt on your device.',
   'term.greetingHint': 'Plug a device in, press Connect, and start typing.',
@@ -149,12 +156,22 @@ export default {
       <li>For a ready-made program, open the <strong>⋯</strong> menu and choose
         <strong>Start from an example</strong>.</li>
     </ul>
-    <h3>The tabs</h3>
+    <h3>Running your program</h3>
     <ul>
-      <li><strong>Talk to device</strong> is a live Python prompt on the device or the simulator,
+      <li><strong>▶ Run</strong> sends your program to the device and starts it. While it runs,
+        <strong>■ Stop</strong> takes Run's place.</li>
+      <li>In the simulator you can also <strong>⏸ Pause</strong> it. Paused, <strong>⤵ Step</strong>
+        runs it on one line at a time, and that line is marked on its block and in the Python.
+        <strong>▶ Resume</strong> lets it run on. Stop it to go back to Run.</li>
+    </ul>
+    <h3>The screen</h3>
+    <ul>
+      <li><strong>Talk to device</strong>, on the right, is a live Python prompt on the device or the simulator,
         and where your program's messages appear. Type in it!
         Press <kbd>Tab</kbd> to complete a name and <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop a program.</li>
-      <li><strong>Simulator</strong> shows the simulated device while it runs.</li>
+      <li>While the simulator is on, it shows above Talk to device. Drag the bar between them
+        (or use the arrow keys on it) to resize them, and press <strong>▾</strong> to close
+        Talk to device down to its title.</li>
       <li><strong>🐍 Python</strong>, at the bottom left, shows exactly the code your blocks make,
         in place of the blocks; <strong>🧩 Blocks</strong> brings them back. Press
         <strong>✏️ Edit as Python</strong> there to type your own; going back to blocks then
@@ -338,7 +355,7 @@ export default {
   'btn.simulate': 'Simulate',
   'btn.simulateTitle': 'Try your program on a simulated device',
   'btn.stopSimulator': 'Stop simulator',
-  'tab.sim': 'Simulator',
+  'sim.regionLabel': 'Simulator',
   'kind.sim': 'Simulator',
   'sim.noneYetDetail': 'The simulator has CodeBot, CodeX and CodeAIR so far.',
   'sim.noneYetDetailNoFlight': 'The simulator has CodeBot and CodeX so far.',
@@ -367,9 +384,6 @@ export default {
   'browser.noSerialHintSim': 'You can still build blocks, try them in the simulator and download the Python. Chrome or Edge on a computer will connect.',
 
   // The simulator's panel
-  'simPanel.intro': 'Try your program on a simulated CodeBot, CodeX or CodeAIR. No cable needed!',
-  'simPanel.introNoFlight': 'Try your program on a simulated CodeBot or CodeX. No cable needed! (CodeAIR flight simulation is coming.)',
-  'simPanel.start': '🎮 Start the simulator',
   'simPanel.bar': 'Simulator',
   'simPanel.camera': 'Camera',
   'simPanel.camChase': 'Follow',
@@ -386,11 +400,6 @@ export default {
   'simPanel.tiltY': 'Tilt toward and away, degrees',
   'simPanel.lightTitle': 'Light on the sensor (lux)',
   'simPanel.light': 'Light on the sensor, lux',
-  'simPanel.pause': 'Pause',
-  'simPanel.resume': 'Resume',
-  'simPanel.step': 'Step: run a moment, then pause',
-  'simPanel.stepLineTitle': 'Step one line: run your program to its next line, and pause there',
-  'simPanel.stepLine': 'Step one line',
   'simPanel.speed': 'Simulation speed',
   'simPanel.speedValue': '{speed}×',
   'simPanel.buttons': "The board's buttons (hold Space or Enter)",

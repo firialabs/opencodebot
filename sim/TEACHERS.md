@@ -8,9 +8,21 @@ works on the device (within the limits at the end of this page).
 ## Starting it
 
 1. Choose the board in the picker at the top left (CodeBot, CodeX or CodeAIR).
-2. Press **🎮 Simulate**. The Simulator tab opens with the board in it.
+2. Press **🎮 Simulate**. The board appears on the right, above the terminal
+   (Talk to device). Drag the bar between them to resize them, or press ▾ to
+   close the terminal down to its title.
 3. Press **▶ Run**. The terminal shows what the program prints; between programs
    it is a live Python prompt.
+
+## Running, pausing and stepping
+
+At rest only **▶ Run** shows at the top. While the program runs, **■ Stop**
+takes its place, with **⏸ Pause** beside it. Paused, Pause says **▶ Resume**
+and **⤵ Step** appears: Step runs the program to its next line and stops
+there, marking that line in the Python view (🐍 Python, bottom left) and on its
+block, which helps a student see what each block does. Pause and Step stay
+until the program stops; then it is Run alone again. A real board cannot be
+paused, so with one plugged in, running shows Stop only.
 
 Nothing is installed and nothing is uploaded: it all runs in the browser. After
 the first visit the simulator works offline, in the gymnasium; another room
@@ -27,9 +39,6 @@ Under the picture, from left to right:
   best view for line following.
 - **🏫 Room** (CodeBot and CodeAIR): where the board is.
 - **〰️ Line course** (CodeBot): black tape on a white mat, laid on the floor.
-- **⏸ Pause, ⏭ Step, ⤵ Step one line**: pause the program; run it a moment; run
-  it to its next line and stop there. Stepping by line marks the line in the
-  Python view (🐍 Python, bottom left) and on its block, which helps a student see what each block does.
 - **Speed**: half speed to watch closely, up to four times to get on with it.
 - **BTN 0, BTN 1**: the board's buttons. Hold them as on the board.
 - **↺**: put the board back at its start.
@@ -76,7 +85,8 @@ the simulator does not reach across the network).
 ## Without a mouse, and with a screen reader
 
 Every control can be reached with Tab and used with the keyboard; the focused
-one has a blue ring. Hold Space or Enter on BTN 0 or BTN 1 to hold the button.
+one has a blue ring. The bar between the board and the terminal moves with the
+up and down arrows. Hold Space or Enter on BTN 0 or BTN 1 to hold the button.
 With the 3D picture selected, the left and right arrows go round the board, up
 and down look from higher or lower, and + and - zoom. With CodeX's face
 selected, the arrows, A and B are its buttons.
