@@ -310,9 +310,9 @@ const step = async () => {
 let first = await marked()
 for (let i = 0; i < 8 && !first.block; i++) first = await step()
 const second = await step()
-await page.click('[data-tab="python"]').catch(() => {})
+await page.click('#btn-view') // the Python, with the marked line
 await page.screenshot({ path: `${SHOT_DIR}/ocb-sim-step.png` })
-await page.click('[data-tab="sim"]').catch(() => {})
+await page.click('#btn-view') // back to the blocks
 await page.evaluate(() => window.openCodeBot.device.stop())
 await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
 if (!first.n || !first.block || !second.n || second.n === first.n || !second.block) {
@@ -323,10 +323,9 @@ if (!first.n || !first.block || !second.n || second.n === first.n || !second.blo
 // stepping marks the typed line itself (line n is the editor's line n).
 {
   const typed = "from botcore import *\nprint('typed one')\nx = 2\nprint('typed', x * 3)\n"
-  await page.click('[data-tab="python"]')
+  await page.click('#btn-view')
   await page.click('#btn-mode')
   await page.fill('#python-editor', typed)
-  await page.click('[data-tab="sim"]')
   await page.evaluate(() => { window.__sim.out = '' })
   await page.click('#btn-run')
   await page.waitForFunction(() => /Program finished|stopped with an error/.test(document.getElementById('status-msg').textContent), null, { timeout: 20000 })
@@ -344,19 +343,20 @@ if (!first.n || !first.block || !second.n || second.n === first.n || !second.blo
   }, null, { timeout: 10000 }).catch(() => {})
   const line1 = await selected()
   await page.click('.sim-step-line')
+  // The click itself briefly clears the editor's selection (the editor is on
+  // screen), so wait for the next line to be marked, not just for a change.
   await page.waitForFunction((was) => {
     const e = document.getElementById('python-editor')
-    return e.value.slice(e.selectionStart, e.selectionEnd) !== was
+    const now = e.value.slice(e.selectionStart, e.selectionEnd)
+    return now && now !== was
   }, line1, { timeout: 5000 }).catch(() => {})
   const line2 = await selected()
   await page.evaluate(() => window.openCodeBot.device.stop())
   await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 })
   // back to blocks for what follows (the typed changes are let go)
-  await page.click('[data-tab="python"]')
   await page.click('#btn-mode')
   await page.click('#modal button[value="ok"]')
   await page.waitForFunction(() => window.openCodeBot.workspace.mode === 'blocks', null, { timeout: 5000 })
-  await page.click('[data-tab="sim"]')
   if (!ranTyped || line1 !== 'from botcore import *' || line2 !== "print('typed one')") {
     problems.push(`text mode: ${JSON.stringify({ out: out.slice(-200), line1, line2 })}`)
   } else console.log('sim-ui: text mode ran the typed Python, and stepped it line by line in the editor')

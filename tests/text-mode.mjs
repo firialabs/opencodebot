@@ -44,20 +44,37 @@ await page.waitForFunction(() => !!window.openCodeBot)
 
 const mode = () => page.evaluate(() => window.openCodeBot.workspace.mode)
 
-// Into text mode
-await page.click('.tab[data-tab="python"]')
+// The editor area shows the blocks or the Python, never both
+const shows = () =>
+  page.evaluate(() => ({
+    blocks: !!document.getElementById('blockly-root').offsetParent,
+    python: !!document.getElementById('code-pane').offsetParent,
+  }))
+let view = await shows()
+check(view.blocks && !view.python, 'the blocks show at first, not the Python')
+check(!(await page.isVisible('.tab[data-tab="python"]')), 'there is no Python tab beside the device')
+const toggle = await page.locator('#btn-view').boundingBox()
+const palette = await page.locator('.blocklyToolbox').first().boundingBox()
+check(
+  toggle.x < palette.x + palette.width && toggle.y + toggle.height > palette.y + palette.height - 80,
+  'the blocks/Python button sits at the bottom left, under the palette',
+)
+await page.click('#btn-view')
+view = await shows()
+check(view.python && !view.blocks, '🐍 Python shows the Python in place of the blocks')
 check(!(await page.isVisible('#python-editor')), 'blocks mode shows read-only Python')
+check(await page.isVisible('#btn-view'), 'the button stays to go back')
+await page.click('#btn-view')
+view = await shows()
+check(view.blocks && !view.python, '🧩 Blocks brings the blocks back')
+
+// Into text mode
+await page.click('#btn-view')
 await page.click('#btn-mode')
 check((await mode()) === 'text', '"Edit as Python" switches to text mode')
 check(await page.isVisible('#python-editor'), 'the Python becomes editable')
-check(await page.isVisible('#text-mode-cover'), 'the blocks area says you are writing Python')
-check(
-  await page.evaluate(() => {
-    const box = document.querySelector('.blocklyToolboxDiv, .blocklyToolbox')
-    return !!box && getComputedStyle(box).pointerEvents === 'none'
-  }),
-  'the block palette cannot be used while writing Python',
-)
+view = await shows()
+check(view.python && !view.blocks, 'the blocks are out of sight while writing Python')
 const seeded = await page.inputValue('#python-editor')
 check(seeded.includes('from botcore import *'), 'the editor starts with the blocks\' Python')
 
@@ -87,21 +104,22 @@ check((await mode()) === 'text', 'text mode survives a reload')
 check(await page.isVisible('#python-editor'), 'after a reload the typed Python is on screen')
 check((await page.inputValue('#python-editor')).includes('typed by hand'), 'the typed code survives a reload')
 
-// Back to blocks asks first, because typed changes would be lost
-await page.click('#btn-back-to-blocks')
+// Back to blocks (the 🧩 Blocks button) asks first, because typed changes would be lost
+await page.click('#btn-view')
 check(await page.evaluate(() => document.getElementById('modal')?.open), 'going back with changes asks first')
 await page.click('#modal button[value="cancel"]')
 await page.waitForTimeout(100)
 check((await mode()) === 'text', '"Keep my Python" stays in text mode')
-await page.click('#btn-back-to-blocks')
+check((await shows()).python, 'and the typed Python stays on screen')
+await page.click('#btn-view')
 await page.click('#modal button[value="ok"]')
 await page.waitForFunction(() => window.openCodeBot.workspace.mode === 'blocks', null, { timeout: 3000 }).catch(() => {})
 check((await mode()) === 'blocks', 'confirming goes back to blocks')
-check(!(await page.isVisible('#text-mode-cover')), 'the blocks are usable again')
+check((await shows()).blocks, 'the blocks are on screen again')
 check((await page.evaluate(() => window.openCodeBot.workspace.workspace.getAllBlocks(false).length)) > 0, 'the blocks were kept')
 
 // Untouched code goes back without a question
-await page.click('.tab[data-tab="python"]')
+await page.click('#btn-view')
 await page.click('#btn-mode')
 await page.click('#btn-mode')
 check(!(await page.evaluate(() => document.getElementById('modal')?.open)), 'unchanged Python goes back without asking')
@@ -122,7 +140,7 @@ async function freshTyped(url, typed) {
   await p.reload({ waitUntil: 'networkidle' })
   await p.waitForFunction(() => !!window.openCodeBot)
   await p.evaluate(() => window.openCodeBot.workspace.workspace.clear())
-  await p.click('.tab[data-tab="python"]')
+  await p.click('#btn-view')
   await p.click('#btn-mode')
   await p.fill('#python-editor', typed)
   return p

@@ -36,7 +36,7 @@ export class App {
 
     this._bindDevice()
     this._bindChrome()
-    // A paused program's line, on its block and in the Python tab.
+    // A paused program's line, on its block and in the Python view.
     this.device.sim.addEventListener('line', (e) => this._showLine(e.detail.line))
     this._bindWorkspace()
     this._bindTextMode()
@@ -44,6 +44,7 @@ export class App {
     if (!this.workspace.restore() && this.pickedTarget) {
       this.workspace.loadProject(STARTER_PROJECTS[this.pickedTarget] || { blocks: {} })
     }
+    this._showMode()
 
     this._greet()
     this._renderDevicePicker()
@@ -302,15 +303,26 @@ export class App {
       }
     })
 
+    // Run and Save work from anywhere, the terminal included: caught on the
+    // way down, before the terminal takes the keys for itself.
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        const meta = e.ctrlKey || e.metaKey
+        if (meta && e.key === 'Enter') {
+          e.preventDefault()
+          e.stopPropagation()
+          this._run()
+        } else if (meta && e.key.toLowerCase() === 's') {
+          e.preventDefault()
+          e.stopPropagation()
+          this._saveFile()
+        }
+      },
+      true,
+    )
     document.addEventListener('keydown', (e) => {
-      const meta = e.ctrlKey || e.metaKey
-      if (meta && e.key === 'Enter') {
-        e.preventDefault()
-        this._run()
-      } else if (meta && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        this._saveFile()
-      } else if (e.key === 'Escape' && this.device.state === State.RUNNING && e.target.id !== 'python-editor') {
+      if (e.key === 'Escape' && this.device.state === State.RUNNING && e.target.id !== 'python-editor') {
         this._stop()
       }
     })
@@ -534,7 +546,7 @@ export class App {
   _bindWorkspace() {
     let timer
     this.workspace.addEventListener('change', () => {
-      $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
+      $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.view === 'python'
       clearTimeout(timer)
       timer = setTimeout(() => {
         this._refreshPython()
@@ -562,7 +574,7 @@ export class App {
       const lines = highlightPython(code).split('\n')
       $('python-view').innerHTML = `<code>${lines.map((l, i) => `<span class="py-line" data-n="${i + 1}">${l}</span>`).join('\n')}</code>`
     }
-    $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.workspace.mode === 'text'
+    $('blocks-hint').hidden = !this.workspace.hasNoBlocks || this.view === 'python'
   }
 
   // ------------------------------------------------------- blocks or text
@@ -572,7 +584,7 @@ export class App {
     $('btn-mode').addEventListener('click', () =>
       this.workspace.mode === 'text' ? this._toBlocks() : this._toText(),
     )
-    $('btn-back-to-blocks').addEventListener('click', () => this._toBlocks())
+    $('btn-view').addEventListener('click', () => this._toggleView())
     editor.addEventListener('input', () => this.workspace.setPythonText(editor.value))
     editor.addEventListener('keydown', (e) => indentKeys(e, editor))
     this.workspace.addEventListener('mode', () => this._showMode())
@@ -604,6 +616,34 @@ export class App {
     this.workspace.setMode('blocks')
   }
 
+  /**
+   * The editor area shows the blocks or the Python, never both. Typed Python
+   * (text mode) is always shown as Python; leaving it for the blocks goes
+   * through _toBlocks, which asks before typed changes are lost.
+   */
+  async _toggleView() {
+    if (this.view === 'python') {
+      if (this.workspace.mode === 'text') return this._toBlocks()
+      this._showView('blocks')
+    } else {
+      this._showView('python')
+    }
+  }
+
+  _showView(view) {
+    this.view = view
+    const python = view === 'python'
+    $('code-pane').hidden = !python
+    $('blockly-root').hidden = python
+    $('blocks-pane').classList.toggle('is-python', python)
+    const toggle = $('btn-view')
+    toggle.textContent = t(python ? 'view.toBlocks' : 'view.toPython')
+    toggle.setAttribute('aria-label', t(python ? 'view.toBlocksLabel' : 'view.toPythonLabel'))
+    toggle.setAttribute('aria-expanded', String(python))
+    if (!python) this.workspace.resize()
+    this._refreshPython()
+  }
+
   /** Make the screen match the mode. */
   _showMode() {
     const text = this.workspace.mode === 'text'
@@ -611,13 +651,10 @@ export class App {
     if (text && editor.value !== this.workspace.pythonText) editor.value = this.workspace.pythonText
     editor.hidden = !text
     $('python-view').hidden = text
-    $('text-mode-cover').hidden = !text
-    $('blocks-pane').classList.toggle('is-text-mode', text)
     $('btn-mode').textContent = t(text ? 'text.toBlocks' : 'text.toText')
     $('python-bar-msg').textContent = t(text ? 'text.barText' : 'text.barBlocks')
-    // In text mode the program lives in the Python tab, so show it.
-    if (text) this._selectTab('python')
-    this._refreshPython()
+    // Typed Python is shown as Python; going back to blocks shows the blocks.
+    this._showView(text ? 'python' : 'blocks')
   }
 
   // -------------------------------------------------------------- menu

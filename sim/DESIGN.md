@@ -622,7 +622,7 @@ Built, on branch `sim` (pushed to firialabs/opencodebot):
 
 - Stepping by line: the ⤵ button in the simulator bar runs the program to its next line
   and pauses there (from a stop, it starts paused at the first line); the line is marked in
-  the Python tab and on its block, and the status names it. The VM traces only main.py's
+  the Python view and on its block, and the status names it. The VM traces only main.py's
   frames, with a trace function in C (`_simtrace` in `simhook.c`), so no Python runs per line
   and simulated time is the same traced or not; `sim/runtime/py.patch` reports a line again
   on a jump back, so a loop of one line steps each turn. The app maps lines to blocks by
