@@ -74,6 +74,7 @@ npm run build          # makes the simulator's rooms and models, then the site
 npm run sim:assets     # just the rooms and models, into public/sim-assets/
 npm run sim:flight     # with SIM_FLIGHT=1: fetch CodeAIR's flight library (below)
 npm run sim:runtime    # rebuild MicroPython (needs Emscripten; see sim/runtime/build.sh)
+node sim/tools/render-icons.mjs   # redraw the device icons (public/icons/dev-*.png) from the models; after sim:assets
 ```
 
 The MicroPython build only matters when `sim/runtime/` changes: its output is

@@ -1,7 +1,8 @@
 Simulator artwork: 3D models, rooms and textures
 
 The files in this folder, and everything built from them (the files under
-public/sim-assets/ that sim/tools/ generates), are copyright Firia Labs and
+public/sim-assets/ that sim/tools/ generates, and the device icons
+public/icons/dev-codebot.png, dev-codex.png and dev-codeair.png), are copyright Firia Labs and
 are licensed under the Creative Commons Attribution-NonCommercial 4.0
 International License (CC BY-NC 4.0):
 https://creativecommons.org/licenses/by-nc/4.0/
@@ -13,6 +14,8 @@ https://creativecommons.org/licenses/by-nc/4.0/
   BotBody.glb      CodeBot CB3, body
   WheelAssy.glb    CodeBot, wheel
   CodeAIR.glb      CodeAIR, revision C (CodeSpace's CodeAir_revC-2.glb)
+  CodeX.glb        CodeX (CodeSpace's CodeXBody.glb); for now only the
+                   device icon is drawn from it (sim/tools/render-icons.mjs)
 
 Attribution: "Firia Labs (firialabs.com)".
 
