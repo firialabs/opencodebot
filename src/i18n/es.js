@@ -197,6 +197,11 @@ export default {
   'pyCopyFailed.detail': 'Mejor presiona 🐍 Python y selecciona el código ahí.',
   'help.title': 'Ayuda y atajos',
   'about.title': 'Acerca de {app}',
+  'about.legalHtml': `
+    <p><a href="privacy/es.html" target="_blank" rel="noreferrer">Política de privacidad</a> ·
+    <a href="accessibility/es.html" target="_blank" rel="noreferrer">Accesibilidad</a></p>`,
+  'pages.back': 'Volver a {app}',
+  'pages.language': 'Español',
   'saved.title': 'Proyecto guardado',
   'saved.detail': 'Busca {file} en tu carpeta de Descargas.',
   'opened.title': '¡Proyecto abierto!',

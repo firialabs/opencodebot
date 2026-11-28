@@ -7,6 +7,8 @@ import { flightWanted, fetchedFlight, flightConfig } from './sim/tools/flight-li
 import { recordedSounds } from './sim/tools/codex-sounds.mjs'
 import { BRAND } from './src/brand.js'
 import en from './src/i18n/en.js'
+import es from './src/i18n/es.js'
+import MarkdownIt from 'markdown-it'
 
 // CodeAIR flight (sim/tools/flight-library.mjs): with SIM_FLIGHT=1 the build
 // bundles the flight library fetched into sim/build/flight/, and stops if it
@@ -124,6 +126,56 @@ const brandName = {
   },
 }
 
+// The privacy policy and the accessibility statement, each at its own address
+// (privacy/, accessibility/), in English (index.html) and Spanish (es.html),
+// made from src/i18n/pages/<page>.<lang>.md. About links them. Being pages of
+// their own, the service worker serves them from its copy rather than the app.
+const PAGES = ['privacy', 'accessibility']
+const PAGE_LANGS = { en, es }
+const pages = {
+  name: 'pages',
+  generateBundle() {
+    const md = new MarkdownIt({ html: false, linkify: false, typographer: false })
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const fill = (s) => s.replaceAll('{app}', BRAND.name).replaceAll('{issues}', BRAND.issues)
+    for (const page of PAGES) {
+      for (const [lang, strings] of Object.entries(PAGE_LANGS)) {
+        const text = fill(fs.readFileSync(`src/i18n/pages/${page}.${lang}.md`, 'utf8'))
+        const title = text.match(/^# (.+)$/m)[1]
+        const other = lang === 'en' ? { href: 'es.html', lang: 'es', name: es['pages.language'] } : { href: 'index.html', lang: 'en', name: en['pages.language'] }
+        const body = md.render(text).replace(/<a href="(https?:[^"]+)">/g, '<a href="$1" target="_blank" rel="noreferrer">')
+        this.emitFile({
+          type: 'asset',
+          fileName: `${page}/${lang === 'en' ? 'index' : lang}.html`,
+          source: `<!doctype html>
+<html lang="${lang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(`${title} · ${BRAND.name}`)}</title>
+<link rel="icon" href="../icons/firia-bot-head.svg" type="image/svg+xml">
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; color: #2b2c2e; background: #fffdf7; max-width: 44rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 1.6rem; line-height: 1.2; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; }
+  a { color: #2f7d2b; }
+  li { margin: 0.3rem 0; }
+  nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<nav><a href="../">← ${esc(fill(strings['pages.back']))}</a> <a href="${other.href}" lang="${other.lang}" hreflang="${other.lang}">${esc(other.name)}</a></nav>
+<main>
+${body}</main>
+</body>
+</html>
+`,
+        })
+      }
+    }
+  },
+}
+
 // Relative base so the built app can be dropped in any sub-path of an
 // HTTPS host (Web Serial requires a secure context; file:// will not work).
 export default defineConfig({
@@ -151,6 +203,7 @@ export default defineConfig({
     codexSoundsModule(),
     licenses,
     brandName,
+    pages,
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.svg', 'blockly-media/*'],

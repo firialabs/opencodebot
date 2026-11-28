@@ -24,6 +24,10 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
+        "source": "/@(privacy|accessibility)/**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
         "source": "/learn/**",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },

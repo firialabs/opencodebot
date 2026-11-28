@@ -205,6 +205,13 @@ export default {
   'pyCopyFailed.detail': 'Press 🐍 Python and select the code there instead.',
   'help.title': 'Help & shortcuts',
   'about.title': 'About {app}',
+  // Under "Your privacy" in About: the two pages the build makes (vite.config.js, src/i18n/pages/).
+  'about.legalHtml': `
+    <p><a href="privacy/" target="_blank" rel="noreferrer">Privacy policy</a> ·
+    <a href="accessibility/" target="_blank" rel="noreferrer">Accessibility</a></p>`,
+  // On those pages: the way back to the app, and this language's name, for the link to it from the other.
+  'pages.back': 'Back to {app}',
+  'pages.language': 'English',
   'saved.title': 'Project saved',
   'saved.detail': 'Look in your Downloads folder for {file}.',
   'opened.title': 'Project opened!',

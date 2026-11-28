@@ -1750,7 +1750,7 @@ export class App {
       case 'about':
         showModal({
           title: t('about.title'),
-          bodyHtml: (machineNote(language) ? t('about.machineHtml') : '') + t('about.betaHtml') + t('about.bodyHtml') + t('about.privacyHtml') + t('about.versionHtml', { version: APP_VERSION, build: APP_BUILD }),
+          bodyHtml: (machineNote(language) ? t('about.machineHtml') : '') + t('about.betaHtml') + t('about.bodyHtml') + t('about.privacyHtml') + t('about.legalHtml') + t('about.versionHtml', { version: APP_VERSION, build: APP_BUILD }),
         })
         break
       default:

@@ -12,6 +12,8 @@ adds a line under **Unreleased**.
 - The app's English is spelled the American way: color, gray.
 - In the simulator, CodeAIR's reset button can always be clicked: a propeller
   that stopped with a blade over it no longer blocks the click.
+- A privacy policy (privacy/) and an accessibility statement (accessibility/),
+  in English and Spanish, linked from About.
 
 ## 0.1.0-beta.1 (2026-11-25)
 
