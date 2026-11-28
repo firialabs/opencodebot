@@ -1119,6 +1119,27 @@ while True:
     if (!held?.reset || !held.leds || held.state === 'running') problems.push(`CodeAIR: reset held did not hold the board in reset (${JSON.stringify(held)})`)
     await page.waitForFunction(() => (window.__sim.out.match(/top/g) || []).length >= 2 && window.openCodeBot.device.state === 'running', null, { timeout: 8000 })
       .catch(async () => problems.push(`CodeAIR: after reset the program did not start again (${JSON.stringify(await page.evaluate(() => [window.__sim.out, window.openCodeBot.device.state]))})`))
+    // The propellers stop wherever the flight left them, and at this heading one can rest
+    // with a blade over reset (150 and 330 degrees, measured): a click passes through it.
+    // Each angle in turn, the pointer over reset shows the hand that says a click presses it.
+    {
+      await page.evaluate(() => {
+        const f = [...window.openCodeBot.device.sim.view.figures.values()][0]
+        f.__update = f.update
+        f.update = (s) => { f.__update(s); f.props.forEach((p, i) => { p.rotation.y = (i === 0 || i === 3 ? 1 : -1) * window.__propAt }) }
+      })
+      const hidden = []
+      for (let deg = 0; deg < 360; deg += 15) {
+        await page.evaluate((deg) => { window.__propAt = deg * Math.PI / 180; window.openCodeBot.device.sim.view._touch() }, deg)
+        await page.waitForTimeout(150)
+        const at = await page.evaluate(() => window.openCodeBot.device.sim.view.keyPoint('reset'))
+        await page.mouse.move(at.x + 40, at.y + 40)
+        await page.mouse.move(at.x, at.y)
+        if (await page.evaluate(() => window.openCodeBot.device.sim.view.renderer.domElement.style.cursor) !== 'pointer') hidden.push(deg)
+      }
+      await page.evaluate(() => { const f = [...window.openCodeBot.device.sim.view.figures.values()][0]; f.update = f.__update })
+      if (hidden.length) problems.push(`CodeAIR: a propeller at rest hides reset from a click (at ${hidden.join(', ')} degrees)`)
+    }
     await page.evaluate(() => window.openCodeBot.device.stop())
     // in flight, a reset cuts the motors: it drops, it does not land
     await page.evaluate(() => window.openCodeBot.device.run(`from codeair import *
@@ -1146,7 +1167,7 @@ with recorder:
     await page.evaluate(() => window.openCodeBot.device.stop())
     await page.waitForFunction(() => window.openCodeBot.device.state === 'ready', null, { timeout: 20000 }).catch(() => {})
     await page.evaluate(() => window.openCodeBot.device.sim.setCamera('rotate'))
-    if (problems.length === before) console.log('sim-ui: a click on CodeAIR\'s BTN-0 pressed it; its reset restarted the program, and in flight dropped it')
+    if (problems.length === before) console.log('sim-ui: a click on CodeAIR\'s BTN-0 pressed it; its reset restarted the program, with a propeller over it or not, and in flight dropped it')
   }
 
   // The boards page: a CodeX remote and a CodeAIR listener, each in its own

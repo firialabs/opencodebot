@@ -10,8 +10,12 @@ import { boxIn } from './led.js'
 export class Keys {
   // `model`: the board's model, so a button hidden behind its other parts
   // (CodeX's reset, under the board) is not pressed through them.
-  constructor(model = null) {
+  // `through(part)`: true of a part a click passes through to a button,
+  // as a finger would push past it (CodeAIR's propellers: one may come to
+  // rest with a blade over reset).
+  constructor(model = null, { through = () => false } = {}) {
     this.model = model
+    this.through = through
     this.keys = new Map()      // number -> { meshes, rest }
     this.pick = []             // the invisible targets a click finds
   }
@@ -48,7 +52,7 @@ export class Keys {
       const own = this.keys.get(n).meshes
       const isOwn = (o) => own.some((m) => m === o || m.getObjectById(o.id))
       const front = raycaster.intersectObject(this.model, true)
-        .find((h) => h.object.userData.key === undefined && !isOwn(h.object))
+        .find((h) => h.object.userData.key === undefined && !isOwn(h.object) && !this.through(h.object))
       if (front && front.distance < hit.distance) return -1
     }
     return n
