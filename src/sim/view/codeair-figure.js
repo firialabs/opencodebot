@@ -59,8 +59,11 @@ export class CodeAIRFigure {
 
     reflect(gltf.scene, env)
     // BTN-0, BTN-1 and reset: a click presses them (keys.js); each a 4 mm
-    // switch, the whole part going down a quarter of a millimetre
-    this.keys = new Keys(gltf.scene)
+    // switch, the whole part going down a quarter of a millimetre. A click
+    // passes through the propellers, which stop wherever they stop: a blade
+    // at rest over reset would otherwise hide it.
+    const onProp = (o) => this.props.some((p) => p === o || p.getObjectById(o.id))
+    this.keys = new Keys(gltf.scene, { through: onProp })
     for (const [n, name] of [[0, 'ButtonB0'], [1, 'ButtonB1'], ['reset', 'ButtonRST']]) {
       this.keys.add(n, [gltf.scene.getObjectByName(name)], { reach: 0.0025, travel: 0.00025 })
     }

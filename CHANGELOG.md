@@ -9,13 +9,16 @@ adds a line under **Unreleased**.
 
 - About links the source code on GitHub and a new Licenses and notices page
   (licenses/), which says what each part of the app is licensed under.
+- The app's English is spelled the American way: color, gray.
+- In the simulator, CodeAIR's reset button can always be clicked: a propeller
+  that stopped with a blade over it no longer blocks the click.
 - A privacy policy (privacy/) and an accessibility statement (accessibility/),
   in English and Spanish, linked from About.
 
 ## 0.1.0-beta.1 (2026-11-25)
 
-The first Beta of BitsWorkbench, ahead of the 0.1.0 release planned for
-December 1, 2026. The repository is now github.com/BitsWorkbench/bitsworkbench
+The first Beta of BitsWorkbench, ahead of its official launch on
+December 3, 2026. The repository is now github.com/BitsWorkbench/bitsworkbench
 (the old address redirects). Everything it holds:
 
 ### Editor

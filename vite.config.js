@@ -41,7 +41,7 @@ const codexSoundsModule = () => ({
   },
 })
 
-// The site carries code under other licences (THIRD_PARTY_NOTICES.md), so it
+// The site carries code under other licenses (THIRD_PARTY_NOTICES.md), so it
 // serves the notices at licenses/, and with CodeAIR flight the GPL's text for
 // its library. Without it, the notices' flight section (between the
 // <!-- flight --> markers) is left out, as the library is.

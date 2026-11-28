@@ -145,7 +145,7 @@ const marked = () => page.evaluate(() => window.openCodeBot.pythonEditor.markedL
 await page.waitForFunction(() => window.openCodeBot.pythonEditor.markedLines().length > 0)
 check((await marked()) === '2,3,4,5,6', `a statement with no block, all its lines, and a line with a piece of Python are marked (${await marked()})`)
 check(
-  await page.evaluate(() => [...document.querySelectorAll('.cm-no-block-mark')].every((m) => m.title.includes('grey Python block'))),
+  await page.evaluate(() => [...document.querySelectorAll('.cm-no-block-mark')].every((m) => m.title.includes('gray Python block'))),
   'each mark says why',
 )
 await page.evaluate(() => {
